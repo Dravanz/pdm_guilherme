@@ -1,6 +1,22 @@
+import { AuthContext } from "@/context/AuthProvider";
+import { useContext, useEffect } from "react";
 import { SafeAreaView, StyleSheet, Text } from "react-native";
 
 export default function SignIn() {
+	const { signIn } = useContext<any>(AuthContext);
+
+	useEffect(() => {
+		entrar();
+	}, []);
+
+	async function entrar() {
+		const result = await signIn({
+			email: "teste@email.com",
+			senha: "Teste123",
+		});
+		console.log("Resultado do login:", result);
+	}
+
 	return (
 		<SafeAreaView style={styles.container}>
 			<Text style={styles.texto}>Sign In</Text>
