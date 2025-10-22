@@ -1,25 +1,38 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { AuthContext } from "@/context/AuthProvider";
+import { router } from "expo-router";
 import { useContext, useEffect } from "react";
-import { SafeAreaView, StyleSheet, Text } from "react-native";
+import { Image, SafeAreaView, StyleSheet } from "react-native";
+import { useTheme } from "react-native-paper";
 
-export default function SignIn() {
-	const { signIn } = useContext<any>(AuthContext);
+export default function Preload() {
+	const theme = useTheme();
+	const { recuperaCredencialdaCache } = useContext<any>(AuthContext);
 
 	useEffect(() => {
-		entrar();
+		//ao montar o componente tenta logar com as credenciais da cache
+		logar();
 	}, []);
 
-	async function entrar() {
-		const result = await signIn({
-			email: "teste@email.com",
-			senha: "Teste123",
-		});
-		console.log("Resultado do login:", result);
+	async function logar() {
+		const credencial = await recuperaCredencialdaCache();
+		if (credencial) {
+			// await singIn(JSON.parse(credencial));
+			router.replace("/(tabs)");
+		} else {
+			router.replace("/signIn");
+		}
 	}
 
 	return (
-		<SafeAreaView style={styles.container}>
-			<Text style={styles.texto}>Sign In</Text>
+		<SafeAreaView
+			style={{ ...styles.container, backgroundColor: theme.colors.background }}
+		>
+			<Image
+				style={styles.imagem}
+				source={require("../assets/images/logo512.png")}
+				accessibilityLabel="logo do app"
+			/>
 		</SafeAreaView>
 	);
 }
@@ -27,12 +40,11 @@ export default function SignIn() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		justifyContent: "center",
 		alignItems: "center",
+		justifyContent: "center",
 	},
-	texto: {
-		fontSize: 60,
-		fontWeight: "bold",
-		color: "#fff",
+	imagem: {
+		width: 250,
+		height: 250,
 	},
 });

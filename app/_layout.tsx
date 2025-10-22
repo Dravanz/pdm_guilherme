@@ -1,21 +1,37 @@
-import {
-	DarkTheme,
-	DefaultTheme,
-	ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import { AuthProvider } from "@/context/AuthProvider";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { useColorScheme } from "react-native";
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from "react-native-paper";
+
+//Ampliando o tema padrão
+const themeLight = {
+	...MD3LightTheme,
+	colors: {
+		...MD3LightTheme.colors,
+		primary: "#E374E6",
+		white: "#ffffff",
+		black: "#000000",
+	},
+};
+
+const themeDark = {
+	...MD3DarkTheme,
+	colors: {
+		...MD3DarkTheme.colors,
+		white: "#ffffff",
+		black: "#000000",
+	},
+};
 
 export default function RootLayout() {
-	const colorScheme = useColorScheme();
 	const [loaded] = useFonts({
 		SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
 	});
+	const colorScheme = useColorScheme();
 
 	if (!loaded) {
 		// Async font loading only occurs in development.
@@ -23,14 +39,21 @@ export default function RootLayout() {
 	}
 
 	return (
-		<ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+		<PaperProvider theme={colorScheme === "dark" ? themeDark : themeLight}>
 			<AuthProvider>
-				<Stack initialRouteName="index">
-					{/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
-					<Stack.Screen name="index" options={{ headerShown: false }} />
+				<Stack
+					initialRouteName="index"
+					screenOptions={{
+						headerShown: false,
+					}}
+				>
+					<Stack.Screen name="index" />
+					<Stack.Screen name="(tabs)" />
+					<Stack.Screen name="signIn" />
+					<Stack.Screen name="signUp" />
 				</Stack>
 				<StatusBar style="auto" />
 			</AuthProvider>
-		</ThemeProvider>
+		</PaperProvider>
 	);
 }
