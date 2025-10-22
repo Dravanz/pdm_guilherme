@@ -27,7 +27,7 @@ export default function Menu() {
 				left={() => (
 					<List.Icon color={theme.colors.primary} icon="smart-card-outline" />
 				)}
-				onPress={() => alert("em desenvolvimento")}
+				onPress={() => router.push("/perfil")}
 			/>
 			<Divider />
 			<List.Item
@@ -39,7 +39,7 @@ export default function Menu() {
 						icon="eye-arrow-right-outline"
 					/>
 				)}
-				onPress={() => alert("em desenvolvimento")}
+				onPress={() => router.push("/recuperarSenha")}
 			/>
 			<Divider />
 			<List.Item
@@ -55,7 +55,7 @@ export default function Menu() {
 				}}
 			>
 				<Dialog.Icon icon={"alert-circle-outline"} size={60} />
-				<Dialog.Title style={styles.textDialog}>'Ops!'</Dialog.Title>
+				<Dialog.Title style={styles.textDialog}>Ops!</Dialog.Title>
 				<Dialog.Content>
 					<Text style={styles.textDialog} variant="bodyLarge">
 						{`Estamos com problemas para realizar essa operação.\nPor favor, contate o administrador.`}

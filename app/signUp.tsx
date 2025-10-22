@@ -1,5 +1,4 @@
 import { AuthContext } from "@/context/AuthProvider";
-import { Curso } from "@/model/Curso";
 import { Perfil } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -63,7 +62,6 @@ export default function SignUp() {
 
 	async function cadastrar(data: Usuario) {
 		setRequisitando(true);
-		data.curso = Curso.CSTSI;
 		data.perfil = Perfil.Aluno;
 		data.urlFoto = "path/to/image.png";
 		const msg = await signUp(data);
