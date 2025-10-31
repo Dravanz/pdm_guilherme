@@ -1,59 +1,47 @@
+// @ts-nocheck
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import { AuthProvider } from "@/context/AuthProvider";
+import { UserProvider } from "@/context/UserProvider";
+import React from "react";
 import { useColorScheme } from "react-native";
-import { MD3DarkTheme, MD3LightTheme, PaperProvider } from "react-native-paper";
+import { ThemeProvider } from "@/context/ThemeProvider";
 
-//Ampliando o tema padrão
-const themeLight = {
-	...MD3LightTheme,
-	colors: {
-		...MD3LightTheme.colors,
-		primary: "#E374E6",
-		white: "#ffffff",
-		black: "#000000",
-	},
-};
-
-const themeDark = {
-	...MD3DarkTheme,
-	colors: {
-		...MD3DarkTheme.colors,
-		white: "#ffffff",
-		black: "#000000",
-	},
-};
 
 export default function RootLayout() {
-	const [loaded] = useFonts({
-		SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-	});
-	const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+  const colorScheme = useColorScheme();
+  React.useState(colorScheme === "dark");
 
-	if (!loaded) {
-		// Async font loading only occurs in development.
-		return null;
-	}
+  if (!loaded) {
+    // Async font loading only occurs in development.
+    return null;
+  }
 
-	return (
-		<PaperProvider theme={colorScheme === "dark" ? themeDark : themeLight}>
-			<AuthProvider>
-				<Stack
-					initialRouteName="index"
-					screenOptions={{
-						headerShown: false,
-					}}
-				>
-					<Stack.Screen name="index" />
-					<Stack.Screen name="(tabs)" />
-					<Stack.Screen name="signIn" />
-					<Stack.Screen name="signUp" />
-				</Stack>
-				<StatusBar style="auto" />
-			</AuthProvider>
-		</PaperProvider>
-	);
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <UserProvider>
+          <Stack
+            initialRouteName="index"
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="signIn" />
+            <Stack.Screen name="signUp" />
+            <Stack.Screen name="recuperarSenha" />
+          </Stack>
+          <StatusBar style="auto" />
+        </UserProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }

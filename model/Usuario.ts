@@ -8,6 +8,12 @@ export class Usuario {
     public nome: string,
     public urlFoto: string,
     public perfil: Perfil,
+    public nivelAtual?: string,
+    public coeficienteConhecimento?: number,
+    public diasInatividade?: number,
+    public dataUltimoAcesso?: string,
+    public createdAt?: any,
+    public diasAtivos?: number,
     public senha?: string,
   ) {
     this.uid = uid;
@@ -15,6 +21,12 @@ export class Usuario {
     this.nome = nome;
     this.urlFoto = urlFoto;
     this.perfil = perfil;
+    this.nivelAtual = nivelAtual;
+    this.coeficienteConhecimento = coeficienteConhecimento;
+    this.diasInatividade = diasInatividade;
+    this.dataUltimoAcesso = dataUltimoAcesso;
+    this.createdAt = createdAt;
+    this.diasAtivos = diasAtivos;
     this.senha = senha;
   }
 }

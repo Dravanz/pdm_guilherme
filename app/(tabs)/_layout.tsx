@@ -8,38 +8,66 @@ export default function TabLayout() {
 		<Tabs
 			screenOptions={{
 				tabBarActiveTintColor: theme.colors.primary,
+				tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
 				headerShown: false,
 				tabBarStyle: Platform.select({
 					ios: {
-						// Use a transparent background on iOS to show the blur effect
 						position: "absolute",
+						backgroundColor: theme.colors.surface,
 					},
-					default: { backgroundColor: theme.colors.background },
+					default: { 
+						backgroundColor: theme.colors.surface,
+						borderTopColor: theme.colors.outline,
+						borderTopWidth: 1,
+					},
 				}),
 			}}
 		>
-			<Tabs.Screen
-				name="index"
-				options={{
-					title: "Home",
-					tabBarIcon: ({ color }) => (
-						<Icon
-							source="account-group"
-							color={theme.colors.primary}
-							size={20}
-						/>
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="menu"
-				options={{
-					title: "Menu",
-					tabBarIcon: ({ color }) => (
-						<Icon source="menu" color={theme.colors.primary} size={20} />
-					),
-				}}
-			/>
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: "Dashboard",
+                    tabBarIcon: ({ focused }) => (
+                        <Icon source="view-dashboard" color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant} size={20} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="cursos"
+                options={{
+                    title: "Cursos",
+                    tabBarIcon: ({ focused }) => (
+                        <Icon source="book-outline" color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant} size={20} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="ranking"
+                options={{
+                    title: "Ranking",
+                    tabBarIcon: ({ focused }) => (
+                        <Icon source="trophy-outline" color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant} size={20} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="perfil"
+                options={{
+                    title: "Perfil",
+                    tabBarIcon: ({ focused }) => (
+                        <Icon source="account-circle" color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant} size={20} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="configuracoes"
+                options={{
+                    title: "Configurações",
+                    tabBarIcon: ({ focused }) => (
+                        <Icon source="cog-outline" color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant} size={20} />
+                    ),
+                }}
+            />
 		</Tabs>
 	);
 }

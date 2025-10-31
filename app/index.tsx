@@ -7,22 +7,17 @@ import { useTheme } from "react-native-paper";
 
 export default function Preload() {
 	const theme = useTheme();
-	const { recuperaCredencialdaCache } = useContext<any>(AuthContext);
+	const { userAuth, isLoading } = useContext<any>(AuthContext);
 
 	useEffect(() => {
-		//ao montar o componente tenta logar com as credenciais da cache
-		logar();
-	}, []);
-
-	async function logar() {
-		const credencial = await recuperaCredencialdaCache();
-		if (credencial) {
-			// await singIn(JSON.parse(credencial));
-			router.replace("/(tabs)");
-		} else {
-			router.replace("/signIn");
+		if (!isLoading) {
+			if (userAuth) {
+				router.replace("/(tabs)");
+			} else {
+				router.replace("/signIn");
+			}
 		}
-	}
+	}, [userAuth, isLoading]);
 
 	return (
 		<SafeAreaView
