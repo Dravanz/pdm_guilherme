@@ -18,32 +18,38 @@ export const UserProvider = ({ children }: any) => {
     }
   }, [userAuth]);
 
-  // Verifica se deve incrementar dias ativos
-  async function checkAndUpdateActiveDays(usuario: Usuario): Promise<void> {
-    try {
-      const hoje = new Date();
-      const ultimoAcesso = usuario.dataUltimoAcesso ? new Date(usuario.dataUltimoAcesso) : null;
-      
-      if (ultimoAcesso) {
-        const diffTime = hoje.getTime() - ultimoAcesso.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Se passou pelo menos 1 dia desde o último acesso
-        if (diffDays >= 1) {
-          const novosDiasAtivos = (usuario.diasAtivos || 1) + 1;
-          
-          await setDoc(doc(firestore, "usuarios", usuario.uid), {
-            diasAtivos: novosDiasAtivos,
-            dataUltimoAcesso: hoje.toISOString(),
-          }, { merge: true });
-          
-          usuario.diasAtivos = novosDiasAtivos;
-          usuario.dataUltimoAcesso = hoje.toISOString();
-        }
-      }
-    } catch (e) {
-      console.error("Erro ao atualizar dias ativos:", e);
+  // Calcula streak e coeficiente baseado no Firebase Auth
+  function calculateStreakAndCoefficient(lastSignInTime: string, userData: any) {
+    const hoje = new Date();
+    const ultimoLogin = new Date(lastSignInTime);
+    const diffTime = hoje.getTime() - ultimoLogin.getTime();
+    const diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    let diasAtivos = userData.diasAtivos || 1;
+    let coeficiente = userData.coeficienteConhecimento || 0;
+    
+    // Se logou hoje (menos de 24h), mantém streak
+    if (diasInatividade === 0) {
+      return { diasAtivos, coeficiente, diasInatividade };
     }
+    
+    // Se logou ontem (24-48h), incrementa streak
+    if (diasInatividade === 1) {
+      diasAtivos += 1;
+    }
+    // Se passou mais de 1 dia, reseta streak
+    else if (diasInatividade > 1) {
+      diasAtivos = 1;
+      
+      // Diminui coeficiente 1.5% por dia após 3 dias inativo
+      if (diasInatividade > 3) {
+        const diasPenalizacao = diasInatividade - 3;
+        const reducao = diasPenalizacao * 0.015; // 1.5% por dia
+        coeficiente = Math.max(0, coeficiente * (1 - reducao));
+      }
+    }
+    
+    return { diasAtivos, coeficiente, diasInatividade };
   }
 
   //busca os detalhes do usuário
@@ -57,6 +63,16 @@ export const UserProvider = ({ children }: any) => {
       );
       if (docSnap.exists()) {
         let userData = docSnap.data();
+        
+        // Usa dados nativos do Firebase Auth
+        const authUser = userAuth.user;
+        const lastSignInTime = authUser.metadata.lastSignInTime;
+        const creationTime = authUser.metadata.creationTime;
+        
+        // Calcula streak e coeficiente
+        const { diasAtivos, coeficiente, diasInatividade } = 
+          calculateStreakAndCoefficient(lastSignInTime, userData);
+        
         const usuario: Usuario = {
           uid: docSnap.id,
           email: userData.email,
@@ -64,14 +80,20 @@ export const UserProvider = ({ children }: any) => {
           urlFoto: userData.urlFoto,
           perfil: userData.perfil,
           nivelAtual: userData.nivelAtual,
-          coeficienteConhecimento: userData.coeficienteConhecimento,
-          diasInatividade: userData.diasInatividade,
-          dataUltimoAcesso: userData.dataUltimoAcesso,
-          createdAt: userData.createdAt,
-          diasAtivos: userData.diasAtivos || 1,
+          coeficienteConhecimento: coeficiente,
+          diasInatividade,
+          dataUltimoAcesso: lastSignInTime,
+          createdAt: creationTime,
+          diasAtivos,
         };
-        // Verifica se deve incrementar dias ativos
-        await checkAndUpdateActiveDays(usuario);
+        
+        // Atualiza dados calculados no Firestore
+        await setDoc(doc(firestore, "usuarios", usuario.uid), {
+          diasAtivos,
+          coeficienteConhecimento: coeficiente,
+          diasInatividade,
+        }, { merge: true });
+        
         setUserFirebase(usuario);
       }
     } catch (e) {
@@ -105,7 +127,6 @@ export const UserProvider = ({ children }: any) => {
           usuario.diasInatividade ?? userFirebase?.diasInatividade ?? 0,
         diasAtivos:
           usuario.diasAtivos ?? userFirebase?.diasAtivos ?? 1,
-        dataUltimoAcesso: new Date().toISOString(),
       });
       setUserFirebase(usuario);
       return "ok";

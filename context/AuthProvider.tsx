@@ -140,7 +140,6 @@ export const AuthProvider = ({ children }: any) => {
             diasInatividade: 0,
             diasAtivos: 1,
             dataUltimoAcesso: new Date().toISOString(),
-            createdAt: serverTimestamp(),
           };
           await setDoc(
             doc(firestore, "usuarios", userCredential.user.uid),
