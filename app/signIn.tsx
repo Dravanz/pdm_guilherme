@@ -4,9 +4,9 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { Credencial } from "@/model/types";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { router } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   Dialog,
@@ -69,6 +69,7 @@ export default function SignIn() {
   const [exibirSenha, setExibirSenha] = useState(true);
   const [dialogVisivel, setDialogVisivel] = useState(false);
   const [mensagemDialog, setMensagemDialog] = useState("");
+  const senhaRef = useRef<any>(null);
 
   useEffect(() => {});
 
@@ -88,7 +89,11 @@ export default function SignIn() {
     <SafeAreaView
       style={{ ...styles.container, backgroundColor: theme.colors.background }}
     >
-      <ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <>
         <View style={styles.themeRow}>
             <Button
@@ -99,6 +104,7 @@ export default function SignIn() {
               {theme.dark ? "Claro" : "Escuro"}
             </Button> 
             </View>
+    
           <Svg
             width={220}
             height={180}
@@ -150,6 +156,7 @@ export default function SignIn() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={() => senhaRef.current?.focus()}
                 right={<TextInput.Icon icon="email" disabled />}
               />
             )}
@@ -167,6 +174,7 @@ export default function SignIn() {
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                ref={senhaRef}
                 style={styles.textinput}
                 label="Senha"
                 placeholder="Digite sua senha"
@@ -177,6 +185,7 @@ export default function SignIn() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={handleSubmit(entrar)}
                 right={
                   <TextInput.Icon
                     icon="eye"
@@ -227,7 +236,8 @@ export default function SignIn() {
             </Text>
           </View>
         </>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
       <Dialog visible={dialogVisivel} onDismiss={() => setDialogVisivel(false)}>
         <Dialog.Icon icon="alert-circle-outline" size={60} />
         <Dialog.Title style={styles.textDialog}>Erro</Dialog.Title>
@@ -266,7 +276,6 @@ const styles = StyleSheet.create({
   brand: {
     textAlign: "center",
     marginTop: 8,
-    fontFamily: "SpaceMono",
     letterSpacing: 1,
   },
   textinput: {
@@ -278,7 +287,7 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 50,
     marginBottom: 30,
-    backgroundColor: "#00ff55",
+    backgroundColor: "#22c55e",
   },
   themeRow: {
     marginTop: 8,

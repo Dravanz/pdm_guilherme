@@ -42,6 +42,8 @@ export default function Perfil() {
         coeficienteConhecimento: userFirebase.coeficienteConhecimento ?? 0,
         diasInatividade: userFirebase.diasInatividade ?? 0,
         dataUltimoAcesso: userFirebase.dataUltimoAcesso,
+        createdAt: userFirebase.createdAt,
+        diasAtivos: userFirebase.diasAtivos ?? 1,
       } as Usuario;
       const msg = await update(usuarioAtualizado);
       if (msg === "ok") {

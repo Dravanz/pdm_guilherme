@@ -135,7 +135,6 @@ export const AuthProvider = ({ children }: any) => {
             nome: usuario.nome,
             urlFoto: usuario.urlFoto,
             perfil: usuario.perfil,
-            // atributos iniciais mínimos para etapa 1
             nivelAtual: usuario?.perfil ? "iniciante" : "iniciante",
             coeficienteConhecimento: 0,
             diasInatividade: 0,

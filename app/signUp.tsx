@@ -5,9 +5,9 @@ import { Perfil } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { router } from "expo-router";
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   Dialog,
@@ -69,6 +69,9 @@ export default function SignUp() {
   const [dialogVisivel, setDialogVisivel] = useState(false);
   const [mensagem, setMensagem] = useState({ tipo: "", mensagem: "" });
   const [urlDevice, setUrlDevice] = useState<string | undefined>("");
+  const emailRef = useRef<any>(null);
+  const senhaRef = useRef<any>(null);
+  const confirmarSenhaRef = useRef<any>(null);
 
   async function cadastrar(data: Usuario) {
     setRequisitando(true);
@@ -104,11 +107,16 @@ export default function SignUp() {
         backgroundColor: theme.colors.background,
       }}
     >
-      <ScrollView
-        showsHorizontalScrollIndicator={false}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
+        <ScrollView
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
         <>
         <View style={styles.themeRow}>
                     <Button
@@ -160,6 +168,7 @@ export default function SignUp() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={() => emailRef.current?.focus()}
                 right={<TextInput.Icon icon="smart-card" />}
               />
             )}
@@ -175,6 +184,7 @@ export default function SignUp() {
             control={control}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                ref={emailRef}
                 style={styles.textinput}
                 label="Email"
                 placeholder="Digite seu email"
@@ -185,6 +195,7 @@ export default function SignUp() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={() => senhaRef.current?.focus()}
                 right={<TextInput.Icon icon="email" />}
               />
             )}
@@ -200,6 +211,7 @@ export default function SignUp() {
             control={control}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                ref={senhaRef}
                 style={styles.textinput}
                 label="Senha"
                 placeholder="Digite sua senha"
@@ -210,6 +222,7 @@ export default function SignUp() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={() => confirmarSenhaRef.current?.focus()}
                 right={
                   <TextInput.Icon
                     icon="eye"
@@ -229,6 +242,7 @@ export default function SignUp() {
             control={control}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                ref={confirmarSenhaRef}
                 style={styles.textinput}
                 label="Confirmar senha"
                 placeholder="Confirme sua senha"
@@ -239,6 +253,7 @@ export default function SignUp() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
+                onSubmitEditing={handleSubmit(cadastrar)}
                 right={
                   <TextInput.Icon
                     icon="eye"
@@ -276,7 +291,8 @@ export default function SignUp() {
             </Text>
           </View>
         </>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
       <Dialog
         visible={dialogVisivel}
         onDismiss={() => {
@@ -342,7 +358,7 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 50,
     marginBottom: 30,
-    backgroundColor: "#00ff55",
+    backgroundColor: "#22c55e",
   },
   divButtonsImage: {
     flexDirection: "row",

@@ -155,7 +155,7 @@ export default function Perfil() {
 								</View>
 
 								<Button
-									style={[themeStyles.buttonPrimary, styles.button, { backgroundColor: theme.colors.primary }]}
+									style={[themeStyles.buttonPrimary, styles.button, { backgroundColor: `${theme.colors.success}80` }]}
 									mode="contained"
 									textColor={theme.colors.onPrimary}
 									onPress={() => setEditMode(true)}
@@ -163,7 +163,7 @@ export default function Perfil() {
 									Editar Perfil
 								</Button>
 								<Button
-									style={[themeStyles.buttonPrimary, styles.button, { backgroundColor: theme.colors.error }]}
+									style={[themeStyles.buttonPrimary, styles.button, { backgroundColor: `${theme.colors.error}80` }]}
 									mode="contained"
 									textColor={theme.colors.onError}
 									onPress={() => setConfirmDelete(true)}

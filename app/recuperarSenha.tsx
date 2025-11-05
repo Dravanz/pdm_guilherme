@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: "transparent",
   },
-  button: { marginTop: 24, backgroundColor: "#00ff55" },
+  button: { marginTop: 24, backgroundColor: "#22c55e" },
   textDialog: { textAlign: "center" },
 });

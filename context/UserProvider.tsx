@@ -8,7 +8,7 @@ import { AuthContext } from "./AuthProvider";
 export const UserContext = createContext({});
 
 export const UserProvider = ({ children }: any) => {
-  const { userAuth, delAccount, updateUserEmail, updateUserPassword } =
+  const { userAuth, delAccount, updateUserPassword } =
     useContext(AuthContext) as any;
   const [userFirebase, setUserFirebase] = useState<Usuario | null>(null);
 

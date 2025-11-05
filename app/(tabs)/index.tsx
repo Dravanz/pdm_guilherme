@@ -1,7 +1,6 @@
 import React, { useContext } from "react";
 import { SafeAreaView, StyleSheet, View, ScrollView } from "react-native";
 import { Card, Text, useTheme } from "react-native-paper";
-import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 
 export default function Dashboard() {
