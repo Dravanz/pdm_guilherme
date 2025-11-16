@@ -1,103 +1,208 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { firestore } from "@/firebase/FirebaseInit";
+import { firestore, storage } from "@/firebase/FirebaseInit";
+import { Perfil as PerfilEnum } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
-import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import * as ImageManipulator from "expo-image-manipulator";
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthContext } from "./AuthProvider";
 
 export const UserContext = createContext({});
 
 export const UserProvider = ({ children }: any) => {
-  const { userAuth, delAccount, updateUserPassword } =
-    useContext(AuthContext) as any;
+  const { userAuth, delAccount, updateUserPassword } = useContext(
+    AuthContext
+  ) as any;
   const [userFirebase, setUserFirebase] = useState<Usuario | null>(null);
 
   useEffect(() => {
     if (userAuth) {
       getUser();
+
+      // Listener para atualizar automaticamente quando o documento mudar
+      const unsubscribe = onSnapshot(
+        doc(firestore, "usuarios", userAuth.user.uid),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            let userData = docSnap.data();
+            const authUser = userAuth.user;
+            const lastSignInTime = authUser.metadata.lastSignInTime;
+            const creationTime = authUser.metadata.creationTime;
+
+            // Calcula streak e coeficiente
+            const { diasAtivos, coeficiente, diasInatividade } =
+              calculateStreakAndCoefficient(lastSignInTime, userData);
+
+            const usuario: Usuario = {
+              uid: docSnap.id,
+              email: userData.email || authUser.email || "",
+              nome: userData.nome || "",
+              urlFoto: userData.urlFoto || "",
+              perfil: userData.perfil,
+              nivelAtual: userData.nivelAtual || "iniciante",
+              coeficienteConhecimento: coeficiente,
+              diasInatividade,
+              dataUltimoAcesso: lastSignInTime,
+              createdAt: creationTime,
+              diasAtivos,
+            };
+
+            setUserFirebase(usuario);
+          }
+        },
+        (error) => {
+          console.error("Erro no listener do Firestore:", error);
+        }
+      );
+
+      return () => unsubscribe();
+    } else {
+      setUserFirebase(null);
     }
   }, [userAuth]);
 
   // Calcula streak e coeficiente baseado no Firebase Auth
-  function calculateStreakAndCoefficient(lastSignInTime: string, userData: any) {
-    const hoje = new Date();
-    const ultimoLogin = new Date(lastSignInTime);
-    const diffTime = hoje.getTime() - ultimoLogin.getTime();
+  function calculateStreakAndCoefficient(
+    lastSignInTime: string,
+    userData: any
+  ) {
+    const agora = new Date();
+    const ultimoAcesso = userData.dataUltimoAcesso 
+      ? new Date(userData.dataUltimoAcesso) 
+      : new Date(lastSignInTime);
+
+    // Normaliza datas para meia-noite (00:00:00)
+    const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    const inicioUltimoAcesso = new Date(
+      ultimoAcesso.getFullYear(),
+      ultimoAcesso.getMonth(),
+      ultimoAcesso.getDate()
+    );
+
+    const diffTime = inicioHoje.getTime() - inicioUltimoAcesso.getTime();
     const diasInatividade = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     let diasAtivos = userData.diasAtivos || 1;
     let coeficiente = userData.coeficienteConhecimento || 0;
-    
-    // Se logou hoje (menos de 24h), mantém streak
+
+    // Mesmo dia: mantém streak
     if (diasInatividade === 0) {
       return { diasAtivos, coeficiente, diasInatividade };
     }
-    
-    // Se logou ontem (24-48h), incrementa streak
+
+    // Passou 1 dia (ontem -> hoje após 00:00): incrementa streak
     if (diasInatividade === 1) {
       diasAtivos += 1;
     }
-    // Se passou mais de 1 dia, reseta streak
+    // Mais de 1 dia sem acesso: reseta streak
     else if (diasInatividade > 1) {
       diasAtivos = 1;
-      
+
       // Diminui coeficiente 1.5% por dia após 3 dias inativo
       if (diasInatividade > 3) {
         const diasPenalizacao = diasInatividade - 3;
-        const reducao = diasPenalizacao * 0.015; // 1.5% por dia
+        const reducao = diasPenalizacao * 0.015;
         coeficiente = Math.max(0, coeficiente * (1 - reducao));
       }
     }
-    
+
     return { diasAtivos, coeficiente, diasInatividade };
   }
 
   //busca os detalhes do usuário
   async function getUser(): Promise<void> {
     try {
-      if (!userAuth.user) {
+      if (!userAuth?.user) {
+        setUserFirebase(null);
         return;
       }
+
       const docSnap = await getDoc(
         doc(firestore, "usuarios", userAuth.user.uid)
       );
+
       if (docSnap.exists()) {
         let userData = docSnap.data();
-        
+
         // Usa dados nativos do Firebase Auth
         const authUser = userAuth.user;
         const lastSignInTime = authUser.metadata.lastSignInTime;
         const creationTime = authUser.metadata.creationTime;
-        
+
         // Calcula streak e coeficiente
-        const { diasAtivos, coeficiente, diasInatividade } = 
+        const { diasAtivos, coeficiente, diasInatividade } =
           calculateStreakAndCoefficient(lastSignInTime, userData);
-        
+
         const usuario: Usuario = {
           uid: docSnap.id,
-          email: userData.email,
-          nome: userData.nome,
-          urlFoto: userData.urlFoto,
+          email: userData.email || authUser.email || "",
+          nome: userData.nome || "",
+          urlFoto: userData.urlFoto || "",
           perfil: userData.perfil,
-          nivelAtual: userData.nivelAtual,
+          nivelAtual: userData.nivelAtual || "iniciante",
           coeficienteConhecimento: coeficiente,
           diasInatividade,
           dataUltimoAcesso: lastSignInTime,
           createdAt: creationTime,
           diasAtivos,
         };
-        
+
         // Atualiza dados calculados no Firestore
-        await setDoc(doc(firestore, "usuarios", usuario.uid), {
-          diasAtivos,
-          coeficienteConhecimento: coeficiente,
-          diasInatividade,
-        }, { merge: true });
-        
+        await setDoc(
+          doc(firestore, "usuarios", usuario.uid),
+          {
+            diasAtivos,
+            coeficienteConhecimento: coeficiente,
+            diasInatividade,
+            dataUltimoAcesso: lastSignInTime,
+          },
+          { merge: true }
+        );
+
         setUserFirebase(usuario);
+      } else {
+        // Se o documento não existe, cria um documento básico com dados do Auth
+        const authUser = userAuth.user;
+        const creationTime = authUser.metadata.creationTime;
+        const lastSignInTime = authUser.metadata.lastSignInTime || creationTime;
+
+        const usuarioBasico: Usuario = {
+          uid: authUser.uid,
+          email: authUser.email || "",
+          nome: "",
+          urlFoto: "",
+          perfil: PerfilEnum.Aluno,
+          nivelAtual: "iniciante",
+          coeficienteConhecimento: 0,
+          diasInatividade: 0,
+          dataUltimoAcesso: lastSignInTime,
+          createdAt: creationTime,
+          diasAtivos: 1,
+        };
+
+        // Cria o documento no Firestore
+        await setDoc(
+          doc(firestore, "usuarios", authUser.uid),
+          {
+            email: authUser.email || "",
+            nome: "",
+            urlFoto: "",
+            perfil: PerfilEnum.Aluno,
+            nivelAtual: "iniciante",
+            coeficienteConhecimento: 0,
+            diasInatividade: 0,
+            diasAtivos: 1,
+            dataUltimoAcesso: lastSignInTime,
+          },
+          { merge: true }
+        );
+
+        setUserFirebase(usuarioBasico);
       }
     } catch (e) {
       console.error("UserProvider, getUser: " + e);
+      setUserFirebase(null);
     }
   }
 
@@ -125,8 +230,7 @@ export const UserProvider = ({ children }: any) => {
           0,
         diasInatividade:
           usuario.diasInatividade ?? userFirebase?.diasInatividade ?? 0,
-        diasAtivos:
-          usuario.diasAtivos ?? userFirebase?.diasAtivos ?? 1,
+        diasAtivos: usuario.diasAtivos ?? userFirebase?.diasAtivos ?? 1,
       });
       setUserFirebase(usuario);
       return "ok";
@@ -147,8 +251,50 @@ export const UserProvider = ({ children }: any) => {
     }
   }
 
+  async function sendImageToStorage(
+    urlDevice: string,
+    uid: string
+  ): Promise<string | null> {
+    try {
+      //1. Redimensiona, compacta a imagem, e a transforma em blob
+      //ImageManipulator.ImageManipulator.manipulate será o substituto de ImageManipulator.manipulateAsync
+      const imageRedimencionada = await ImageManipulator.manipulateAsync(
+        urlDevice,
+        [{ resize: { width: 150, height: 150 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.PNG }
+      );
+      const data = await fetch(imageRedimencionada?.uri);
+      const blob = await data.blob();
+
+      //2. e prepara o path onde ela deve ser salva no storage
+      const storageReference = ref(storage, `imagens/usuarios/${uid}/foto.png`);
+
+      //3. Envia para o storage
+      await uploadBytes(storageReference, blob);
+
+      //4. Retorna a URL da imagem
+      const url = await getDownloadURL(
+        ref(storage, `imagens/usuarios/${uid}/foto.png`)
+      );
+
+      return url;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+
+  // Função para forçar atualização dos dados do usuário
+  async function refreshUser(): Promise<void> {
+    if (userAuth) {
+      await getUser();
+    }
+  }
+
   return (
-    <UserContext.Provider value={{ userFirebase, update, del }}>
+    <UserContext.Provider
+      value={{ userFirebase, update, del, sendImageToStorage, refreshUser }}
+    >
       {children}
     </UserContext.Provider>
   );

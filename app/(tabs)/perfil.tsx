@@ -5,26 +5,32 @@ import { Perfil as PerfilEnum } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
 import { router } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Image, ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
 import { Button, Card, Dialog, Text, TextInput, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 
 export default function Perfil() {
   const theme = useTheme();
   const { sair, userAuth } = useContext<any>(AuthContext);
-  const { userFirebase, update, del } = useContext<any>(UserContext);
+  const { userFirebase, update, del, sendImageToStorage } = useContext<any>(UserContext);
   const [editMode, setEditMode] = useState(false);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [urlFoto] = useState<string | undefined>(undefined);
+  const [urlFoto, setUrlFoto] = useState<string | undefined>(undefined);
   const [dialogVisivel, setDialogVisivel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [requisitando, setRequisitando] = useState(false);
+  const [alterandoFoto, setAlterandoFoto] = useState(false);
+  const [mensagem, setMensagem] = useState({ tipo: "", mensagem: "" });
+  const [dialogFotoVisivel, setDialogFotoVisivel] = useState(false);
+  const [dialogMensagemVisivel, setDialogMensagemVisivel] = useState(false);
 
   useEffect(() => {
 	if (userFirebase) {
 	  setNome(userFirebase.nome || "");
 	  setEmail(userFirebase.email || "");
+	  setUrlFoto(userFirebase.urlFoto || undefined);
 	}
   }, [userFirebase]);
 
@@ -55,6 +61,84 @@ export default function Perfil() {
 	setRequisitando(false);
   }
 
+  async function buscaNaGaleria() {
+	try {
+	  setDialogFotoVisivel(false);
+	  // Solicita permissão se necessário
+	  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+	  if (status !== "granted") {
+		setMensagem({
+		  tipo: "erro",
+		  mensagem: "Permissão para acessar a galeria é necessária.",
+		});
+		setDialogMensagemVisivel(true);
+		return;
+	  }
+
+	  let result = await ImagePicker.launchImageLibraryAsync({
+		allowsEditing: true,
+		aspect: [4, 3],
+		quality: 1,
+	  });
+	  
+	  if (!result.canceled && result.assets && result.assets.length > 0 && userFirebase) {
+		setAlterandoFoto(true);
+		const urlStorage = await sendImageToStorage(result.assets[0].uri, userFirebase.uid);
+		if (urlStorage) {
+		  setUrlFoto(urlStorage);
+		  const usuarioAtualizado: Usuario = {
+			...userFirebase,
+			urlFoto: urlStorage,
+		  };
+		  await update(usuarioAtualizado);
+		}
+		setAlterandoFoto(false);
+	  }
+	} catch (error) {
+	  console.error("Erro ao buscar foto na galeria:", error);
+	  setAlterandoFoto(false);
+	}
+  }
+
+  async function tiraFoto() {
+	try {
+	  setDialogFotoVisivel(false);
+	  // Solicita permissão se necessário
+	  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+	  if (status !== "granted") {
+		setMensagem({
+		  tipo: "erro",
+		  mensagem: "Permissão para acessar a câmera é necessária.",
+		});
+		setDialogMensagemVisivel(true);
+		return;
+	  }
+
+	  let result = await ImagePicker.launchCameraAsync({
+		allowsEditing: true,
+		aspect: [4, 3],
+		quality: 1,
+	  });
+	  
+	  if (!result.canceled && result.assets && result.assets.length > 0 && userFirebase) {
+		setAlterandoFoto(true);
+		const urlStorage = await sendImageToStorage(result.assets[0].uri, userFirebase.uid);
+		if (urlStorage) {
+		  setUrlFoto(urlStorage);
+		  const usuarioAtualizado: Usuario = {
+			...userFirebase,
+			urlFoto: urlStorage,
+		  };
+		  await update(usuarioAtualizado);
+		}
+		setAlterandoFoto(false);
+	  }
+	} catch (error) {
+	  console.error("Erro ao tirar foto:", error);
+	  setAlterandoFoto(false);
+	}
+  }
+
   async function excluirConta() {
 	if (!userFirebase) return;
 	setRequisitando(true);
@@ -81,10 +165,34 @@ export default function Perfil() {
 		{userFirebase && (
 		  <>
 			<View style={styles.profileHeader}>
-			  <Image
-				style={styles.image}
-				source={require("../../assets/images/person.png")}
-			  />
+			  <TouchableOpacity 
+				onPress={() => setDialogFotoVisivel(true)}
+				disabled={alterandoFoto}
+			  >
+				<Image
+				  style={styles.image}
+				  source={
+					urlFoto && urlFoto !== ""
+					  ? { uri: urlFoto }
+					  : require("../../assets/images/person.png")
+				  }
+				/>
+				{alterandoFoto && (
+				  <View style={styles.imageOverlay}>
+					<Text style={styles.overlayText}>Carregando...</Text>
+				  </View>
+				)}
+			  </TouchableOpacity>
+			  <Button
+				mode="outlined"
+				onPress={() => setDialogFotoVisivel(true)}
+				icon="camera"
+				style={styles.changePhotoButton}
+				disabled={alterandoFoto}
+				loading={alterandoFoto}
+			  >
+				Alterar Foto
+			  </Button>
 			</View>
 
 			{editMode ? (
@@ -223,6 +331,57 @@ export default function Perfil() {
 		  </Button>
 		</Dialog.Actions>
 	  </Dialog>
+
+	  <Dialog visible={dialogFotoVisivel} onDismiss={() => setDialogFotoVisivel(false)}>
+		<Dialog.Icon icon="camera" size={60} />
+		<Dialog.Title style={styles.textDialog}>Alterar Foto</Dialog.Title>
+		<Dialog.Content>
+		  <Text style={styles.textDialog} variant="bodyLarge">
+			Escolha como deseja alterar sua foto de perfil
+		  </Text>
+		</Dialog.Content>
+		<Dialog.Actions>
+		  <Button 
+			onPress={tiraFoto}
+			icon="camera"
+			disabled={alterandoFoto}
+		  >
+			Tirar Foto
+		  </Button>
+		  <Button 
+			onPress={buscaNaGaleria}
+			icon="image"
+			disabled={alterandoFoto}
+		  >
+			Galeria
+		  </Button>
+		  <Button onPress={() => setDialogFotoVisivel(false)}>Cancelar</Button>
+		</Dialog.Actions>
+	  </Dialog>
+
+	  <Dialog visible={dialogMensagemVisivel} onDismiss={() => {
+		setDialogMensagemVisivel(false);
+		setMensagem({ tipo: "", mensagem: "" });
+	  }}>
+		<Dialog.Icon 
+		  icon={mensagem.tipo === "erro" ? "alert-circle-outline" : "information-outline"} 
+		  size={60} 
+		/>
+		<Dialog.Title style={styles.textDialog}>
+		  {mensagem.tipo === "erro" ? "Erro" : "Informação"}
+		</Dialog.Title>
+		<Dialog.Content>
+		  <Text style={styles.textDialog} variant="bodyLarge">
+			{mensagem.mensagem}
+		  </Text>
+		</Dialog.Content>
+		<Dialog.Actions>
+		  <Button onPress={() => {
+			setDialogMensagemVisivel(false);
+			setMensagem({ tipo: "", mensagem: "" });
+		  }}>OK</Button>
+		</Dialog.Actions>
+	  </Dialog>
 	</SafeAreaView>
   );
 }
@@ -242,6 +401,24 @@ const styles = StyleSheet.create({
 	borderRadius: 60,
 	borderWidth: 4,
 	borderColor: '#22c55e',
+  },
+  imageOverlay: {
+	position: 'absolute',
+	top: 0,
+	left: 0,
+	right: 0,
+	bottom: 0,
+	backgroundColor: 'rgba(0, 0, 0, 0.5)',
+	borderRadius: 60,
+	justifyContent: 'center',
+	alignItems: 'center',
+  },
+  overlayText: {
+	color: '#fff',
+	fontWeight: 'bold',
+  },
+  changePhotoButton: {
+	marginTop: 12,
   },
   section: {
 	marginBottom: 32,
