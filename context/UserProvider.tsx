@@ -162,43 +162,7 @@ export const UserProvider = ({ children }: any) => {
 
         setUserFirebase(usuario);
       } else {
-        // Se o documento não existe, cria um documento básico com dados do Auth
-        const authUser = userAuth.user;
-        const creationTime = authUser.metadata.creationTime;
-        const lastSignInTime = authUser.metadata.lastSignInTime || creationTime;
-
-        const usuarioBasico: Usuario = {
-          uid: authUser.uid,
-          email: authUser.email || "",
-          nome: "",
-          urlFoto: "",
-          perfil: PerfilEnum.Aluno,
-          nivelAtual: "iniciante",
-          coeficienteConhecimento: 0,
-          diasInatividade: 0,
-          dataUltimoAcesso: lastSignInTime,
-          createdAt: creationTime,
-          diasAtivos: 1,
-        };
-
-        // Cria o documento no Firestore
-        await setDoc(
-          doc(firestore, "usuarios", authUser.uid),
-          {
-            email: authUser.email || "",
-            nome: "",
-            urlFoto: "",
-            perfil: PerfilEnum.Aluno,
-            nivelAtual: "iniciante",
-            coeficienteConhecimento: 0,
-            diasInatividade: 0,
-            diasAtivos: 1,
-            dataUltimoAcesso: lastSignInTime,
-          },
-          { merge: true }
-        );
-
-        setUserFirebase(usuarioBasico);
+        setUserFirebase(null);
       }
     } catch (e) {
       console.error("UserProvider, getUser: " + e);

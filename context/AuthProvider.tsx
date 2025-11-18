@@ -133,7 +133,6 @@ export const AuthProvider = ({ children }: any) => {
           const usuarioFirestore = {
             email: usuario.email,
             nome: usuario.nome,
-            urlFoto: usuario.urlFoto || "",
             perfil: usuario.perfil,
             nivelAtual: usuario?.perfil ? "iniciante" : "iniciante",
             coeficienteConhecimento: 0,

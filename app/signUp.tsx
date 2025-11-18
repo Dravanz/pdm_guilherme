@@ -91,7 +91,6 @@ export default function SignUp() {
     try {
       data.perfil = Perfil.Aluno;
 
-      // Primeiro, cria o usuário no Auth
       const msg = await signUp(data);
       if (msg !== "ok") {
         setMensagem({ tipo: "erro", mensagem: msg });
@@ -100,10 +99,8 @@ export default function SignUp() {
         return;
       }
 
-      // Aguarda um pouco para garantir que o usuário foi criado
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Se o cadastro foi bem-sucedido, pega o UID do usuário autenticado
       const { auth } = await import("@/firebase/FirebaseInit");
       const currentUser = auth.currentUser;
 
@@ -117,28 +114,15 @@ export default function SignUp() {
         return;
       }
 
-      // Se houver foto selecionada, faz upload para o Storage
       let fotoSalva = false;
-      if (urlDevice && urlDevice.trim() !== "" && urlDevice !== undefined) {
+      if (urlDevice && urlDevice.trim() !== "") {
         try {
-          if (!sendImageToStorage) {
-            console.error("sendImageToStorage não está disponível no contexto");
-            setMensagem({
-              tipo: "ok",
-              mensagem: `Cadastro realizado com sucesso, mas houve um problema ao salvar a foto. Você pode adicionar uma foto depois no perfil.\n${data.email}`,
-            });
-            setDialogVisivel(true);
-            setRequisitando(false);
-            return;
-          }
-
           const urlStorage = await sendImageToStorage(
             urlDevice,
             currentUser.uid
           );
 
-          if (urlStorage && urlStorage.trim() !== "") {
-            // Atualiza o documento no Firestore com a URL da foto
+          if (urlStorage) {
             const { firestore } = await import("@/firebase/FirebaseInit");
             const { doc, setDoc } = await import("firebase/firestore");
             await setDoc(
@@ -147,34 +131,18 @@ export default function SignUp() {
               { merge: true }
             );
             fotoSalva = true;
-
-            // Força atualização dos dados do usuário no UserProvider
-            if (refreshUser) {
-              await refreshUser();
-            }
-          } else {
-            console.error(
-              "Erro: URL do storage não foi retornada ou está vazia"
-            );
           }
         } catch (error: any) {
           console.error("Erro ao fazer upload da foto:", error);
-          fotoSalva = false;
         }
       }
 
-      // Define mensagem de sucesso
-      if (urlDevice && urlDevice.trim() !== "" && !fotoSalva) {
-        setMensagem({
-          tipo: "ok",
-          mensagem: `Cadastro realizado com sucesso, mas houve um problema ao salvar a foto. Você pode adicionar uma foto depois no perfil.\n${data.email}`,
-        });
-      } else {
-        setMensagem({
-          tipo: "ok",
-          mensagem: `Show! Você foi cadastrado com sucesso. Verifique seu email para validar sua conta.\n${data.email}`,
-        });
-      }
+      setMensagem({
+        tipo: "ok",
+        mensagem: urlDevice && !fotoSalva
+          ? `Cadastro realizado com sucesso, mas houve um problema ao salvar a foto. Você pode adicionar uma foto depois no perfil.\n${data.email}`
+          : `Show! Você foi cadastrado com sucesso. Verifique seu email para validar sua conta.\n${data.email}`,
+      });
       setDialogVisivel(true);
       setRequisitando(false);
     } catch (error: any) {
