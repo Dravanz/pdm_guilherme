@@ -3,10 +3,13 @@ import { AuthContext } from "@/context/AuthProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Perfil as PerfilEnum } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
+import { BadgeService } from "@/services/BadgeService";
+import { Badge } from "@/model/Badge";
 import { router } from "expo-router";
-import React, { useContext, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
-import { Button, Card, Dialog, Text, TextInput, useTheme } from "react-native-paper";
+import React, { useContext, useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { Image, ScrollView, StyleSheet, View, TouchableOpacity, FlatList } from "react-native";
+import { Button, Card, Dialog, Text, TextInput, useTheme, Chip } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
@@ -25,14 +28,31 @@ export default function Perfil() {
   const [mensagem, setMensagem] = useState({ tipo: "", mensagem: "" });
   const [dialogFotoVisivel, setDialogFotoVisivel] = useState(false);
   const [dialogMensagemVisivel, setDialogMensagemVisivel] = useState(false);
+  const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
 	if (userFirebase) {
 	  setNome(userFirebase.nome || "");
 	  setEmail(userFirebase.email || "");
 	  setUrlFoto(userFirebase.urlFoto || undefined);
+	  carregarBadges();
 	}
   }, [userFirebase]);
+
+  useFocusEffect(
+	useCallback(() => {
+	  if (userFirebase) {
+		carregarBadges();
+	  }
+	}, [userFirebase])
+  );
+  
+  const carregarBadges = async () => {
+	if (userFirebase) {
+	  const badgesUsuario = await BadgeService.obterBadgesUsuario(userFirebase.uid);
+	  setBadges(badgesUsuario);
+	}
+  };
 
   async function salvarPerfil() {
 	if (!userFirebase) return;
@@ -243,14 +263,14 @@ export default function Perfil() {
 					  <Card.Content style={styles.statContent}>
 						<Text variant="headlineMedium" style={[styles.statNumber, { color: theme.colors.primary }]}>🔥</Text>
 						<Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{userFirebase.diasAtivos || 1}</Text>
-						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Dias Streak</Text>
+						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Dias ativos</Text>
 					  </Card.Content>
 					</Card>
 					<Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
 					  <Card.Content style={styles.statContent}>
 						<Text variant="headlineMedium" style={[styles.statNumber, { color: theme.colors.primary }]}>📊</Text>
 						<Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{(userFirebase.coeficienteConhecimento || 0).toFixed(1)}%</Text>
-						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Coeficiente</Text>
+						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Coeficiente Geral</Text>
 					  </Card.Content>
 					</Card>
 				  </View>
@@ -261,6 +281,34 @@ export default function Perfil() {
 					  <Text variant="bodyLarge" style={[styles.infoItem, { color: theme.colors.onSurface }]}>🕐 Último acesso: {userFirebase.dataUltimoAcesso ? new Date(userFirebase.dataUltimoAcesso).toLocaleDateString('pt-BR') : 'N/A'}</Text>
 					</Card.Content>
 				  </Card>
+				</View>
+
+				<View style={styles.section}>
+				  <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Conquistas</Text>
+				  {badges.length > 0 ? (
+					<View style={styles.badgesContainer}>
+					  {badges.map((badge, index) => (
+						<Card key={`${badge.id}-${index}`} style={[styles.badgeCard, { backgroundColor: theme.colors.surface }]}>
+						  <Card.Content style={styles.badgeContent}>
+							<Text variant="headlineMedium" style={styles.badgeIcon}>{badge.icone}</Text>
+							<Text variant="labelLarge" style={[styles.badgeName, { color: theme.colors.onSurface }]} numberOfLines={2}>{badge.nome}</Text>
+							<Text variant="bodySmall" style={[styles.badgeDescription, { color: theme.colors.onSurfaceVariant }]} numberOfLines={3}>{badge.descricao}</Text>
+							<View style={[styles.badgeTypeContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+							  <Text style={[styles.badgeTypeText, { color: theme.colors.onPrimaryContainer }]}>{badge.tipo}</Text>
+							</View>
+						  </Card.Content>
+						</Card>
+					  ))}
+					</View>
+				  ) : (
+					<Card style={[styles.noBadgesCard, { backgroundColor: theme.colors.surface }]}>
+					  <Card.Content style={styles.noBadgesContent}>
+						<Text variant="headlineMedium" style={styles.noBadgesIcon}>🏆</Text>
+						<Text variant="titleMedium" style={[styles.noBadgesText, { color: theme.colors.onSurface }]}>Nenhuma conquista ainda</Text>
+						<Text variant="bodyMedium" style={[styles.noBadgesSubtext, { color: theme.colors.onSurfaceVariant }]}>Complete cursos para ganhar badges!</Text>
+					  </Card.Content>
+					</Card>
+				  )}
 				</View>
 
 				<View style={styles.section}>
@@ -488,6 +536,71 @@ const styles = StyleSheet.create({
 	borderRadius: 12,
   },
   textDialog: {
+	textAlign: 'center',
+  },
+  badgesContainer: {
+	flexDirection: 'row',
+	flexWrap: 'wrap',
+	justifyContent: 'space-between',
+	gap: 12,
+  },
+  badgeCard: {
+	width: '48%',
+	minHeight: 160,
+	borderRadius: 16,
+	elevation: 3,
+  },
+  badgeContent: {
+	alignItems: 'center',
+	justifyContent: 'space-between',
+	paddingVertical: 12,
+	paddingHorizontal: 8,
+	flex: 1,
+  },
+  badgeIcon: {
+	marginBottom: 6,
+  },
+  badgeName: {
+	fontWeight: '600',
+	textAlign: 'center',
+	marginBottom: 4,
+	minHeight: 32,
+  },
+  badgeDescription: {
+	textAlign: 'center',
+	marginBottom: 8,
+	lineHeight: 14,
+	flex: 1,
+  },
+  badgeTypeContainer: {
+	paddingHorizontal: 8,
+	paddingVertical: 4,
+	borderRadius: 12,
+	minWidth: 60,
+  },
+  badgeTypeText: {
+	fontSize: 10,
+	fontWeight: '600',
+	textAlign: 'center',
+	textTransform: 'capitalize',
+  },
+  noBadgesCard: {
+	borderRadius: 16,
+	elevation: 3,
+  },
+  noBadgesContent: {
+	alignItems: 'center',
+	paddingVertical: 32,
+  },
+  noBadgesIcon: {
+	marginBottom: 12,
+	opacity: 0.5,
+  },
+  noBadgesText: {
+	fontWeight: '600',
+	marginBottom: 8,
+  },
+  noBadgesSubtext: {
 	textAlign: 'center',
   },
 });
