@@ -39,7 +39,7 @@ export default function CursoDetalhes() {
     try {
       setCarregando(true);
       
-      const cursoCarregado = await CursoService.carregarCursoXML(id);
+      const cursoCarregado = await CursoService.carregarCursoXML(id, user?.urlFoto);
       setCurso(cursoCarregado);
 
       const isRevisao = modo === 'revisao';

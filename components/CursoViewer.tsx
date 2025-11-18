@@ -65,17 +65,18 @@ export function CursoViewer({
     return (
       <ScrollView style={styles.container}>
         <Card style={styles.card}>
-          <Card.Title title={pagina.titulo} />
+          <Card.Title title={pagina.titulo || 'Título não encontrado'} />
           <Card.Content>
             {pagina.imagem && (
               <Image 
                 source={{ uri: pagina.imagem }} 
                 style={styles.imagem}
                 resizeMode="contain"
+                onError={(error) => console.error('Erro ao carregar imagem:', error.nativeEvent.error)}
               />
             )}
             <Text variant="bodyMedium" style={[styles.conteudo, { color: theme.colors.onSurface }]}>
-              {pagina.conteudo}
+              {pagina.conteudo || 'Conteúdo não encontrado'}
             </Text>
           </Card.Content>
           <Card.Actions>

@@ -3,17 +3,13 @@ import { firestore } from '../firebase/FirebaseInit';
 import { Curso, UsuarioCurso, PaginaCurso, Questao } from '../model/Curso';
 import { QuestaoService } from './QuestaoService';
 import { BadgeService } from './BadgeService';
+import { ImageUploadService } from './ImageUploadService';
 
 export class CursoService {
   
-  static async carregarCursoXML(cursoId: string): Promise<Curso> {
+  static async carregarCursoXML(cursoId: string, userPhotoUrl?: string): Promise<Curso> {
     try {
-      console.log('Carregando XML para curso:', cursoId);
-      
-
-      
-      const xmlContent = this.obterXMLCurso(cursoId);
-      console.log('XML obtido, tamanho:', xmlContent.length);
+      const xmlContent = await this.obterXMLCurso(cursoId, userPhotoUrl);
       
       if (!xmlContent) {
         throw new Error(`XML não encontrado para curso: ${cursoId}`);
@@ -22,7 +18,6 @@ export class CursoService {
       await QuestaoService.criarQuestoesIniciais();
       
       const curso = await this.parseXMLCurso(xmlContent);
-      console.log('Curso parseado:', curso);
       return curso;
     } catch (error) {
       console.error('Erro no carregarCursoXML:', error);
@@ -30,13 +25,23 @@ export class CursoService {
     }
   }
   
-  static obterXMLCurso(cursoId: string): string {
+  static async obterXMLCurso(cursoId: string, userPhotoUrl?: string): Promise<string> {
+    // Obter URLs das imagens do Firebase Storage
+    const storageImages = {
+      'javascript-intro': await ImageUploadService.getImageUrl('javascript-intro.jpg') || userPhotoUrl || '',
+      'javascript-variables': await ImageUploadService.getImageUrl('javascript-variables.jpg') || userPhotoUrl || '',
+      'python-intro': await ImageUploadService.getImageUrl('python-intro.jpg') || userPhotoUrl || '',
+      'python-syntax': await ImageUploadService.getImageUrl('python-syntax.jpg') || userPhotoUrl || '',
+      'react-intro': await ImageUploadService.getImageUrl('react-intro.jpg') || userPhotoUrl || '',
+      'react-components': await ImageUploadService.getImageUrl('react-components.jpg') || userPhotoUrl || ''
+    };
+
     const xmls: { [key: string]: string } = {
       'javascript-basico': `<?xml version="1.0" encoding="UTF-8"?>
 <curso id="javascript-basico" titulo="JavaScript Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
-    <titulo>Introdução ao JavaScript</titulo>
-    <imagem>https://via.placeholder.com/300x200/007acc/ffffff?text=JavaScript</imagem>
+    <titulo>📚 Introdução ao JavaScript</titulo>
+    <imagem>${storageImages['javascript-intro']}</imagem>
     <conteudo>
       JavaScript é uma linguagem de programação dinâmica e versátil, amplamente utilizada para desenvolvimento web.
       
@@ -51,8 +56,8 @@ export class CursoService {
   </pagina>
   
   <pagina id="2" tipo="conteudo">
-    <titulo>Variáveis e Operadores</titulo>
-    <imagem>https://via.placeholder.com/300x200/ffc107/000000?text=Variables</imagem>
+    <titulo>🔧 Variáveis e Operadores</titulo>
+    <imagem>${storageImages['javascript-variables']}</imagem>
     <conteudo>
       Antes de praticar, vamos entender os conceitos básicos:
       
@@ -77,8 +82,7 @@ export class CursoService {
   </pagina>
   
   <pagina id="4" tipo="conteudo">
-    <titulo>Funções em JavaScript</titulo>
-    <imagem>https://via.placeholder.com/300x200/28a745/ffffff?text=Functions</imagem>
+    <titulo>⚡ Funções em JavaScript</titulo>
     <conteudo>
       Funções são blocos de código reutilizáveis que executam tarefas específicas.
       
@@ -107,7 +111,7 @@ export class CursoService {
 <curso id="python-basico" titulo="Python Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
     <titulo>Introdução ao Python</titulo>
-    <imagem>https://via.placeholder.com/300x200/3776ab/ffffff?text=Python</imagem>
+    <imagem>${storageImages['python-intro']}</imagem>
     <conteudo>
       Python é uma linguagem de programação de alto nível, interpretada e de propósito geral.
       
@@ -123,7 +127,7 @@ export class CursoService {
   
   <pagina id="2" tipo="conteudo">
     <titulo>Variáveis e Listas em Python</titulo>
-    <imagem>https://via.placeholder.com/300x200/ff6b6b/ffffff?text=Variables</imagem>
+    <imagem>${storageImages['python-syntax']}</imagem>
     <conteudo>
       Antes dos exercícios, vamos revisar os conceitos:
       
@@ -150,7 +154,6 @@ export class CursoService {
   
   <pagina id="4" tipo="conteudo">
     <titulo>Estruturas de Controle</titulo>
-    <imagem>https://via.placeholder.com/300x200/ffde57/000000?text=Control</imagem>
     <conteudo>
       Python oferece estruturas de controle simples e poderosas.
       
@@ -173,7 +176,7 @@ export class CursoService {
 <curso id="react-basico" titulo="React Básico" categoria="frontend" nivel="intermediario" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
     <titulo>Introdução ao React</titulo>
-    <imagem>https://via.placeholder.com/300x200/61dafb/000000?text=React</imagem>
+    <imagem>${storageImages['react-intro']}</imagem>
     <conteudo>
       React é uma biblioteca JavaScript para construir interfaces de usuário.
       
@@ -189,7 +192,7 @@ export class CursoService {
   
   <pagina id="2" tipo="conteudo">
     <titulo>Componentes e State</titulo>
-    <imagem>https://via.placeholder.com/300x200/4caf50/ffffff?text=Components</imagem>
+    <imagem>${storageImages['react-components']}</imagem>
     <conteudo>
       Antes dos exercícios, vamos revisar os conceitos:
       
@@ -215,7 +218,6 @@ export class CursoService {
   
   <pagina id="4" tipo="conteudo">
     <titulo>Hooks no React</titulo>
-    <imagem>https://via.placeholder.com/300x200/282c34/61dafb?text=Hooks</imagem>
     <conteudo>
       Hooks permitem usar state e outros recursos do React em componentes funcionais.
       
@@ -234,6 +236,19 @@ export class CursoService {
     };
     
     return xmls[cursoId] || '';
+  }
+
+  static async uploadCourseImagesAndUpdateXML(): Promise<void> {
+    try {
+      console.log('Iniciando upload das imagens dos cursos...');
+      const uploadedImages = await ImageUploadService.uploadCourseImages();
+      console.log('Imagens enviadas:', uploadedImages);
+      
+      // As URLs já estão sendo usadas no XML acima
+      // Este método pode ser chamado uma vez para fazer o upload inicial
+    } catch (error) {
+      console.error('Erro ao fazer upload das imagens:', error);
+    }
   }
   
   static obterXMLCursoPython(): string {
@@ -327,14 +342,13 @@ export class CursoService {
   }
   
   static async parseXMLCurso(xmlContent: string): Promise<Curso> {
-    console.log('Iniciando parse do XML com banco de questões');
-    
     const lines = xmlContent.split('\n');
     let curso: any = {};
     let paginas: PaginaCurso[] = [];
     let paginaAtual: any = {};
     let questaoRefs: string[] = [];
     let conteudoBuffer = '';
+    let dentroConteudo = false;
 
     for (const line of lines) {
       const trimmed = line.trim();
@@ -375,12 +389,21 @@ export class CursoService {
       }
       
       if (trimmed.includes('<conteudo>')) {
+        dentroConteudo = true;
         conteudoBuffer = trimmed.replace('<conteudo>', '');
+        if (trimmed.includes('</conteudo>')) {
+          // Conteúdo em uma linha só
+          paginaAtual.conteudo = conteudoBuffer.replace('</conteudo>', '').trim();
+          dentroConteudo = false;
+          conteudoBuffer = '';
+        }
       } else if (trimmed.includes('</conteudo>')) {
-        conteudoBuffer += trimmed.replace('</conteudo>', '');
+        conteudoBuffer += (conteudoBuffer ? '\n' : '') + trimmed.replace('</conteudo>', '');
         paginaAtual.conteudo = conteudoBuffer.trim();
-      } else if (conteudoBuffer && !trimmed.includes('<') && !trimmed.includes('>')) {
-        conteudoBuffer += '\n' + trimmed;
+        dentroConteudo = false;
+        conteudoBuffer = '';
+      } else if (dentroConteudo && trimmed !== '') {
+        conteudoBuffer += (conteudoBuffer ? '\n' : '') + trimmed;
       }
       
       if (trimmed.includes('<imagem>') && trimmed.includes('</imagem>')) {
@@ -396,9 +419,7 @@ export class CursoService {
       
       if (trimmed.includes('</pagina>')) {
         if (paginaAtual.tipo === 'exercicio' && questaoRefs.length > 0) {
-          console.log('Carregando questões do Firestore:', questaoRefs);
           const questoes = await QuestaoService.obterMultiplasQuestoes(questaoRefs);
-          console.log('Questões carregadas:', questoes);
           paginaAtual.questoes = questoes;
         }
         paginas.push(paginaAtual);
@@ -406,7 +427,6 @@ export class CursoService {
     }
 
     const cursoFinal = { ...curso, paginas };
-    console.log('Curso parseado com sucesso:', cursoFinal);
     return cursoFinal;
   }
   
@@ -433,7 +453,7 @@ export class CursoService {
         dataUltimaAtualizacao: serverTimestamp(),
       });
     } catch (error) {
-      console.log('Erro ao salvar no Firebase, continuando offline:', error);
+      console.error('Erro ao salvar no Firebase:', error);
     }
     
     return usuarioCurso;
@@ -448,7 +468,7 @@ export class CursoService {
         return usuarioCursoSnap.data() as UsuarioCurso;
       }
     } catch (error) {
-      console.log('Erro ao buscar progresso no Firebase:', error);
+      console.error('Erro ao buscar progresso no Firebase:', error);
     }
     
     return null;
@@ -469,7 +489,7 @@ export class CursoService {
       
       await this.atualizarCoeficienteTotalUsuario(usuarioCurso.usuarioId);
     } catch (error) {
-      console.log('Erro ao salvar progresso no Firebase:', error);
+      console.error('Erro ao salvar progresso no Firebase:', error);
     }
   }
   
@@ -512,7 +532,7 @@ export class CursoService {
         dataUltimaAtualizacao: serverTimestamp(),
       });
     } catch (error) {
-      console.log('Erro ao marcar curso como concluído:', error);
+      console.error('Erro ao marcar curso como concluído:', error);
     }
   }
   
@@ -540,20 +560,22 @@ export class CursoService {
     const q = query(usuariosCursosRef, where('usuarioId', '==', usuarioId));
     const querySnapshot = await getDocs(q);
     
-    let coeficienteTotal = 0;
-    let totalCursos = 0;
+    let totalQuestoes = 0;
+    let questoesCorretas = 0;
     
     querySnapshot.forEach((doc) => {
       const usuarioCurso = doc.data() as UsuarioCurso;
-      coeficienteTotal += usuarioCurso.coeficiente;
-      totalCursos++;
+      totalQuestoes += usuarioCurso.questoesRespondidas.length;
+      questoesCorretas += usuarioCurso.questoesCorretas.length;
     });
     
-    const coeficienteMedio = totalCursos > 0 ? Math.round(coeficienteTotal / totalCursos) : 0;
+    const coeficienteGeral = totalQuestoes > 0 
+      ? Math.round((questoesCorretas / totalQuestoes) * 100) 
+      : 0;
     
     const usuarioRef = doc(firestore, 'usuarios', usuarioId);
     await updateDoc(usuarioRef, {
-      coeficienteConhecimento: coeficienteMedio,
+      coeficienteConhecimento: coeficienteGeral,
     });
   }
 }
