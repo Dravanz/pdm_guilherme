@@ -163,4 +163,17 @@ export class DashboardService {
       cursosDestaque: []
     };
   }
+
+  static iniciarAtualizacaoRanking() {
+    // Atualiza ranking a cada 1 minuto e meio
+    setInterval(async () => {
+      try {
+        const { RankingService } = await import('./RankingService');
+        await RankingService.forcarAtualizacaoRanking();
+
+      } catch (error) {
+        console.error('Erro na atualização automática do ranking:', error);
+      }
+    }, 1.5 * 60 * 1000); // 1 minuto e meio
+  }
 }
