@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, ScrollView, Image } from 'react-native';
 import { Text, Card, Button, RadioButton, useTheme } from 'react-native-paper';
 import { PaginaCurso, Questao } from '../model/Curso';
 
@@ -67,7 +67,14 @@ export function CursoViewer({
         <Card style={styles.card}>
           <Card.Title title={pagina.titulo} />
           <Card.Content>
-            <Text variant="bodyMedium" style={styles.conteudo}>
+            {pagina.imagem && (
+              <Image 
+                source={{ uri: pagina.imagem }} 
+                style={styles.imagem}
+                resizeMode="contain"
+              />
+            )}
+            <Text variant="bodyMedium" style={[styles.conteudo, { color: theme.colors.onSurface }]}>
               {pagina.conteudo}
             </Text>
           </Card.Content>
@@ -91,7 +98,7 @@ export function CursoViewer({
             
             return (
               <View key={questao.id} style={[styles.questaoContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
-                <Text variant="titleMedium" style={[styles.pergunta, { color: theme.colors.onSurface }]}>
+                <Text variant="titleMedium" style={[styles.pergunta, { color: theme.colors.onSurfaceVariant }]}>
                   {questao.pergunta}
                 </Text>
                 
@@ -155,6 +162,12 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
+  },
+  imagem: {
+    width: '100%',
+    height: 200,
+    marginBottom: 16,
+    borderRadius: 8,
   },
   conteudo: {
     lineHeight: 24,
