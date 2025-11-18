@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<curso id="javascript-basico" titulo="JavaScript Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
+  <pagina id="1" tipo="conteudo">
+    <titulo>Introdução ao JavaScript</titulo>
+    <imagem>https://via.placeholder.com/300x200/007acc/ffffff?text=JavaScript</imagem>
+    <conteudo>
+      JavaScript é uma linguagem de programação dinâmica e versátil, amplamente utilizada para desenvolvimento web.
+      
+      Características principais:
+      • Linguagem interpretada
+      • Tipagem dinâmica
+      • Orientada a objetos
+      • Funcional
+      
+      JavaScript permite criar páginas web interativas e aplicações completas.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="2" tipo="exercicio">
+    <titulo>Exercícios - Conceitos Básicos</titulo>
+    <questao-ref id="js_var_001" />
+    <questao-ref id="js_op_001" />
+  </pagina>
+  
+  <pagina id="3" tipo="conteudo">
+    <titulo>Funções em JavaScript</titulo>
+    <imagem>https://via.placeholder.com/300x200/28a745/ffffff?text=Functions</imagem>
+    <conteudo>
+      Funções são blocos de código reutilizáveis que executam tarefas específicas.
+      
+      Sintaxe básica:
+      function nomeFuncao(parametros) {
+        // código da função
+        return resultado;
+      }
+      
+      Exemplo:
+      function somar(a, b) {
+        return a + b;
+      }
+      
+      As funções podem ser chamadas quantas vezes necessário.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="4" tipo="exercicio">
+    <titulo>Exercícios - Funções</titulo>
+    <questao-ref id="js_func_001" />
+  </pagina>
+</curso>
