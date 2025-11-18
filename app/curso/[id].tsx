@@ -9,7 +9,7 @@ import { Curso, UsuarioCurso } from '@/model/Curso';
 import { CursoService } from '@/services/CursoService';
 
 export default function CursoDetalhes() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, modo } = useLocalSearchParams<{ id: string; modo?: string }>();
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
@@ -18,6 +18,8 @@ export default function CursoDetalhes() {
   const [progressoCurso, setProgressoCurso] = useState<UsuarioCurso | null>(null);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [carregando, setCarregando] = useState(true);
+  const [modoRevisao, setModoRevisao] = useState(false);
+  const [respostasRevisao, setRespostasRevisao] = useState<string[]>([]);
 
   useEffect(() => {
     carregarCurso();
@@ -40,14 +42,33 @@ export default function CursoDetalhes() {
       const cursoCarregado = await CursoService.carregarCursoXML(id);
       setCurso(cursoCarregado);
 
+      const isRevisao = modo === 'revisao';
+      setModoRevisao(isRevisao);
+      
       let progresso = await CursoService.obterProgressoCurso(user.uid, id);
       
-      if (!progresso) {
+      if (!progresso && !isRevisao) {
         progresso = await CursoService.iniciarCurso(user.uid, id);
+      } else if (isRevisao && !progresso) {
+        // Criar progresso temporário para revisão
+        progresso = {
+          id: `${user.uid}_${id}_revisao`,
+          usuarioId: user.uid,
+          cursoId: id,
+          coeficiente: 0,
+          paginaAtual: 1,
+          questoesRespondidas: [],
+          questoesCorretas: [],
+          questoesErradas: [],
+          dataInicio: new Date(),
+          dataUltimaAtualizacao: new Date(),
+          concluido: false,
+        };
       }
       
       setProgressoCurso(progresso);
       setPaginaAtual(0);
+      setRespostasRevisao([]);
 
     } catch (error) {
       console.error('Erro detalhado:', error);
@@ -61,6 +82,22 @@ export default function CursoDetalhes() {
   const responderQuestao = async (questaoId: string, alternativaId: string, correta: boolean, explicacao: string) => {
     if (!progressoCurso) return;
     
+    if (modoRevisao) {
+      // Modo revisão: não salvar dados, apenas dar feedback
+      if (respostasRevisao.includes(questaoId)) {
+        throw new Error('Questão já foi respondida nesta sessão de revisão');
+      }
+      
+      setRespostasRevisao(prev => [...prev, questaoId]);
+      
+      return {
+        sucesso: correta,
+        explicacao: `${explicacao}\n\n(Modo Revisão - Dados não salvos)`,
+        novoCoeficiente: 0,
+      };
+    }
+    
+    // Modo normal
     if (progressoCurso.questoesRespondidas.includes(questaoId)) {
       throw new Error('Questão já foi respondida');
     }
@@ -90,18 +127,34 @@ export default function CursoDetalhes() {
     };
   };
 
-  const proximaPagina = () => {
+  const proximaPagina = async () => {
     if (!curso || !progressoCurso) return;
 
     if (paginaAtual < curso.paginas.length - 1) {
       setPaginaAtual(paginaAtual + 1);
     } else {
-      const resultado = CursoService.verificarConclusaoCurso(progressoCurso, curso);
+      if (modoRevisao) {
+        Alert.alert(
+          'Revisão Concluída!',
+          'Você terminou de revisar o curso. Esperamos que tenha refrescado sua memória!',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+        return;
+      }
+      
+      const resultado = await CursoService.verificarConclusaoCurso(progressoCurso, curso);
       
       if (resultado.podeCompletar) {
+        let mensagem = `Parabéns! Você concluiu o curso com ${resultado.percentualAcerto}% de acerto.`;
+        
+        if (resultado.novasBadges && resultado.novasBadges.length > 0) {
+          const badgesTexto = resultado.novasBadges.map(b => `${b.icone} ${b.nome}`).join('\n');
+          mensagem += `\n\nNovas badges conquistadas:\n${badgesTexto}`;
+        }
+        
         Alert.alert(
           'Curso Concluído!',
-          `Parabéns! Você concluiu o curso com ${resultado.percentualAcerto}% de acerto.`,
+          mensagem,
           [{ text: 'OK', onPress: () => router.back() }]
         );
       } else {
@@ -151,13 +204,13 @@ export default function CursoDetalhes() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Text variant="titleLarge" style={[styles.titulo, { color: theme.colors.onBackground }]}>
-        {curso.titulo} - Página {paginaAtual + 1}/{curso.paginas.length}
+        {curso.titulo} {modoRevisao ? '(Revisão)' : ''} - Página {paginaAtual + 1}/{curso.paginas.length}
       </Text>
       
       <CursoViewer
         pagina={curso.paginas[paginaAtual]}
         onProximaPagina={proximaPagina}
-        questoesRespondidas={progressoCurso.questoesRespondidas}
+        questoesRespondidas={modoRevisao ? respostasRevisao : progressoCurso.questoesRespondidas}
         onResponderQuestao={responderQuestao}
       />
     </SafeAreaView>
