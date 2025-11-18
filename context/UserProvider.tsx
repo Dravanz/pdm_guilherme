@@ -7,6 +7,7 @@ import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthContext } from "./AuthProvider";
+import { DecayService } from "@/services/DecayService";
 
 export const UserContext = createContext({});
 
@@ -117,6 +118,9 @@ export const UserProvider = ({ children }: any) => {
         setUserFirebase(null);
         return;
       }
+
+      // Aplicar decay antes de buscar dados
+      await DecayService.aplicarDecayCoeficiente(userAuth.user.uid);
 
       const docSnap = await getDoc(
         doc(firestore, "usuarios", userAuth.user.uid)
