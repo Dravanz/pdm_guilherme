@@ -203,16 +203,7 @@ export default function Perfil() {
 				  </View>
 				)}
 			  </TouchableOpacity>
-			  <Button
-				mode="outlined"
-				onPress={() => setDialogFotoVisivel(true)}
-				icon="camera"
-				style={styles.changePhotoButton}
-				disabled={alterandoFoto}
-				loading={alterandoFoto}
-			  >
-				Alterar Foto
-			  </Button>
+
 			</View>
 
 			{editMode ? (
@@ -311,23 +302,7 @@ export default function Perfil() {
 				  )}
 				</View>
 
-				<View style={styles.section}>
-				  <Button
-					style={[styles.button, { backgroundColor: theme.colors.primary }]}
-					mode="contained"
-					onPress={() => setEditMode(true)}
-				  >
-					Editar Perfil
-				  </Button>
-				  <Button
-					style={styles.deleteButton}
-					mode="outlined"
-					textColor={theme.colors.error}
-					onPress={() => setDialogVisivel(true)}
-				  >
-					Excluir Conta
-				  </Button>
-				</View>
+
 			  </>
 			)}
 		  </>
