@@ -9,6 +9,7 @@ import { UserProvider } from "@/context/UserProvider";
 import React from "react";
 import { useColorScheme } from "react-native";
 import { ThemeProvider } from "@/context/ThemeProvider";
+import { DashboardService } from "@/services/DashboardService";
 
 
 export default function RootLayout() {
@@ -17,6 +18,11 @@ export default function RootLayout() {
   });
   const colorScheme = useColorScheme();
   React.useState(colorScheme === "dark");
+
+  React.useEffect(() => {
+    // Inicializar atualização automática do ranking
+    DashboardService.iniciarAtualizacaoRanking();
+  }, []);
 
   if (!loaded) {
     // Async font loading only occurs in development.

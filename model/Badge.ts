@@ -3,13 +3,14 @@ export interface Badge {
   nome: string;
   icone: string;
   descricao: string;
-  tipo: 'curso' | 'conquista' | 'especial';
+  tipo: 'curso' | 'conquista' | 'especial' | 'ranking';
   requisitos: BadgeRequisito;
-  dataObtencao?: any;
+  dataObtencao?: Date;
+  usuarioId?: string;
 }
 
 export interface BadgeRequisito {
-  tipo: 'curso_concluido' | 'primeiro_curso' | 'multiplos_cursos' | 'coeficiente_alto' | 'sequencia_dias';
+  tipo: 'curso_concluido' | 'primeiro_curso' | 'multiplos_cursos' | 'coeficiente_alto' | 'sequencia_dias' | 'ranking_posicao';
   valor?: string | number;
   cursoId?: string;
 }
@@ -70,5 +71,53 @@ export const BADGES_DISPONIVEIS: Badge[] = [
     descricao: 'Estudou por 7 dias consecutivos',
     tipo: 'especial',
     requisitos: { tipo: 'sequencia_dias', valor: 7 }
+  },
+  {
+    id: 'ranking_1',
+    nome: 'Campeão 🥇',
+    icone: '🥇',
+    descricao: 'Primeiro lugar no ranking geral',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 1 }
+  },
+  {
+    id: 'ranking_2',
+    nome: 'Vice-Campeão 🥈',
+    icone: '🥈',
+    descricao: 'Segundo lugar no ranking geral',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 2 }
+  },
+  {
+    id: 'ranking_3',
+    nome: 'Terceiro Lugar 🥉',
+    icone: '🥉',
+    descricao: 'Terceiro lugar no ranking geral',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 3 }
+  },
+  {
+    id: 'ranking_top5',
+    nome: 'Top 5 🏆',
+    icone: '🏆',
+    descricao: 'Entre os 5 melhores do ranking',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 5 }
+  },
+  {
+    id: 'ranking_top10',
+    nome: 'Top 10 🏅',
+    icone: '🏅',
+    descricao: 'Entre os 10 melhores do ranking',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 10 }
+  },
+  {
+    id: 'ranking_top20',
+    nome: 'Top 20 🏵️',
+    icone: '🏵️',
+    descricao: 'Entre os 20 melhores do ranking',
+    tipo: 'ranking',
+    requisitos: { tipo: 'ranking_posicao', valor: 20 }
   }
 ];

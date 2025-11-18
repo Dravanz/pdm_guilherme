@@ -30,7 +30,7 @@ export class BadgeService {
       const badgeSnap = await getDoc(badgeRef);
       return badgeSnap.exists();
     } catch (error) {
-      console.log('Erro ao verificar badge:', error);
+      console.error('Erro ao verificar badge:', error);
       return false;
     }
   }
@@ -57,7 +57,7 @@ export class BadgeService {
           return false;
       }
     } catch (error) {
-      console.log('Erro ao verificar requisitos:', error);
+      console.error('Erro ao verificar requisitos:', error);
       return false;
     }
   }
@@ -113,9 +113,22 @@ export class BadgeService {
         dataObtencao: serverTimestamp(),
       });
       
-      console.log(`Badge ${badge.nome} concedida ao usuário ${usuarioId}`);
+
     } catch (error) {
       console.error('Erro ao conceder badge:', error);
+    }
+  }
+  
+  static async obterTodasBadgesRanking(): Promise<any[]> {
+    try {
+      const badgesRef = collection(firestore, 'usuariosBadges');
+      const q = query(badgesRef, where('tipo', '==', 'ranking'));
+      const snapshot = await getDocs(q);
+      
+      return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error('Erro ao obter badges de ranking:', error);
+      return [];
     }
   }
   
@@ -125,10 +138,30 @@ export class BadgeService {
       const q = query(badgesRef, where('usuarioId', '==', usuarioId));
       const snapshot = await getDocs(q);
       
-      return snapshot.docs.map(doc => doc.data() as Badge);
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          dataObtencao: data.dataObtencao?.toDate() || new Date()
+        } as Badge;
+      });
     } catch (error) {
-      console.log('Erro ao obter badges:', error);
+      console.error('Erro ao obter badges:', error);
       return [];
+    }
+  }
+
+  static async concederBadgeRanking(usuarioId: string, badgeId: string): Promise<void> {
+    try {
+      const jaTemBadge = await this.usuarioTemBadge(usuarioId, badgeId);
+      if (!jaTemBadge) {
+        const badge = BADGES_DISPONIVEIS.find(b => b.id === badgeId);
+        if (badge) {
+          await this.concederBadge(usuarioId, badge);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao conceder badge de ranking:', error);
     }
   }
 }
