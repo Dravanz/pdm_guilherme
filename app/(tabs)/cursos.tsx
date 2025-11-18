@@ -4,6 +4,7 @@ import { Card, Text, useTheme, Button } from "react-native-paper";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Curso } from "@/model/Curso";
+import { CursoService } from "@/services/CursoService";
 import { router } from "expo-router";
 
 const cursosDisponiveis: Curso[] = [
@@ -18,17 +19,64 @@ const cursosDisponiveis: Curso[] = [
     createdAt: null,
     updatedAt: null,
   },
+  {
+    id: "python-basico",
+    titulo: "Python Básico",
+    descricao: "Aprenda os fundamentos do Python",
+    categoria: "programacao",
+    nivel: "iniciante",
+    paginas: [],
+    coeficienteMaximo: 100,
+    createdAt: null,
+    updatedAt: null,
+  },
+  {
+    id: "react-basico",
+    titulo: "React Básico",
+    descricao: "Aprenda os fundamentos do React",
+    categoria: "frontend",
+    nivel: "intermediario",
+    paginas: [],
+    coeficienteMaximo: 100,
+    createdAt: null,
+    updatedAt: null,
+  },
 ];
 
 export default function Cursos() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
-  const { user } = useContext<any>(UserContext);
+  const { userFirebase: user } = useContext<any>(UserContext);
+  const [cursosStatus, setCursosStatus] = useState<{[key: string]: boolean}>({});
+  
+  useEffect(() => {
+    if (user) {
+      verificarStatusCursos();
+    }
+  }, [user]);
+  
+  const verificarStatusCursos = async () => {
+    const status: {[key: string]: boolean} = {};
+    
+    for (const curso of cursosDisponiveis) {
+      const concluido = await CursoService.verificarCursoConcluido(user.uid, curso.id);
+      status[curso.id] = concluido;
+    }
+    
+    setCursosStatus(status);
+  };
   
   const iniciarCurso = (curso: Curso) => {
     router.push({
       pathname: "/curso/[id]",
       params: { id: curso.id }
+    });
+  };
+  
+  const revisarCurso = (curso: Curso) => {
+    router.push({
+      pathname: "/curso/[id]",
+      params: { id: curso.id, modo: "revisao" }
     });
   };
   
@@ -51,13 +99,28 @@ export default function Cursos() {
               </Text>
             </Card.Content>
             <Card.Actions>
-              <Button 
-                mode="contained" 
-                onPress={() => iniciarCurso(item)}
-                style={{ backgroundColor: "#22c55e" }}
-              >
-                Iniciar Curso
-              </Button>
+              {cursosStatus[item.id] ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <Text style={{ color: '#22c55e', fontWeight: 'bold', fontSize: 16 }}>
+                    ✅ Curso concluído
+                  </Text>
+                  <Button 
+                    mode="outlined" 
+                    onPress={() => revisarCurso(item)}
+                    icon="refresh"
+                  >
+                    Revisar
+                  </Button>
+                </View>
+              ) : (
+                <Button 
+                  mode="contained" 
+                  onPress={() => iniciarCurso(item)}
+                  style={{ backgroundColor: "#22c55e" }}
+                >
+                  Iniciar Curso
+                </Button>
+              )}
             </Card.Actions>
           </Card>
         )}
