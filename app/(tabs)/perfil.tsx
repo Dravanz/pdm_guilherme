@@ -8,8 +8,11 @@ import { Badge } from "@/model/Badge";
 import { router } from "expo-router";
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { Image, ScrollView, StyleSheet, View, TouchableOpacity, FlatList } from "react-native";
-import { Button, Card, Dialog, Text, TextInput, useTheme, Chip } from "react-native-paper";
+import { Image, ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
+import { CachedImage } from "@/components/CachedImage";
+import { ProgressBar } from "@/components/ProgressBar";
+import { WeeklyStreak } from "@/components/WeeklyStreak";
+import { Button, Card, Dialog, Text, TextInput, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
@@ -189,14 +192,16 @@ export default function Perfil() {
 				onPress={() => setDialogFotoVisivel(true)}
 				disabled={alterandoFoto}
 			  >
-				<Image
-				  style={styles.image}
-				  source={
-					urlFoto && urlFoto !== ""
-					  ? { uri: urlFoto }
-					  : require("../../assets/images/person.png")
-				  }
-				/>
+				{urlFoto && urlFoto !== "" && urlFoto.startsWith('https://') ? (
+				  <CachedImage
+					style={styles.image}
+					userId={userFirebase.uid}
+					firebaseUrl={urlFoto}
+					placeholder={<Image style={styles.image} source={require("../../assets/images/person.png")} />}
+				  />
+				) : (
+				  <Image style={styles.image} source={require("../../assets/images/person.png")} />
+				)}
 				{alterandoFoto && (
 				  <View style={styles.imageOverlay}>
 					<Text style={styles.overlayText}>Carregando...</Text>
@@ -249,22 +254,23 @@ export default function Perfil() {
 				
 				<View style={styles.section}>
 				  <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Estatísticas</Text>
-				  <View style={styles.statsRow}>
-					<Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-					  <Card.Content style={styles.statContent}>
-						<Text variant="headlineMedium" style={[styles.statNumber, { color: theme.colors.primary }]}>🔥</Text>
-						<Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{userFirebase.diasAtivos || 1}</Text>
-						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Dias ativos</Text>
-					  </Card.Content>
-					</Card>
-					<Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-					  <Card.Content style={styles.statContent}>
-						<Text variant="headlineMedium" style={[styles.statNumber, { color: theme.colors.primary }]}>📊</Text>
-						<Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{(userFirebase.coeficienteConhecimento || 0).toFixed(1)}%</Text>
-						<Text variant="bodyMedium" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Coeficiente Geral</Text>
-					  </Card.Content>
-					</Card>
-				  </View>
+
+				  
+				  <ProgressBar percentage={userFirebase.coeficienteConhecimento || 0} />
+				  
+				  <Card style={[styles.streakCard, { backgroundColor: theme.colors.surface }]}>
+					<Card.Content style={styles.streakContent}>
+					  <View style={styles.streakHeader}>
+						<Text variant="titleMedium" style={[styles.streakTitle, { color: theme.colors.onSurface }]}>
+						  🔥 Sequência de Login
+						</Text>
+						<Text variant="headlineSmall" style={[styles.streakCount, { color: theme.colors.primary }]}>
+						  {userFirebase.diasAtivos || 1}
+						</Text>
+					  </View>
+					  <WeeklyStreak loginDays={userFirebase.diasLogin || []} />
+					</Card.Content>
+				  </Card>
 				  
 				  <Card style={[styles.infoCard, { backgroundColor: theme.colors.surface }]}>
 					<Card.Content style={styles.infoContent}>
@@ -284,6 +290,11 @@ export default function Perfil() {
 							<Text variant="headlineMedium" style={styles.badgeIcon}>{badge.icone}</Text>
 							<Text variant="labelLarge" style={[styles.badgeName, { color: theme.colors.onSurface }]} numberOfLines={2}>{badge.nome}</Text>
 							<Text variant="bodySmall" style={[styles.badgeDescription, { color: theme.colors.onSurfaceVariant }]} numberOfLines={3}>{badge.descricao}</Text>
+							{badge.dataObtencao && (
+							  <Text variant="bodySmall" style={[styles.badgeDate, { color: theme.colors.primary }]}>
+								Adquirida em {new Date(badge.dataObtencao).toLocaleDateString('pt-BR')}
+							  </Text>
+							)}
 							<View style={[styles.badgeTypeContainer, { backgroundColor: theme.colors.primaryContainer }]}>
 							  <Text style={[styles.badgeTypeText, { color: theme.colors.onPrimaryContainer }]}>{badge.tipo}</Text>
 							</View>
@@ -487,6 +498,7 @@ const styles = StyleSheet.create({
   infoCard: {
 	borderRadius: 16,
 	elevation: 3,
+	marginTop: 8,
   },
   infoContent: {
 	paddingVertical: 16,
@@ -517,18 +529,19 @@ const styles = StyleSheet.create({
 	flexDirection: 'row',
 	flexWrap: 'wrap',
 	justifyContent: 'space-between',
-	gap: 12,
+	gap: 8,
   },
   badgeCard: {
 	width: '48%',
 	minHeight: 160,
 	borderRadius: 16,
 	elevation: 3,
+	marginBottom: 8,
   },
   badgeContent: {
 	alignItems: 'center',
 	justifyContent: 'space-between',
-	paddingVertical: 12,
+	paddingVertical: 8,
 	paddingHorizontal: 8,
 	flex: 1,
   },
@@ -559,6 +572,13 @@ const styles = StyleSheet.create({
 	textAlign: 'center',
 	textTransform: 'capitalize',
   },
+  badgeDate: {
+	fontSize: 10,
+	fontWeight: '500',
+	textAlign: 'center',
+	marginBottom: 6,
+	fontStyle: 'italic',
+  },
   noBadgesCard: {
 	borderRadius: 16,
 	elevation: 3,
@@ -577,5 +597,26 @@ const styles = StyleSheet.create({
   },
   noBadgesSubtext: {
 	textAlign: 'center',
+  },
+  streakCard: {
+	borderRadius: 16,
+	elevation: 3,
+	marginTop: 12,
+	marginBottom: 8,
+  },
+  streakContent: {
+	paddingVertical: 16,
+  },
+  streakHeader: {
+	flexDirection: 'row',
+	justifyContent: 'space-between',
+	alignItems: 'center',
+	marginBottom: 8,
+  },
+  streakTitle: {
+	fontWeight: '600',
+  },
+  streakCount: {
+	fontWeight: '700',
   },
 });

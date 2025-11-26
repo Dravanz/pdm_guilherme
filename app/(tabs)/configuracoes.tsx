@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useContext, useState } from "react";
-import { SafeAreaView, StyleSheet, View, TouchableOpacity } from "react-native";
-import { List, RadioButton, Text, useTheme, Card, Icon, Button, Dialog, TextInput } from "react-native-paper";
+import { SafeAreaView, StyleSheet, View, TouchableOpacity, ScrollView } from "react-native";
+import { Text, useTheme, Card, Icon, Button, Dialog, TextInput } from "react-native-paper";
 import { ThemeContext, globalStyles } from "@/context/ThemeProvider";
 import { AuthContext } from "@/context/AuthProvider";
 import { UserContext } from "@/context/UserProvider";
@@ -148,9 +148,14 @@ export default function Configuracoes() {
 
   return (
     <SafeAreaView style={[themeStyles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="headlineMedium" style={[themeStyles.header, { color: theme.colors.onBackground }]}>Configurações</Text>
-      
-      <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="headlineMedium" style={[styles.pageTitle, { color: theme.colors.onBackground }]}>Configurações</Text>
+        
+        <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
         <Card.Content>
           <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Aparência</Text>
           <View style={styles.themeContainer}>
@@ -368,11 +373,19 @@ export default function Configuracoes() {
           }}>OK</Button>
         </Dialog.Actions>
       </Dialog>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  pageTitle: {
+    marginBottom: 16,
+    fontWeight: '700',
+  },
   sectionTitle: {
     marginBottom: globalStyles.spacing.lg,
     fontWeight: '600',

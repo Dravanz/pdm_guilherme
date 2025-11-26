@@ -6,7 +6,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { router } from "expo-router";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { spacing, containerPadding } from "@/constants/Layout";
 import {
   Button,
   Dialog,
@@ -50,10 +51,7 @@ export default function SignIn() {
   const theme = useTheme();
   const { setTheme } = useContext<any>(ThemeContext);
   const { singIn } = useContext<any>(AuthContext);
-  const [credencial, setCredencial] = useState<Credencial>({
-    email: "",
-    senha: "",
-  });
+
   const {
     control,
     handleSubmit,
@@ -251,11 +249,14 @@ export default function SignIn() {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: containerPadding.horizontal,
   },
   texto: {
     fontSize: 60,
@@ -263,51 +264,53 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   image: {
-    width: 200,
-    height: 200,
+    width: width * 0.5,
+    height: width * 0.5,
     alignSelf: "center",
-    marginTop: 100,
-    marginBottom: 40,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xl,
   },
   logoSvg: {
     alignSelf: "center",
-    marginTop: 60,
+    marginTop: spacing.xxl,
   },
   brand: {
     textAlign: "center",
-    marginTop: 8,
+    marginTop: spacing.sm,
     letterSpacing: 1,
   },
   textinput: {
-    width: 350,
+    width: '100%',
+    maxWidth: 400,
     height: 50,
-    marginTop: 20,
+    marginTop: spacing.md,
     backgroundColor: "transparent",
   },
   button: {
-    marginTop: 50,
-    marginBottom: 30,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
     backgroundColor: "#22c55e",
   },
   themeRow: {
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     alignSelf: "center",
     flexDirection: "row",
   },
   textError: {
-    width: 350,
+    width: '100%',
+    maxWidth: 400,
   },
   textDialog: {
     textAlign: "center",
   },
   divCadastro: {
-    marginTop: 20,
+    marginTop: spacing.md,
     flexDirection: "row",
     justifyContent: "center",
   },
   textSenha: {
-    margin: 8
+    margin: spacing.sm
   },
   textCadastro: {
   },

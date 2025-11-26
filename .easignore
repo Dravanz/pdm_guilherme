@@ -1,0 +1,7 @@
+# Ignorar arquivos desnecessários no build
+node_modules/**/*
+.expo/**/*
+.git/**/*
+dist/**/*
+*.log
+.DS_Store

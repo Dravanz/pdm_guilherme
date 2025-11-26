@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { SafeAreaView, StyleSheet, Alert } from 'react-native';
-import { Text, useTheme, ActivityIndicator } from 'react-native-paper';
+import { SafeAreaView, StyleSheet, Alert, View } from 'react-native';
+import { Text, useTheme, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ThemeContext } from '@/context/ThemeProvider';
 import { UserContext } from '@/context/UserProvider';
@@ -201,11 +201,27 @@ export default function CursoDetalhes() {
     );
   }
 
+  const voltarParaDashboard = async () => {
+    if (!modoRevisao && progressoCurso) {
+      await CursoService.salvarProgresso(progressoCurso);
+    }
+    router.push('/(tabs)');
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="titleLarge" style={[styles.titulo, { color: theme.colors.onBackground }]}>
-        {curso.titulo} {modoRevisao ? '(Revisão)' : ''} - Página {paginaAtual + 1}/{curso.paginas.length}
-      </Text>
+      <View style={styles.header}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={voltarParaDashboard}
+          iconColor={theme.colors.onBackground}
+        />
+        <Text variant="titleLarge" style={[styles.titulo, { color: theme.colors.onBackground }]}>
+          {curso.titulo} {modoRevisao ? '(Revisão)' : ''} - Página {paginaAtual + 1}/{curso.paginas.length}
+        </Text>
+        <View style={{ width: 48 }} />
+      </View>
       
       <CursoViewer
         pagina={curso.paginas[paginaAtual]}
@@ -225,9 +241,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
   titulo: {
+    flex: 1,
     textAlign: 'center',
-    padding: 16,
     fontWeight: 'bold',
   },
 });

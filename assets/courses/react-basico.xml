@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<curso id="react-basico" titulo="React Básico" categoria="frontend" nivel="intermediario" coeficienteMaximo="100">
+  <pagina id="1" tipo="conteudo">
+    <titulo>⚛️ Introdução ao React</titulo>
+    <imagem>{{react-intro}}</imagem>
+    <conteudo>
+      React é uma biblioteca JavaScript para construir interfaces de usuário.
+      
+      Características principais:
+      • Baseado em componentes
+      • Virtual DOM
+      • Unidirecional data flow
+      • JSX
+      
+      React facilita a criação de UIs interativas e reutilizáveis.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="2" tipo="conteudo">
+    <titulo>🧩 Componentes e JSX</titulo>
+    <imagem>{{react-components}}</imagem>
+    <conteudo>
+      Componentes são a base do React - blocos reutilizáveis de UI.
+      
+      COMPONENTES:
+      • Funções que retornam JSX
+      • Reutilizáveis e modulares
+      • Exemplo: function Button() { return &lt;button&gt;Click&lt;/button&gt;; }
+      
+      JSX:
+      • Sintaxe que mistura HTML e JavaScript
+      • Transpilado para JavaScript puro
+      • Permite expressões: {nome}
+      • Atributos em camelCase: className, onClick
+      
+      JSX torna o código mais legível e intuitivo!
+    </conteudo>
+  </pagina>
+  
+  <pagina id="3" tipo="exercicio">
+    <titulo>Exercícios - Componentes e JSX</titulo>
+    <questao-ref id="react_comp_001" />
+    <questao-ref id="react_comp_002" />
+    <questao-ref id="react_jsx_001" />
+    <questao-ref id="react_jsx_002" />
+  </pagina>
+  
+  <pagina id="4" tipo="conteudo">
+    <titulo>📊 State e useState</titulo>
+    <conteudo>
+      State gerencia dados que mudam ao longo do tempo no componente.
+      
+      useState HOOK:
+      • Adiciona state a componentes funcionais
+      • Retorna [valor, setter]
+      • Exemplo: const [count, setCount] = useState(0);
+      
+      REGRAS:
+      • State é imutável - sempre use o setter
+      • Re-renderiza o componente quando muda
+      • Pode ser qualquer tipo: string, number, object, array
+      
+      Exemplo prático:
+      function Counter() {
+        const [count, setCount] = useState(0);
+        return (
+          &lt;button onClick={() =&gt; setCount(count + 1)}&gt;
+            Cliques: {count}
+          &lt;/button&gt;
+        );
+      }
+    </conteudo>
+  </pagina>
+  
+  <pagina id="5" tipo="exercicio">
+    <titulo>Exercícios - State e useState</titulo>
+    <questao-ref id="react_state_001" />
+    <questao-ref id="react_state_002" />
+    <questao-ref id="react_state_003" />
+    <questao-ref id="react_state_004" />
+  </pagina>
+  
+  <pagina id="6" tipo="conteudo">
+    <titulo>🔄 Props e Comunicação</titulo>
+    <conteudo>
+      Props permitem passar dados entre componentes pai e filho.
+      
+      PROPS:
+      • Parâmetros passados para componentes
+      • Somente leitura (read-only)
+      • Fluxo unidirecional: pai → filho
+      
+      Exemplo:
+      function Welcome(props) {
+        return &lt;h1&gt;Olá, {props.name}!&lt;/h1&gt;;
+      }
+      
+      // Uso:
+      &lt;Welcome name="Maria" /&gt;
+      
+      DESTRUCTURING:
+      function Welcome({ name, age }) {
+        return &lt;h1&gt;Olá, {name}! Você tem {age} anos.&lt;/h1&gt;;
+      }
+    </conteudo>
+  </pagina>
+  
+  <pagina id="7" tipo="exercicio">
+    <titulo>Exercícios - Props e Comunicação</titulo>
+    <questao-ref id="react_props_001" />
+    <questao-ref id="react_props_002" />
+    <questao-ref id="react_props_003" />
+    <questao-ref id="react_props_004" />
+  </pagina>
+  
+  <pagina id="8" tipo="conteudo">
+    <titulo>⚙️ useEffect e Ciclo de Vida</titulo>
+    <conteudo>
+      useEffect gerencia efeitos colaterais em componentes funcionais.
+      
+      useEffect:
+      • Executa após renderização
+      • Substitui componentDidMount, componentDidUpdate
+      • Pode ter dependências
+      
+      EXEMPLOS:
+      // Executa sempre
+      useEffect(() => {
+        console.log('Renderizou');
+      });
+      
+      // Executa uma vez
+      useEffect(() => {
+        fetchData();
+      }, []);
+      
+      // Executa quando count muda
+      useEffect(() => {
+        document.title = `Count: ${count}`;
+      }, [count]);
+      
+      CLEANUP:
+      useEffect(() => {
+        const timer = setInterval(() => {}, 1000);
+        return () => clearInterval(timer);
+      }, []);
+    </conteudo>
+  </pagina>
+  
+  <pagina id="9" tipo="exercicio">
+    <titulo>Exercícios - useEffect e Ciclo de Vida</titulo>
+    <questao-ref id="react_effect_001" />
+    <questao-ref id="react_effect_002" />
+    <questao-ref id="react_effect_003" />
+    <questao-ref id="react_effect_004" />
+  </pagina>
+</curso>

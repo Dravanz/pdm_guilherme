@@ -26,6 +26,7 @@ export interface Curso {
   descricao: string;
   categoria: string;
   nivel: 'iniciante' | 'intermediario' | 'avancado';
+  imageUrl?: string;
   paginas: PaginaCurso[];
   coeficienteMaximo: number;
   createdAt: any;

@@ -10,6 +10,7 @@ import { router } from "expo-router";
 import { useContext, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +18,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { spacing, containerPadding } from "@/constants/Layout";
 import {
   Button,
   Dialog,
@@ -75,7 +77,7 @@ export default function SignUp() {
   const { signUp } = useContext<any>(AuthContext);
   const userContext = useContext<any>(UserContext);
   const sendImageToStorage = userContext?.sendImageToStorage;
-  const refreshUser = userContext?.refreshUser;
+
   const [exibirSenha, setExibirSenha] = useState(true);
   const [requisitando, setRequisitando] = useState(false);
   const [dialogVisivel, setDialogVisivel] = useState(false);
@@ -471,26 +473,30 @@ export default function SignUp() {
   );
 }
 
+const { width } = Dimensions.get('window');
+const imageSize = Math.min(width * 0.5, 200);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
+    paddingHorizontal: containerPadding.horizontal,
   },
   themeRow: {
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     alignSelf: "center",
     flexDirection: "row",
   },
   imageContainer: {
     position: "relative",
     alignSelf: "center",
-    marginTop: 10,
+    marginTop: spacing.md,
   },
   image: {
-    width: 200,
-    height: 200,
-    borderRadius: 200 / 2,
+    width: imageSize,
+    height: imageSize,
+    borderRadius: imageSize / 2,
   },
   imageOverlay: {
     position: "absolute",
@@ -499,7 +505,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: 200 / 2,
+    borderRadius: imageSize / 2,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -508,37 +514,41 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   textinput: {
-    width: 350,
+    width: '100%',
+    maxWidth: 400,
     height: 50,
-    marginTop: 20,
+    marginTop: spacing.md,
     backgroundColor: "transparent",
   },
   textEsqueceuSenha: {
     alignSelf: "flex-end",
-    marginTop: 20,
+    marginTop: spacing.md,
   },
   textCadastro: {},
   textError: {
-    width: 350,
+    width: '100%',
+    maxWidth: 400,
   },
   button: {
-    marginTop: 50,
-    marginBottom: 30,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
     backgroundColor: "#22c55e",
   },
   divButtonsImage: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 15,
-    marginBottom: 20,
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   divCadastro: {
-    marginTop: 20,
+    marginTop: spacing.md,
     flexDirection: "row",
     justifyContent: "center",
   },
   buttonImage: {
-    width: 180,
+    flex: 1,
+    maxWidth: 180,
   },
   textDialog: {
     textAlign: "center",

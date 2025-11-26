@@ -3,6 +3,7 @@
 
 #Keys
 FirebaseConfig.ts
+google-services.json
 
 # dependencies
 node_modules/

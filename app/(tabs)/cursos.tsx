@@ -1,59 +1,49 @@
 import React, { useContext, useState, useEffect } from "react";
-import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
+import { FlatList, SafeAreaView, StyleSheet, View, Dimensions } from "react-native";
 import { Card, Text, useTheme, Button } from "react-native-paper";
+import { Image } from "expo-image";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Curso } from "@/model/Curso";
 import { CursoService } from "@/services/CursoService";
+import { CourseConfig } from "@/config/CourseConfig";
+import { ImageService } from "@/services/ImageService";
 import { router } from "expo-router";
 
-const cursosDisponiveis: Curso[] = [
-  {
-    id: "javascript-basico",
-    titulo: "JavaScript Básico",
-    descricao: "Aprenda os fundamentos do JavaScript",
-    categoria: "programacao",
-    nivel: "iniciante",
-    paginas: [],
-    coeficienteMaximo: 100,
-    createdAt: null,
-    updatedAt: null,
-  },
-  {
-    id: "python-basico",
-    titulo: "Python Básico",
-    descricao: "Aprenda os fundamentos do Python",
-    categoria: "programacao",
-    nivel: "iniciante",
-    paginas: [],
-    coeficienteMaximo: 100,
-    createdAt: null,
-    updatedAt: null,
-  },
-  {
-    id: "react-basico",
-    titulo: "React Básico",
-    descricao: "Aprenda os fundamentos do React",
-    categoria: "frontend",
-    nivel: "intermediario",
-    paginas: [],
-    coeficienteMaximo: 100,
-    createdAt: null,
-    updatedAt: null,
-  },
-];
+
 
 export default function Cursos() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
   const [cursosStatus, setCursosStatus] = useState<{[key: string]: boolean}>({});
+  const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
   
   useEffect(() => {
-    if (user) {
+    carregarCursos();
+  }, []);
+  
+  useEffect(() => {
+    if (user && cursosDisponiveis.length > 0) {
       verificarStatusCursos();
     }
-  }, [user]);
+  }, [user, cursosDisponiveis]);
+  
+  const carregarCursos = () => {
+    const courses = CourseConfig.getAllCourses().map(course => ({
+      id: course.id,
+      titulo: course.titulo,
+      descricao: course.description,
+      categoria: course.categoria,
+      nivel: course.nivel as 'iniciante' | 'intermediario' | 'avancado',
+      imageUrl: course.imageUrl,
+      paginas: [],
+      coeficienteMaximo: 100,
+      createdAt: null,
+      updatedAt: null,
+    }));
+    setCursosDisponiveis(courses);
+  };
   
   const verificarStatusCursos = async () => {
     const status: {[key: string]: boolean} = {};
@@ -79,7 +69,7 @@ export default function Cursos() {
       params: { id: curso.id, modo: "revisao" }
     });
   };
-  
+
   return (
     <SafeAreaView style={[themeStyles.container, { backgroundColor: theme.colors.background }]}>
       <FlatList
@@ -87,9 +77,19 @@ export default function Cursos() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+            {item.imageUrl && (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: ImageService.getImageUrl(item.imageUrl) }}
+                  style={styles.courseImage}
+                  contentFit="cover"
+                  placeholder="https://via.placeholder.com/300x120/cccccc/666666?text=Curso"
+                />
+              </View>
+            )}
             <Card.Title 
               title={item.titulo} 
-              subtitle={`Nível: ${item.nivel} • ${item.categoria}`}
+              subtitle={`Nível: ${item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)} • ${item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)}`}
               titleStyle={{ color: theme.colors.onSurface }}
               subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
             />
@@ -130,10 +130,22 @@ export default function Cursos() {
             Cursos Disponíveis
           </Text>
         }
-        contentContainerStyle={{ padding: themeStyles.spacing.md }}
+        contentContainerStyle={{ padding: themeStyles.spacing.md, paddingBottom: 100 }}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  imageContainer: {
+    width: '100%',
+    height: 150,
+    overflow: 'hidden',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  courseImage: {
+    width: '100%',
+    height: '100%',
+  },
+});

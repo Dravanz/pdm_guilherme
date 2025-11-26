@@ -107,8 +107,16 @@ export class RankingService {
   static async salvarRankingCache(ranking: RankingData): Promise<void> {
     try {
       const rankingRef = doc(firestore, 'sistema', 'ranking');
+      const usuariosLimpos = ranking.usuarios.map(usuario => ({
+        uid: usuario.uid || '',
+        nome: usuario.nome || 'Usuário Anônimo',
+        coeficienteConhecimento: usuario.coeficienteConhecimento || 0,
+        posicao: usuario.posicao || 0,
+        ...(usuario.urlFoto && { urlFoto: usuario.urlFoto })
+      }));
+      
       await setDoc(rankingRef, {
-        usuarios: ranking.usuarios,
+        usuarios: usuariosLimpos,
         ultimaAtualizacao: serverTimestamp()
       });
     } catch (error) {
@@ -178,14 +186,6 @@ export class RankingService {
   }
 
   static async forcarAtualizacaoRanking(): Promise<RankingData> {
-    // Limpar cache primeiro
-    try {
-      const rankingRef = doc(firestore, 'sistema', 'ranking');
-      await setDoc(rankingRef, { usuarios: [], ultimaAtualizacao: new Date(0) });
-    } catch (error) {
-      console.error('Erro ao limpar cache:', error);
-    }
-    
     const novoRanking = await this.gerarNovoRanking();
     await this.salvarRankingCache(novoRanking);
     return novoRanking;

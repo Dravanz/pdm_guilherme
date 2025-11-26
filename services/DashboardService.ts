@@ -1,6 +1,7 @@
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { firestore } from '../firebase/FirebaseInit';
 import { UsuarioCurso } from '../model/Curso';
+import { CourseConfig } from '../config/CourseConfig';
 
 export interface DashboardData {
   estatisticas: {
@@ -121,32 +122,15 @@ export class DashboardService {
   }
 
   static async obterCursosDestaque() {
-    return [
-      {
-        id: 'javascript-basico',
-        titulo: 'JavaScript Básico',
-        categoria: 'Programação',
-        nivel: 'Iniciante',
-        imagem: 'https://via.placeholder.com/200x120/f7df1e/000000?text=JS',
-        descricao: 'Fundamentos essenciais do JavaScript'
-      },
-      {
-        id: 'python-basico',
-        titulo: 'Python Básico',
-        categoria: 'Programação',
-        nivel: 'Iniciante',
-        imagem: 'https://via.placeholder.com/200x120/3776ab/ffffff?text=Python',
-        descricao: 'Introdução completa ao Python'
-      },
-      {
-        id: 'react-basico',
-        titulo: 'React Básico',
-        categoria: 'Frontend',
-        nivel: 'Intermediário',
-        imagem: 'https://via.placeholder.com/200x120/61dafb/000000?text=React',
-        descricao: 'Construa interfaces modernas com React'
-      }
-    ];
+    const courses = CourseConfig.getAllCourses();
+    return courses.map(course => ({
+      id: course.id,
+      titulo: course.titulo,
+      categoria: course.categoria.charAt(0).toUpperCase() + course.categoria.slice(1),
+      nivel: course.nivel.charAt(0).toUpperCase() + course.nivel.slice(1),
+      imagem: `https://via.placeholder.com/200x120/${course.color.replace('#', '')}/ffffff?text=${course.icon}`,
+      descricao: course.description
+    }));
   }
 
   static obterDadosOffline(): DashboardData {

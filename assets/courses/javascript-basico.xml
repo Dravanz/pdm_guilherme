@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<curso id="javascript-basico" titulo="JavaScript Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
+  <pagina id="1" tipo="conteudo">
+    <titulo>📚 Introdução ao JavaScript</titulo>
+    <imagem>js1-intro</imagem>
+    <conteudo>
+      JavaScript é uma linguagem de programação dinâmica e versátil, amplamente utilizada para desenvolvimento web.
+      
+      Características principais:
+      • Linguagem interpretada
+      • Tipagem dinâmica
+      • Orientada a objetos
+      • Funcional
+      
+      JavaScript permite criar páginas web interativas e aplicações completas.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="2" tipo="conteudo">
+    <titulo>🔧 Variáveis e Operadores</titulo>
+    <imagem>js2-variables</imagem>
+    <conteudo>
+      Antes de praticar, vamos entender os conceitos básicos:
+      
+      VARIÁVEIS:
+      • var: escopo de função
+      • let: escopo de bloco
+      • const: valor constante
+      
+      OPERADORES:
+      • Aritméticos: +, -, *, /, %
+      • Comparação: ==, ===, !=, !==
+      • Lógicos: &amp;&amp;, ||, !
+      
+      Agora você está pronto para os exercícios!
+    </conteudo>
+  </pagina>
+  
+  <pagina id="3" tipo="exercicio">
+    <titulo>Exercícios - Variáveis e Operadores</titulo>
+    <questao-ref id="js_var_001" />
+    <questao-ref id="js_var_002" />
+    <questao-ref id="js_op_001" />
+    <questao-ref id="js_op_002" />
+  </pagina>
+  
+  <pagina id="4" tipo="conteudo">
+    <titulo>⚡ Funções em JavaScript</titulo>
+    <imagem>js4-functions</imagem>
+    <conteudo>
+      Funções são blocos de código reutilizáveis que executam tarefas específicas.
+      
+      Sintaxe básica:
+      function nomeFuncao(parametros) {
+        // código da função
+        return resultado;
+      }
+      
+      Exemplo:
+      function somar(a, b) {
+        return a + b;
+      }
+      
+      As funções podem ser chamadas quantas vezes necessário e são fundamentais para organizar o código.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="5" tipo="exercicio">
+    <titulo>Exercícios - Funções</titulo>
+    <questao-ref id="js_func_001" />
+    <questao-ref id="js_func_002" />
+    <questao-ref id="js_func_003" />
+    <questao-ref id="js_func_004" />
+  </pagina>
+  
+  <pagina id="6" tipo="conteudo">
+    <titulo>🔄 Arrays e Loops</titulo>
+    <imagem>js6-arrays</imagem>
+    <conteudo>
+      Arrays são estruturas de dados que armazenam múltiplos valores em uma única variável.
+      
+      ARRAYS:
+      • Declaração: let numeros = [1, 2, 3, 4, 5];
+      • Acesso: numeros[0] // primeiro elemento
+      • Métodos: push(), pop(), length
+      
+      LOOPS:
+      • for: para repetições com contador
+      • while: repetição com condição
+      • forEach: para percorrer arrays
+      
+      Exemplo:
+      for (let i = 0; i &lt; array.length; i++) {
+        console.log(array[i]);
+      }
+    </conteudo>
+  </pagina>
+  
+  <pagina id="7" tipo="exercicio">
+    <titulo>Exercícios - Arrays e Loops</titulo>
+    <questao-ref id="js_array_001" />
+    <questao-ref id="js_array_002" />
+    <questao-ref id="js_loop_001" />
+    <questao-ref id="js_loop_002" />
+  </pagina>
+  
+  <pagina id="8" tipo="conteudo">
+    <titulo>🎯 Objetos e Métodos</titulo>
+    <imagem>js8-objects</imagem>
+    <conteudo>
+      Objetos são estruturas que agrupam propriedades e métodos relacionados.
+      
+      OBJETOS:
+      • Declaração: let pessoa = { nome: "João", idade: 25 };
+      • Acesso: pessoa.nome ou pessoa["nome"]
+      • Métodos: funções dentro de objetos
+      
+      MÉTODOS ÚTEIS:
+      • Object.keys(): retorna as chaves
+      • Object.values(): retorna os valores
+      • JSON.stringify(): converte para string
+      
+      Exemplo:
+      let carro = {
+        marca: "Toyota",
+        acelerar: function() {
+          console.log("Acelerando...");
+        }
+      };
+    </conteudo>
+  </pagina>
+  
+  <pagina id="9" tipo="exercicio">
+    <titulo>Exercícios - Objetos e Métodos</titulo>
+    <questao-ref id="js_obj_001" />
+    <questao-ref id="js_obj_002" />
+    <questao-ref id="js_obj_003" />
+    <questao-ref id="js_obj_004" />
+  </pagina>
+</curso>

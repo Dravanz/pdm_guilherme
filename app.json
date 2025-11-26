@@ -2,6 +2,7 @@
   "expo": {
     "name": "pdm_guilherme",
     "slug": "pdm_guilherme",
+    "owner": "dravanz2021",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logot.png",
@@ -16,7 +17,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "NOTIFICATIONS"
+      ],
+      "package": "com.dravanz.pdm_guilherme",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -45,6 +51,15 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "df7c97a8-ff5d-47c5-b76c-a470dea16c1f"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

@@ -67,21 +67,29 @@ export const globalStyles = {
   // Containers
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingHorizontal: 4,
   },
   
   // Cards
   card: {
     marginBottom: 12,
+    marginHorizontal: 4,
     borderRadius: 16,
-    elevation: 2,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardRow: {
     flexDirection: 'row' as const,
     gap: 12,
+    marginHorizontal: 4,
   },
   
   // Botões
@@ -89,21 +97,25 @@ export const globalStyles = {
     minHeight: 48,
     borderRadius: 12,
     marginVertical: 8,
+    marginHorizontal: 4,
   },
   buttonPrimary: {
     minHeight: 48,
     borderRadius: 12,
     marginVertical: 8,
+    marginHorizontal: 4,
   },
   buttonSecondary: {
     minHeight: 48,
     borderRadius: 12,
     marginVertical: 8,
+    marginHorizontal: 4,
   },
   buttonOutlined: {
     minHeight: 48,
     borderRadius: 12,
     marginVertical: 8,
+    marginHorizontal: 4,
     borderWidth: 1,
   },
   
@@ -111,21 +123,26 @@ export const globalStyles = {
   textInput: {
     minHeight: 56,
     marginVertical: 8,
+    marginHorizontal: 4,
     backgroundColor: 'transparent' as const,
   },
   
   // Textos
   text: {
     lineHeight: 24,
+    paddingHorizontal: 4,
   },
   textCenter: {
     textAlign: 'center' as const,
     lineHeight: 24,
+    paddingHorizontal: 4,
   },
   header: {
     marginBottom: 16,
+    marginHorizontal: 4,
     fontWeight: '600' as const,
     lineHeight: 32,
+    textAlign: 'center' as const,
   },
   
   // Espaçamentos

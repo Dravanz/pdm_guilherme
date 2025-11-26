@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { spacing, containerPadding, borderRadius } from '@/constants/Layout';
 import { Text, Card, Button, RadioButton, useTheme } from 'react-native-paper';
 import { PaginaCurso, Questao } from '../model/Curso';
+import { ImageService } from '@/services/ImageService';
+import { ResponsiveImage } from './ResponsiveImage';
 
 interface CursoViewerProps {
   pagina: PaginaCurso;
@@ -68,16 +71,22 @@ export function CursoViewer({
           <Card.Title title={pagina.titulo || 'Título não encontrado'} />
           <Card.Content>
             {pagina.imagem && (
-              <Image 
-                source={{ uri: pagina.imagem }} 
-                style={styles.imagem}
-                resizeMode="contain"
-                onError={(error) => console.error('Erro ao carregar imagem:', error.nativeEvent.error)}
+              <ResponsiveImage 
+                source={{ uri: ImageService.getImageUrl(pagina.imagem) }} 
+                placeholder="https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Carregando..."
               />
             )}
-            <Text variant="bodyMedium" style={[styles.conteudo, { color: theme.colors.onSurface }]}>
-              {pagina.conteudo || 'Conteúdo não encontrado'}
-            </Text>
+            <View style={[
+              styles.conteudoContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outline,
+              }
+            ]}>
+              <Text variant="bodyMedium" style={[styles.conteudo, { color: theme.colors.onSurface }]}>
+                {pagina.conteudo || 'Conteúdo não encontrado'}
+              </Text>
+            </View>
           </Card.Content>
           <Card.Actions>
             <Button mode="contained" onPress={onProximaPagina}>
@@ -108,7 +117,15 @@ export function CursoViewer({
                   value={respostasQuestoes[questao.id] || ''}
                 >
                   {questao.alternativas.map((alternativa) => (
-                    <View key={alternativa.id} style={styles.alternativaContainer}>
+                    <View key={alternativa.id} style={[
+                      styles.alternativaContainer,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.outline,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }
+                    ]}>
                       <RadioButton.Item
                         label={alternativa.texto}
                         value={alternativa.id}
@@ -159,38 +176,44 @@ export function CursoViewer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: containerPadding.horizontal,
+    paddingVertical: containerPadding.vertical,
   },
   card: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.md,
   },
-  imagem: {
-    width: '100%',
-    height: 200,
-    marginBottom: 16,
-    borderRadius: 8,
+  conteudoContainer: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
   },
   conteudo: {
     lineHeight: 24,
-    marginBottom: 16,
   },
   questaoContainer: {
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 8,
+    marginBottom: spacing.xl,
+    padding: spacing.lg,
+    borderRadius: borderRadius.sm,
   },
   pergunta: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
     fontWeight: 'bold',
   },
   alternativaContainer: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs / 2,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: borderRadius.sm,
   },
   botaoEnviar: {
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   jaRespondida: {
-    marginTop: 12,
+    marginTop: spacing.md,
     fontWeight: 'bold',
     textAlign: 'center',
   },

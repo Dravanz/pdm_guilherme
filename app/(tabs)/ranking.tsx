@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { SafeAreaView, StyleSheet, View, ScrollView, Image, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useContext } from 'react';
+import { SafeAreaView, StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { Card, Text, useTheme, ActivityIndicator, Avatar, Chip } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { UserContext } from '@/context/UserProvider';
 import { RankingService, RankingData, RankingUsuario } from '@/services/RankingService';
+import { CachedImage } from '@/components/CachedImage';
 
 export default function Ranking() {
   const theme = useTheme();
@@ -11,12 +12,19 @@ export default function Ranking() {
   const [rankingData, setRankingData] = useState<RankingData | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const dadosCarregados = React.useRef(false);
 
-  const carregarRanking = async () => {
+  const carregarRanking = async (forcar = false) => {
+    if (dadosCarregados.current && !forcar) {
+      setCarregando(false);
+      return;
+    }
+    
     try {
       setCarregando(true);
       const dados = await RankingService.obterRanking();
       setRankingData(dados);
+      dadosCarregados.current = true;
     } catch (error) {
       console.error('Erro ao carregar ranking:', error);
     } finally {
@@ -26,20 +34,8 @@ export default function Ranking() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await carregarRanking();
+    await carregarRanking(true);
     setRefreshing(false);
-  };
-
-  const forcarAtualizacao = async () => {
-    try {
-      setCarregando(true);
-      const dados = await RankingService.forcarAtualizacaoRanking();
-      setRankingData(dados);
-    } catch (error) {
-      console.error('Erro ao forçar atualização:', error);
-    } finally {
-      setCarregando(false);
-    }
   };
 
   useFocusEffect(
@@ -49,11 +45,22 @@ export default function Ranking() {
   );
 
   const obterCorCard = (posicao: number) => {
+    const isDark = theme.dark;
     switch (posicao) {
-      case 1: return '#FFD700';
-      case 2: return '#C0C0C0';
-      case 3: return '#CD7F32';
+      case 1: return isDark ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 215, 0, 0.1)';
+      case 2: return isDark ? 'rgba(192, 192, 192, 0.15)' : 'rgba(192, 192, 192, 0.1)';
+      case 3: return isDark ? 'rgba(205, 127, 50, 0.15)' : 'rgba(205, 127, 50, 0.1)';
       default: return theme.colors.surface;
+    }
+  };
+
+  const obterCorTexto = (posicao: number) => {
+    const isDark = theme.dark;
+    switch (posicao) {
+      case 1: return isDark ? '#FFD700' : '#996B00';
+      case 2: return isDark ? '#E5E5E5' : '#5A5A5A';
+      case 3: return isDark ? '#DEB887' : '#654321';
+      default: return theme.colors.onSurface;
     }
   };
 
@@ -87,46 +94,85 @@ export default function Ranking() {
         
         <View style={styles.podioRow}>
           {/* Segundo Lugar */}
-          <View style={[styles.podioItem, styles.segundoLugar]}>
-            <Avatar.Image 
-              size={60} 
-              source={segundo.urlFoto ? { uri: segundo.urlFoto } : require('../../assets/images/person.png')}
-            />
+          <View style={[
+            styles.podioItem, 
+            styles.segundoLugar,
+            {
+              backgroundColor: theme.dark ? 'rgba(192, 192, 192, 0.15)' : 'rgba(192, 192, 192, 0.1)',
+              borderColor: theme.dark ? 'rgba(192, 192, 192, 0.6)' : 'rgba(192, 192, 192, 0.8)'
+            }
+          ]}>
+            {segundo.urlFoto && segundo.urlFoto.startsWith('https://') ? (
+              <CachedImage
+                userId={segundo.uid}
+                firebaseUrl={segundo.urlFoto}
+                style={{ width: 60, height: 60, borderRadius: 30 }}
+                placeholder={<Avatar.Image size={60} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />}
+              />
+            ) : (
+              <Avatar.Image size={60} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />
+            )}
             <Text variant="headlineLarge" style={styles.podioIcon}>🥈</Text>
             <Text variant="titleMedium" style={[styles.podioNome, { color: theme.colors.onSurface }]} numberOfLines={1}>
               {segundo.nome}
             </Text>
-            <Text variant="bodyLarge" style={[styles.podioScore, { color: '#C0C0C0' }]}>
+            <Text variant="bodyLarge" style={[styles.podioScore, { color: theme.dark ? '#E5E5E5' : '#5A5A5A' }]}>
               {segundo.coeficienteConhecimento || 0}%
             </Text>
           </View>
 
           {/* Primeiro Lugar */}
-          <View style={[styles.podioItem, styles.primeiroLugar]}>
-            <Avatar.Image 
-              size={80} 
-              source={primeiro.urlFoto ? { uri: primeiro.urlFoto } : require('../../assets/images/person.png')}
-            />
+          <View style={[
+            styles.podioItem, 
+            styles.primeiroLugar,
+            {
+              backgroundColor: theme.dark ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 215, 0, 0.1)',
+              borderColor: theme.dark ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255, 215, 0, 0.8)'
+            }
+          ]}>
+            {primeiro.urlFoto && primeiro.urlFoto.startsWith('https://') ? (
+              <CachedImage
+                userId={primeiro.uid}
+                firebaseUrl={primeiro.urlFoto}
+                style={{ width: 80, height: 80, borderRadius: 40 }}
+                placeholder={<Avatar.Image size={80} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />}
+              />
+            ) : (
+              <Avatar.Image size={80} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />
+            )}
             <Text variant="headlineLarge" style={styles.podioIcon}>🥇</Text>
             <Text variant="titleLarge" style={[styles.podioNome, { color: theme.colors.onSurface }]} numberOfLines={1}>
               {primeiro.nome}
             </Text>
-            <Text variant="headlineSmall" style={[styles.podioScore, { color: '#FFD700' }]}>
+            <Text variant="headlineSmall" style={[styles.podioScore, { color: theme.dark ? '#FFD700' : '#996B00' }]}>
               {primeiro.coeficienteConhecimento || 0}%
             </Text>
           </View>
 
           {/* Terceiro Lugar */}
-          <View style={[styles.podioItem, styles.terceiroLugar]}>
-            <Avatar.Image 
-              size={60} 
-              source={terceiro.urlFoto ? { uri: terceiro.urlFoto } : require('../../assets/images/person.png')}
-            />
+          <View style={[
+            styles.podioItem, 
+            styles.terceiroLugar,
+            {
+              backgroundColor: theme.dark ? 'rgba(205, 127, 50, 0.15)' : 'rgba(205, 127, 50, 0.1)',
+              borderColor: theme.dark ? 'rgba(205, 127, 50, 0.6)' : 'rgba(205, 127, 50, 0.8)'
+            }
+          ]}>
+            {terceiro.urlFoto && terceiro.urlFoto.startsWith('https://') ? (
+              <CachedImage
+                userId={terceiro.uid}
+                firebaseUrl={terceiro.urlFoto}
+                style={{ width: 60, height: 60, borderRadius: 30 }}
+                placeholder={<Avatar.Image size={60} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />}
+              />
+            ) : (
+              <Avatar.Image size={60} source={require('../../assets/images/person.png')} style={{ backgroundColor: 'transparent' }} />
+            )}
             <Text variant="headlineLarge" style={styles.podioIcon}>🥉</Text>
             <Text variant="titleMedium" style={[styles.podioNome, { color: theme.colors.onSurface }]} numberOfLines={1}>
               {terceiro.nome}
             </Text>
-            <Text variant="bodyLarge" style={[styles.podioScore, { color: '#CD7F32' }]}>
+            <Text variant="bodyLarge" style={[styles.podioScore, { color: theme.dark ? '#DEB887' : '#654321' }]}>
               {terceiro.coeficienteConhecimento || 0}%
             </Text>
           </View>
@@ -156,29 +202,34 @@ export default function Ranking() {
           <View style={styles.posicaoContainer}>
             <Text variant="headlineMedium" style={[
               styles.posicaoText, 
-              { color: isPodio ? '#000' : theme.colors.onSurface }
+              { color: isPodio ? obterCorTexto(usuario.posicao) : theme.colors.onSurface }
             ]}>
               {isPodio ? obterIconePosicao(usuario.posicao) : obterTextoIcone(usuario.posicao)}
             </Text>
           </View>
 
-          <Avatar.Image 
-            size={50} 
-            source={usuario.urlFoto ? { uri: usuario.urlFoto } : require('../../assets/images/person.png')}
-            style={styles.avatar}
-          />
+          {usuario.urlFoto && usuario.urlFoto.startsWith('https://') ? (
+            <CachedImage
+              userId={usuario.uid}
+              firebaseUrl={usuario.urlFoto}
+              style={[styles.avatar, { width: 50, height: 50, borderRadius: 25 }]}
+              placeholder={<Avatar.Image size={50} source={require('../../assets/images/person.png')} style={styles.avatar} />}
+            />
+          ) : (
+            <Avatar.Image size={50} source={require('../../assets/images/person.png')} style={[styles.avatar, { backgroundColor: 'transparent' }]} />
+          )}
 
           <View style={styles.infoContainer}>
             <Text variant="titleMedium" style={[
               styles.nomeUsuario, 
-              { color: isPodio ? '#000' : theme.colors.onSurface }
+              { color: isPodio ? theme.colors.onSurface : theme.colors.onSurface }
             ]} numberOfLines={1}>
               {usuario.nome}
               {isCurrentUser && <Text style={{ color: theme.colors.primary }}> (Você)</Text>}
             </Text>
             <Text variant="bodyMedium" style={[
               styles.coeficiente, 
-              { color: isPodio ? '#000' : theme.colors.onSurfaceVariant }
+              { color: isPodio ? obterCorTexto(usuario.posicao) : theme.colors.onSurfaceVariant }
             ]}>
               {usuario.coeficienteConhecimento || 0}% de coeficiente geral
             </Text>
@@ -187,8 +238,8 @@ export default function Ranking() {
           {isPodio && (
             <Chip 
               icon="trophy" 
-              style={[styles.podioChip, { backgroundColor: 'rgba(0,0,0,0.1)' }]}
-              textStyle={{ color: '#000', fontSize: 10 }}
+              style={[styles.podioChip, { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              textStyle={{ color: theme.dark ? '#fff' : '#000', fontSize: 10 }}
             >
               Pódio
             </Chip>
@@ -275,25 +326,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 10,
   },
   podioItem: {
     alignItems: 'center',
     padding: 12,
     borderRadius: 12,
     minWidth: 100,
+    
   },
   primeiroLugar: {
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
     marginBottom: 0,
+    borderWidth: 1,
   },
   segundoLugar: {
-    backgroundColor: 'rgba(192, 192, 192, 0.2)',
     marginBottom: 20,
+    borderWidth: 1,
   },
   terceiroLugar: {
-    backgroundColor: 'rgba(205, 127, 50, 0.2)',
     marginBottom: 20,
+    borderWidth: 1,
   },
   podioIcon: {
     marginVertical: 8,
@@ -333,6 +385,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     marginRight: 12,
+    backgroundColor: 'transparent',
   },
   infoContainer: {
     flex: 1,
@@ -345,6 +398,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   podioChip: {
-    marginLeft: 8,
+    marginLeft: 14,
   },
 });

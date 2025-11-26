@@ -8,6 +8,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthContext } from "./AuthProvider";
 import { DecayService } from "@/services/DecayService";
+import { ImageCacheService } from "@/services/ImageCacheService";
 
 export const UserContext = createContext({});
 
@@ -47,6 +48,7 @@ export const UserProvider = ({ children }: any) => {
               dataUltimoAcesso: lastSignInTime,
               createdAt: creationTime,
               diasAtivos,
+              diasLogin: userData.diasLogin || [],
             };
 
             setUserFirebase(usuario);
@@ -67,7 +69,7 @@ export const UserProvider = ({ children }: any) => {
   function calculateStreakAndCoefficient(
     lastSignInTime: string,
     userData: any
-  ) {
+  ): { diasAtivos: number; coeficiente: number; diasInatividade: number } {
     const agora = new Date();
     const ultimoAcesso = userData.dataUltimoAcesso 
       ? new Date(userData.dataUltimoAcesso) 
@@ -138,6 +140,26 @@ export const UserProvider = ({ children }: any) => {
         const { diasAtivos, coeficiente, diasInatividade } =
           calculateStreakAndCoefficient(lastSignInTime, userData);
 
+        // Atualizar array de dias de login
+        const hoje = new Date().toISOString().split('T')[0];
+        let diasLogin = userData.diasLogin || [];
+        
+        // Adicionar hoje se não estiver na lista
+        if (!diasLogin.includes(hoje)) {
+          diasLogin = [...diasLogin, hoje].sort();
+          // Manter apenas os últimos 30 dias
+          const trintaDiasAtras = new Date();
+          trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+          diasLogin = diasLogin.filter((data: string) => new Date(data) >= trintaDiasAtras);
+          
+          // Salvar imediatamente no Firestore (sem await para não bloquear)
+          setDoc(
+            doc(firestore, "usuarios", userAuth.user.uid),
+            { diasLogin },
+            { merge: true }
+          ).catch(error => console.error('Erro ao salvar dias de login:', error));
+        }
+
         const usuario: Usuario = {
           uid: docSnap.id,
           email: userData.email || authUser.email || "",
@@ -150,6 +172,7 @@ export const UserProvider = ({ children }: any) => {
           dataUltimoAcesso: lastSignInTime,
           createdAt: creationTime,
           diasAtivos,
+          diasLogin,
         };
 
         // Atualiza dados calculados no Firestore
@@ -160,6 +183,7 @@ export const UserProvider = ({ children }: any) => {
             coeficienteConhecimento: coeficiente,
             diasInatividade,
             dataUltimoAcesso: lastSignInTime,
+            diasLogin: usuario.diasLogin,
           },
           { merge: true }
         );
@@ -199,6 +223,7 @@ export const UserProvider = ({ children }: any) => {
         diasInatividade:
           usuario.diasInatividade ?? userFirebase?.diasInatividade ?? 0,
         diasAtivos: usuario.diasAtivos ?? userFirebase?.diasAtivos ?? 1,
+        diasLogin: usuario.diasLogin ?? userFirebase?.diasLogin ?? [],
       });
       setUserFirebase(usuario);
       return "ok";
@@ -244,6 +269,9 @@ export const UserProvider = ({ children }: any) => {
       const url = await getDownloadURL(
         ref(storage, `imagens/usuarios/${uid}/foto.png`)
       );
+
+      // Limpar cache da imagem anterior
+      await ImageCacheService.clearCache(uid);
 
       return url;
     } catch (e) {

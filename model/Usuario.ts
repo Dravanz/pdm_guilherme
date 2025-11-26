@@ -14,6 +14,7 @@ export class Usuario {
     public dataUltimoAcesso?: string,
     public createdAt?: any,
     public diasAtivos?: number,
+    public diasLogin?: string[], // Array de datas de login no formato 'YYYY-MM-DD'
     public senha?: string,
   ) {
     this.uid = uid;
@@ -27,6 +28,7 @@ export class Usuario {
     this.dataUltimoAcesso = dataUltimoAcesso;
     this.createdAt = createdAt;
     this.diasAtivos = diasAtivos;
+    this.diasLogin = diasLogin || [];
     this.senha = senha;
   }
 }

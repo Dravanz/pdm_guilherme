@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<curso id="python-basico" titulo="Python Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
+  <pagina id="1" tipo="conteudo">
+    <titulo>🐍 Introdução ao Python</titulo>
+    <imagem>{{python-intro}}</imagem>
+    <conteudo>
+      Python é uma linguagem de programação de alto nível, interpretada e de propósito geral.
+      
+      Características principais:
+      • Sintaxe simples e legível
+      • Tipagem dinâmica
+      • Interpretada
+      • Multiplataforma
+      
+      Python é amplamente usado em ciência de dados, desenvolvimento web e automação.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="2" tipo="conteudo">
+    <titulo>📝 Variáveis e Tipos de Dados</titulo>
+    <imagem>{{python-syntax}}</imagem>
+    <conteudo>
+      Antes dos exercícios, vamos revisar os conceitos:
+      
+      VARIÁVEIS:
+      • Não precisam ser declaradas
+      • Tipagem dinâmica
+      • Exemplo: nome = "Python"
+      
+      TIPOS DE DADOS:
+      • int: números inteiros (42)
+      • float: números decimais (3.14)
+      • str: texto ("Olá")
+      • bool: verdadeiro/falso (True/False)
+      
+      Conversão: int("10"), str(42), float("3.14")
+    </conteudo>
+  </pagina>
+  
+  <pagina id="3" tipo="exercicio">
+    <titulo>Exercícios - Variáveis e Tipos</titulo>
+    <questao-ref id="py_var_001" />
+    <questao-ref id="py_var_002" />
+    <questao-ref id="py_type_001" />
+    <questao-ref id="py_type_002" />
+  </pagina>
+  
+  <pagina id="4" tipo="conteudo">
+    <titulo>📊 Listas e Tuplas</titulo>
+    <conteudo>
+      Estruturas de dados fundamentais em Python.
+      
+      LISTAS:
+      • Coleção ordenada e mutável
+      • Exemplo: numeros = [1, 2, 3, 4]
+      • Métodos: append(), remove(), len(), sort()
+      • Acesso: lista[0], lista[-1]
+      
+      TUPLAS:
+      • Coleção ordenada e imutável
+      • Exemplo: coordenadas = (10, 20)
+      • Mais rápidas que listas
+      • Usadas para dados que não mudam
+    </conteudo>
+  </pagina>
+  
+  <pagina id="5" tipo="exercicio">
+    <titulo>Exercícios - Listas e Tuplas</titulo>
+    <questao-ref id="py_list_001" />
+    <questao-ref id="py_list_002" />
+    <questao-ref id="py_tuple_001" />
+    <questao-ref id="py_tuple_002" />
+  </pagina>
+  
+  <pagina id="6" tipo="conteudo">
+    <titulo>🔄 Estruturas de Controle</titulo>
+    <conteudo>
+      Python oferece estruturas de controle simples e poderosas.
+      
+      CONDIÇÕES (if/elif/else):
+      if idade &gt;= 18:
+          print("Maior de idade")
+      elif idade &gt;= 16:
+          print("Pode votar")
+      else:
+          print("Menor de idade")
+      
+      LOOPS:
+      • for: para iteração
+      • while: repetição com condição
+      • range(): gera sequência de números
+      
+      A indentação é fundamental em Python para definir blocos de código.
+    </conteudo>
+  </pagina>
+  
+  <pagina id="7" tipo="exercicio">
+    <titulo>Exercícios - Estruturas de Controle</titulo>
+    <questao-ref id="py_if_001" />
+    <questao-ref id="py_if_002" />
+    <questao-ref id="py_loop_001" />
+    <questao-ref id="py_loop_002" />
+  </pagina>
+  
+  <pagina id="8" tipo="conteudo">
+    <titulo>⚙️ Funções e Módulos</titulo>
+    <conteudo>
+      Funções organizam e reutilizam código em Python.
+      
+      FUNÇÕES:
+      def saudacao(nome):
+          return f"Olá, {nome}!"
+      
+      • def: define uma função
+      • return: retorna um valor
+      • Parâmetros opcionais: def func(x=10)
+      
+      MÓDULOS:
+      • import math
+      • from datetime import date
+      • Organizam código em arquivos separados
+      
+      Módulos populares: math, random, datetime, os
+    </conteudo>
+  </pagina>
+  
+  <pagina id="9" tipo="exercicio">
+    <titulo>Exercícios - Funções e Módulos</titulo>
+    <questao-ref id="py_func_001" />
+    <questao-ref id="py_func_002" />
+    <questao-ref id="py_module_001" />
+    <questao-ref id="py_module_002" />
+  </pagina>
+</curso>
