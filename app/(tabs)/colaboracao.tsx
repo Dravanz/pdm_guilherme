@@ -2,10 +2,13 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import { Alternativa, Curso, PaginaCurso, Questao } from "@/model/Curso";
+import { Documentacao, TipoDocumentacao } from "@/model/Documentacao";
 import { Perfil } from "@/model/Perfil";
-import { BancoQuestoesService } from "@/services/BancoQuestoesService";
-import { ColaboradorCursoService } from "@/services/ColaboradorCursoService";
-import { ImageUploadService } from "@/services/ImageUploadService";
+import { ColaboradorCursoService } from "@/services/curso/ColaboradorCursoService";
+import { ImageUploadService } from "@/services/image/ImageUploadService";
+import { BancoQuestoesService } from "@/services/questao/BancoQuestoesService";
+import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
+import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -13,6 +16,8 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   FlatList,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -24,10 +29,12 @@ import {
   Chip,
   Dialog,
   IconButton,
+  Modal,
+  Portal,
   SegmentedButtons,
   Text,
   TextInput,
-  useTheme,
+  useTheme
 } from "react-native-paper";
 
 export default function Colaboracao() {
@@ -60,6 +67,7 @@ export default function Colaboracao() {
   const [nivel, setNivel] = useState<
     "iniciante" | "intermediario" | "avancado"
   >("iniciante");
+  const [versaoLinguagem, setVersaoLinguagem] = useState(""); // Versão da linguagem
   const [imagemCapaUrl, setImagemCapaUrl] = useState(""); // URL da imagem de capa
   const [imagemCapaLocal, setImagemCapaLocal] = useState(""); // URI local antes do upload
   const [paginas, setPaginas] = useState<PaginaCurso[]>([]);
@@ -91,14 +99,32 @@ export default function Colaboracao() {
   const [motivoExclusao, setMotivoExclusao] = useState("");
   const [cursoExcluir, setCursoExcluir] = useState<Curso | null>(null);
 
+  // DOCUMENTAÇÃO STATE
+  const [abaAtiva, setAbaAtiva] = useState<"cursos" | "documentacao">("cursos");
+  const [documentacoes, setDocumentacoes] = useState<Documentacao[]>([]);
+  const [dialogDocVisivel, setDialogDocVisivel] = useState(false);
+  const [docEditando, setDocEditando] = useState<Documentacao | null>(null);
+  const [docTitulo, setDocTitulo] = useState("");
+  const [docConteudo, setDocConteudo] = useState("");
+  const [docLink, setDocLink] = useState("");
+  const [docVersao, setDocVersao] = useState("");
+  const [docDataRef, setDocDataRef] = useState("");
+  const [docTipo, setDocTipo] = useState<TipoDocumentacao>(TipoDocumentacao.Documentacao);
+
+  // Refs para inputs
+  const siglaRef = React.useRef<any>(null);
+  const descricaoRef = React.useRef<any>(null);
+  const categoriaRef = React.useRef<any>(null);
+  const versaoRef = React.useRef<any>(null);
+
   // Recarregar cursos quando a tab receber foco
   useFocusEffect(
     useCallback(() => {
-      if (userFirebase) {
+      if (userFirebase?.uid) {
         carregarCursos();
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [userFirebase?.uid])
   );
 
   // Listener em tempo real para mudanças nos cursos
@@ -131,7 +157,7 @@ export default function Colaboracao() {
     try {
       setCarregando(true);
       // Buscar TODOS os cursos do sistema (XML + Firestore)
-      const isAdmin = userFirebase.perfil === Perfil.Admin;
+      const isAdmin = userFirebase?.perfil === Perfil.Admin;
       const todosCursos = await ColaboradorCursoService.buscarTodosCursos(
         userFirebase.uid,
         isAdmin
@@ -262,6 +288,7 @@ export default function Colaboracao() {
     setDescricao("");
     setCategoria("");
     setNivel("iniciante");
+    setVersaoLinguagem("");
     setPaginas([]);
   }
 
@@ -436,7 +463,7 @@ export default function Colaboracao() {
         alt.correta = i === index;
       });
     } else {
-      novasAlternativas[index][campo] = valor;
+      (novasAlternativas[index] as any)[campo] = valor;
     }
     setAlternativas(novasAlternativas);
   }
@@ -534,6 +561,7 @@ export default function Colaboracao() {
         descricao,
         categoria,
         nivel,
+        versaoLinguagem: versaoLinguagem || undefined,
         paginas: [], // Não será salvo no Firestore
         coeficienteMaximo: 100,
         imageUrl: imagemCapaUploadUrl, // URL da imagem de capa
@@ -632,6 +660,99 @@ export default function Colaboracao() {
     }
   }
 
+  // DOCUMENTAÇÃO FUNCTIONS
+  async function carregarDocumentacoes() {
+    if (!userFirebase) return;
+    try {
+      setCarregando(true);
+      const docs = await DocumentacaoService.buscarDocumentacoesPorAutor(userFirebase.uid);
+      setDocumentacoes(docs);
+    } catch (error) {
+      console.error("Erro ao carregar documentações:", error);
+      mostrarMensagem("erro", "Erro ao carregar documentações");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    if (abaAtiva === "documentacao") {
+      carregarDocumentacoes();
+    }
+  }, [abaAtiva, userFirebase]);
+
+  function abrirCriacaoDocumentacao() {
+    setDocEditando(null);
+    setDocTitulo("");
+    setDocConteudo("");
+    setDocLink("");
+    setDocVersao("");
+    setDocDataRef("");
+    setDocTipo(TipoDocumentacao.Documentacao);
+    setDialogDocVisivel(true);
+  }
+
+  async function salvarDocumentacao() {
+    if (!docTitulo.trim() || !docConteudo.trim()) {
+      mostrarMensagem("erro", "Preencha os campos obrigatórios");
+      return;
+    }
+
+    try {
+      setCarregando(true);
+      const isAdmin = userFirebase.perfil === Perfil.Admin;
+
+      if (isAdmin) {
+        // Admin cria diretamente
+        await DocumentacaoService.criarDocumentacao(
+          docTitulo,
+          docConteudo,
+          docLink,
+          docVersao,
+          docDataRef,
+          docTipo,
+          userFirebase.uid,
+          userFirebase.nome,
+          true
+        );
+        mostrarMensagem("sucesso", "Documentação publicada com sucesso!");
+      } else {
+        // Colaborador cria solicitação
+        // Primeiro cria a documentação como pendente
+        const docId = await DocumentacaoService.criarDocumentacao(
+          docTitulo,
+          docConteudo,
+          docLink,
+          docVersao,
+          docDataRef,
+          docTipo,
+          userFirebase.uid,
+          userFirebase.nome,
+          false
+        );
+
+        // Depois cria a solicitação
+        await SolicitacaoService.criarSolicitacaoDocumentacao(
+          docId,
+          docTitulo,
+          docLink,
+          docConteudo,
+          userFirebase.uid,
+          userFirebase.nome
+        );
+        mostrarMensagem("sucesso", "Solicitação enviada para aprovação!");
+      }
+
+      setDialogDocVisivel(false);
+      carregarDocumentacoes();
+    } catch (error) {
+      console.error("Erro ao salvar documentação:", error);
+      mostrarMensagem("erro", "Erro ao salvar documentação");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   function mostrarMensagem(tipo: string, mensagem: string) {
     setMensagem({ tipo, mensagem });
     setDialogMensagemVisivel(true);
@@ -678,15 +799,26 @@ export default function Colaboracao() {
               <Button
                 mode="contained"
                 icon="plus"
-                onPress={abrirCriacaoCurso}
+                onPress={abaAtiva === "cursos" ? abrirCriacaoCurso : abrirCriacaoDocumentacao}
                 style={{ backgroundColor: theme.colors.primary }}
               >
-                Novo Curso
+                {abaAtiva === "cursos" ? "Novo Curso" : "Nova Doc"}
               </Button>
             </View>
+            
+            <SegmentedButtons
+              value={abaAtiva}
+              onValueChange={(value) => setAbaAtiva(value as any)}
+              buttons={[
+                { value: "cursos", label: "Cursos", icon: "school" },
+                { value: "documentacao", label: "Documentação", icon: "file-document" },
+              ]}
+              style={{ marginTop: 16 }}
+            />
           </View>
 
-          {cursos.length === 0 && !carregando ? (
+          {abaAtiva === "cursos" && (
+            cursos.length === 0 && !carregando ? (
             <Card
               style={[
                 themeStyles.card,
@@ -809,576 +941,768 @@ export default function Colaboracao() {
                 </Card>
               )}
             />
+          ))}
+
+          {abaAtiva === "documentacao" && (
+            documentacoes.length === 0 && !carregando ? (
+              <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+                <Card.Content style={{ alignItems: "center", padding: 32 }}>
+                  <Text style={{ textAlign: "center", color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>
+                    Nenhuma documentação encontrada.
+                  </Text>
+                  <Button mode="contained" onPress={abrirCriacaoDocumentacao} icon="plus">
+                    Criar Nova Documentação
+                  </Button>
+                </Card.Content>
+              </Card>
+            ) : (
+              <FlatList
+                data={documentacoes}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+                    <Card.Content>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <View style={{ flex: 1 }}>
+                          <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>
+                            {item.titulo}
+                          </Text>
+                          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }} numberOfLines={2}>
+                            {item.conteudo}
+                          </Text>
+                          {item.link && (
+                            <Text variant="bodySmall" style={{ color: theme.colors.primary, marginTop: 4 }}>
+                              🔗 {item.link}
+                            </Text>
+                          )}
+                        </View>
+                        <Chip compact style={{ marginLeft: 8 }} icon={item.status === "Aprovada" ? "check" : item.status === "Rejeitada" ? "close" : "clock"}>
+                          {item.status}
+                        </Chip>
+                      </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {item.versao && <Chip compact>{item.versao}</Chip>}
+                        {item.dataReferencia && <Chip compact icon="calendar">{item.dataReferencia}</Chip>}
+                      </View>
+                    </Card.Content>
+
+                  </Card>
+                )}
+              />
+            )
           )}
         </ScrollView>
 
         {/* Dialog Criar/Editar Curso */}
-        <Dialog
-          visible={dialogCriarVisivel}
-          onDismiss={() => {
-            setDialogCriarVisivel(false);
-            setModoEdicao(false);
-            setCursoEditando(null);
-          }}
-          style={{ maxHeight: "90%" }}
-        >
-          <Dialog.Title>
-            {modoEdicao
-              ? "Editar Curso"
-              : etapaCriacao === "info"
-              ? "Informações do Curso"
-              : etapaCriacao === "paginas"
-              ? "Páginas do Curso"
-              : "Revisão"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <ScrollView
-              style={{ maxHeight: 500 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* ETAPA 1: INFORMAÇÕES */}
-              {etapaCriacao === "info" && (
-                <View>
-                  <TextInput
-                    label="Título do Curso *"
-                    value={titulo}
-                    onChangeText={setTitulo}
-                    mode="outlined"
-                    style={styles.input}
-                    returnKeyType="next"
-                    onSubmitEditing={() => {
-                      // Focus no próximo campo
-                    }}
-                  />
-                  <TextInput
-                    label="Sigla do Curso *"
-                    value={siglaCurso}
-                    onChangeText={(text) =>
-                      setSiglaCurso(
-                        text.toLowerCase().replace(/[^a-z0-9]/g, "")
-                      )
-                    }
-                    mode="outlined"
-                    placeholder="Ex: js, py, react (para nomenclatura de imagens)"
-                    style={styles.input}
-                    returnKeyType="next"
-                  />
-                  <TextInput
-                    label="Descrição *"
-                    value={descricao}
-                    onChangeText={setDescricao}
-                    mode="outlined"
-                    multiline
-                    numberOfLines={3}
-                    style={styles.input}
-                    returnKeyType="next"
-                  />
-                  <TextInput
-                    label="Categoria *"
-                    value={categoria}
-                    onChangeText={setCategoria}
-                    mode="outlined"
-                    placeholder="Ex: Programação, Design, Marketing..."
-                    style={styles.input}
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      if (
-                        titulo.trim() &&
-                        descricao.trim() &&
-                        categoria.trim()
-                      ) {
-                        avancarEtapa();
-                      }
-                    }}
-                  />
+        <Portal>
+          <Modal
+            visible={dialogCriarVisivel}
+            onDismiss={() => {
+              setDialogCriarVisivel(false);
+              setModoEdicao(false);
+              setCursoEditando(null);
+            }}
+            contentContainerStyle={{
+              backgroundColor: theme.colors.surface,
+              margin: 20,
+              borderRadius: 12,
+              height: "90%",
+            }}
+          >
+            <View style={{ flex: 1, padding: 20 }}>
+              <Text
+                variant="headlineSmall"
+                style={{ marginBottom: 16, fontWeight: "bold" }}
+              >
+                {modoEdicao
+                  ? "Editar Curso"
+                  : etapaCriacao === "info"
+                  ? "Informações do Curso"
+                  : etapaCriacao === "paginas"
+                  ? "Páginas do Curso"
+                  : "Revisão"}
+              </Text>
 
-                  {/* Imagem de Capa */}
-                  <Text
-                    variant="bodySmall"
-                    style={{ marginTop: 16, marginBottom: 4 }}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                {/* ETAPA 1: INFORMAÇÕES */}
+                {etapaCriacao === "info" && (
+                  <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
                   >
-                    Imagem de Capa do Curso:
-                  </Text>
-                  <Button
-                    mode="outlined"
-                    icon="image"
-                    onPress={selecionarImagemCapa}
-                    style={styles.input}
-                  >
-                    {imagemCapaLocal
-                      ? "Alterar Imagem de Capa"
-                      : "Selecionar Imagem de Capa"}
-                  </Button>
-                  {imagemCapaLocal && (
+                    <TextInput
+                      label="Título do Curso *"
+                      value={titulo}
+                      onChangeText={setTitulo}
+                      mode="outlined"
+                      style={styles.input}
+                      returnKeyType="next"
+                      onSubmitEditing={() => siglaRef.current?.focus()}
+                    />
+                    <TextInput
+                      ref={siglaRef}
+                      label="Sigla do Curso *"
+                      value={siglaCurso}
+                      onChangeText={(text) =>
+                        setSiglaCurso(
+                          text.toLowerCase().replace(/[^a-z0-9]/g, "")
+                        )
+                      }
+                      mode="outlined"
+                      placeholder="Ex: js, py, react (para nomenclatura de imagens)"
+                      style={styles.input}
+                      returnKeyType="next"
+                      onSubmitEditing={() => descricaoRef.current?.focus()}
+                    />
+                    <TextInput
+                      ref={descricaoRef}
+                      label="Descrição *"
+                      value={descricao}
+                      onChangeText={setDescricao}
+                      mode="outlined"
+                      multiline
+                      numberOfLines={3}
+                      style={styles.input}
+                      returnKeyType="next"
+                    />
+                    <TextInput
+                      ref={categoriaRef}
+                      label="Categoria *"
+                      value={categoria}
+                      onChangeText={setCategoria}
+                      mode="outlined"
+                      placeholder="Ex: Programação, Design, Marketing..."
+                      style={styles.input}
+                      returnKeyType="next"
+                      onSubmitEditing={() => versaoRef.current?.focus()}
+                    />
+
+                    <TextInput
+                      ref={versaoRef}
+                      label="Versão da Linguagem"
+                      value={versaoLinguagem}
+                      onChangeText={setVersaoLinguagem}
+                      mode="outlined"
+                      placeholder="Ex: ES6+, Python 3.12, React 18..."
+                      style={styles.input}
+                      returnKeyType="done"
+                      onSubmitEditing={() => {
+                        if (
+                          titulo.trim() &&
+                          descricao.trim() &&
+                          categoria.trim()
+                        ) {
+                          avancarEtapa();
+                        }
+                      }}
+                    />
+
+                    {/* Imagem de Capa */}
                     <Text
                       variant="bodySmall"
-                      style={{ color: theme.colors.primary, marginTop: 4 }}
+                      style={{ marginTop: 16, marginBottom: 4 }}
                     >
-                      ✓ Imagem selecionada
+                      Imagem de Capa do Curso:
                     </Text>
-                  )}
+                    <Button
+                      mode="outlined"
+                      icon="image"
+                      onPress={selecionarImagemCapa}
+                      style={styles.input}
+                    >
+                      {imagemCapaLocal
+                        ? "Alterar Imagem de Capa"
+                        : "Selecionar Imagem de Capa"}
+                    </Button>
+                    {imagemCapaLocal && (
+                      <Text
+                        variant="bodySmall"
+                        style={{ color: theme.colors.primary, marginTop: 4 }}
+                      >
+                        ✓ Imagem selecionada
+                      </Text>
+                    )}
 
-                  <Text
-                    variant="bodySmall"
-                    style={{ marginTop: 12, marginBottom: 4 }}
-                  >
-                    Nível do Curso:
-                  </Text>
-                  <SegmentedButtons
-                    value={nivel}
-                    onValueChange={(value) => setNivel(value as any)}
-                    buttons={[
-                      { value: "iniciante", label: "Iniciante" },
-                      { value: "intermediario", label: "Intermediário" },
-                      { value: "avancado", label: "Avançado" },
-                    ]}
-                  />
-                </View>
-              )}
+                    <Text
+                      variant="bodySmall"
+                      style={{ marginTop: 12, marginBottom: 4 }}
+                    >
+                      Nível do Curso:
+                    </Text>
+                    <SegmentedButtons
+                      value={nivel}
+                      onValueChange={(value) => setNivel(value as any)}
+                      buttons={[
+                        { value: "iniciante", label: "Iniciante" },
+                        { value: "intermediario", label: "Intermediário" },
+                        { value: "avancado", label: "Avançado" },
+                      ]}
+                    />
+                  </KeyboardAvoidingView>
+                )}
 
-              {/* ETAPA 2: PÁGINAS */}
-              {etapaCriacao === "paginas" && (
-                <View>
-                  <Button
-                    mode="contained"
-                    icon="plus"
-                    onPress={() => abrirDialogPagina()}
-                    style={{ marginBottom: 16 }}
-                  >
-                    Adicionar Página
-                  </Button>
+                {/* ETAPA 2: PÁGINAS */}
+                {etapaCriacao === "paginas" && (
+                  <View>
+                    <Button
+                      mode="contained"
+                      icon="plus"
+                      onPress={() => abrirDialogPagina()}
+                      style={{ marginBottom: 16 }}
+                    >
+                      Adicionar Página
+                    </Button>
 
-                  {paginas.map((pagina, index) => (
+                    {paginas.map((pagina, index) => (
+                      <Card
+                        key={pagina.id}
+                        style={{
+                          marginBottom: 12,
+                          backgroundColor: theme.colors.surfaceVariant,
+                        }}
+                      >
+                        <Card.Content>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text variant="titleMedium">
+                                Página {index + 1}: {pagina.titulo}
+                              </Text>
+                              <Text variant="bodySmall">
+                                {pagina.tipo === "conteudo"
+                                  ? "📄 Conteúdo"
+                                  : "📝 Exercício"}
+                              </Text>
+                              {pagina.tipo === "exercicio" && (
+                                <Text variant="bodySmall">
+                                  {pagina.questoes?.length || 0} questões
+                                </Text>
+                              )}
+                            </View>
+                            <View style={{ flexDirection: "row" }}>
+                              <IconButton
+                                icon="pencil"
+                                size={20}
+                                onPress={() => abrirDialogPagina(pagina)}
+                              />
+                              <IconButton
+                                icon="delete"
+                                size={20}
+                                onPress={() => removerPagina(pagina.id)}
+                              />
+                            </View>
+                          </View>
+                        </Card.Content>
+                      </Card>
+                    ))}
+                  </View>
+                )}
+
+                {/* ETAPA 3: REVISÃO */}
+                {etapaCriacao === "revisao" && (
+                  <View>
                     <Card
-                      key={pagina.id}
                       style={{
                         marginBottom: 12,
                         backgroundColor: theme.colors.surfaceVariant,
                       }}
                     >
                       <Card.Content>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text variant="titleMedium">
-                              Página {index + 1}: {pagina.titulo}
-                            </Text>
-                            <Text variant="bodySmall">
-                              {pagina.tipo === "conteudo"
-                                ? "📄 Conteúdo"
-                                : "📝 Exercício"}
-                            </Text>
-                            {pagina.tipo === "exercicio" && (
-                              <Text variant="bodySmall">
-                                {pagina.questoes?.length || 0} questões
-                              </Text>
-                            )}
-                          </View>
-                          <View style={{ flexDirection: "row" }}>
-                            <IconButton
-                              icon="pencil"
-                              size={20}
-                              onPress={() => abrirDialogPagina(pagina)}
-                            />
-                            <IconButton
-                              icon="delete"
-                              size={20}
-                              onPress={() => removerPagina(pagina.id)}
-                            />
-                          </View>
-                        </View>
+                        <Text variant="titleMedium" style={{ marginBottom: 8 }}>
+                          Informações Gerais
+                        </Text>
+                        <Text variant="bodyMedium">
+                          <Text style={{ fontWeight: "bold" }}>Título:</Text>{" "}
+                          {titulo}
+                        </Text>
+                        <Text variant="bodyMedium">
+                          <Text style={{ fontWeight: "bold" }}>Categoria:</Text>{" "}
+                          {categoria}
+                        </Text>
+                        <Text variant="bodyMedium">
+                          <Text style={{ fontWeight: "bold" }}>Nível:</Text>{" "}
+                          {nivel}
+                        </Text>
+                        <Text variant="bodyMedium">
+                          <Text style={{ fontWeight: "bold" }}>
+                            Total de Páginas:
+                          </Text>{" "}
+                          {paginas.length}
+                        </Text>
                       </Card.Content>
                     </Card>
-                  ))}
-                </View>
-              )}
 
-              {/* ETAPA 3: REVISÃO */}
-              {etapaCriacao === "revisao" && (
-                <View>
-                  <Card
-                    style={{
-                      marginBottom: 12,
-                      backgroundColor: theme.colors.surfaceVariant,
-                    }}
-                  >
-                    <Card.Content>
-                      <Text variant="titleMedium" style={{ marginBottom: 8 }}>
-                        Informações Gerais
-                      </Text>
-                      <Text variant="bodyMedium">
-                        <Text style={{ fontWeight: "bold" }}>Título:</Text>{" "}
-                        {titulo}
-                      </Text>
-                      <Text variant="bodyMedium">
-                        <Text style={{ fontWeight: "bold" }}>Categoria:</Text>{" "}
-                        {categoria}
-                      </Text>
-                      <Text variant="bodyMedium">
-                        <Text style={{ fontWeight: "bold" }}>Nível:</Text>{" "}
-                        {nivel}
-                      </Text>
-                      <Text variant="bodyMedium">
-                        <Text style={{ fontWeight: "bold" }}>
-                          Total de Páginas:
-                        </Text>{" "}
-                        {paginas.length}
-                      </Text>
-                    </Card.Content>
-                  </Card>
-
-                  <Text variant="titleSmall" style={{ marginVertical: 8 }}>
-                    Estrutura do Curso:
-                  </Text>
-                  {paginas.map((pagina, index) => (
-                    <Text
-                      key={pagina.id}
-                      variant="bodyMedium"
-                      style={{ marginBottom: 4 }}
-                    >
-                      {index + 1}. {pagina.titulo} ({pagina.tipo})
+                    <Text variant="titleSmall" style={{ marginVertical: 8 }}>
+                      Estrutura do Curso:
                     </Text>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
-          </Dialog.Content>
-          <Dialog.Actions>
-            {etapaCriacao !== "info" && (
-              <Button onPress={voltarEtapa}>Voltar</Button>
-            )}
-            <Button
-              onPress={() => {
-                setDialogCriarVisivel(false);
-                limparFormularioCurso();
-              }}
-            >
-              Cancelar
-            </Button>
-            {etapaCriacao !== "revisao" ? (
-              <Button onPress={avancarEtapa}>Avançar</Button>
-            ) : (
-              <Button
-                onPress={salvarCurso}
-                loading={carregando}
-                disabled={carregando}
-              >
-                {modoEdicao ? "Salvar Alterações" : "Criar Curso"}
-              </Button>
-            )}
-          </Dialog.Actions>
-        </Dialog>
+                    {paginas.map((pagina, index) => (
+                      <Text
+                        key={pagina.id}
+                        variant="bodyMedium"
+                        style={{ marginBottom: 4 }}
+                      >
+                        {index + 1}. {pagina.titulo} ({pagina.tipo})
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
 
-        {/* Dialog Página */}
-        <Dialog
-          visible={dialogPaginaVisivel}
-          onDismiss={() => setDialogPaginaVisivel(false)}
-          style={{ maxHeight: "90%" }}
-        >
-          <Dialog.Title>
-            {paginaEditando ? "Editar Página" : "Nova Página"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <ScrollView
-              style={{ maxHeight: 500 }}
-              showsVerticalScrollIndicator={false}
-            >
-              <TextInput
-                label="Título da Página *"
-                value={paginaTitulo}
-                onChangeText={setPaginaTitulo}
-                mode="outlined"
-                style={styles.input}
-                returnKeyType={paginaTipo === "conteudo" ? "next" : "done"}
-                onSubmitEditing={() => {
-                  if (paginaTipo === "conteudo") {
-                    // Focus no campo de conteúdo
-                  }
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.outlineVariant,
                 }}
-              />
-
-              <Text
-                variant="bodySmall"
-                style={{ marginTop: 12, marginBottom: 4 }}
               >
-                Tipo de Página:
-              </Text>
-              <SegmentedButtons
-                value={paginaTipo}
-                onValueChange={(value) => setPaginaTipo(value as any)}
-                buttons={[
-                  { value: "conteudo", label: "Conteúdo", icon: "text-box" },
-                  {
-                    value: "exercicio",
-                    label: "Exercício",
-                    icon: "file-question",
-                  },
-                ]}
-                style={{ marginBottom: 16 }}
-              />
-
-              {paginaTipo === "conteudo" && (
-                <TextInput
-                  label="Conteúdo *"
-                  value={paginaConteudo}
-                  onChangeText={setPaginaConteudo}
-                  mode="outlined"
-                  multiline
-                  numberOfLines={8}
-                  style={styles.input}
-                />
-              )}
-
-              <Button
-                mode="outlined"
-                icon="image"
-                onPress={selecionarImagem}
-                style={{ marginVertical: 8 }}
-              >
-                {paginaImagemUrl
-                  ? "Alterar Imagem"
-                  : "Adicionar Imagem (Opcional)"}
-              </Button>
-
-              {paginaTipo === "exercicio" && (
-                <View style={{ marginTop: 16 }}>
+                {etapaCriacao !== "info" && (
+                  <Button onPress={voltarEtapa}>Voltar</Button>
+                )}
+                <Button
+                  onPress={() => {
+                    setDialogCriarVisivel(false);
+                    limparFormularioCurso();
+                  }}
+                >
+                  Cancelar
+                </Button>
+                {etapaCriacao !== "revisao" ? (
+                  <Button mode="contained" onPress={avancarEtapa}>
+                    Avançar
+                  </Button>
+                ) : (
                   <Button
                     mode="contained"
-                    icon="plus"
-                    onPress={() => abrirDialogQuestao()}
-                    style={{ marginBottom: 12 }}
+                    onPress={salvarCurso}
+                    loading={carregando}
+                    disabled={carregando}
                   >
-                    Adicionar Questão
+                    {modoEdicao ? "Salvar Alterações" : "Criar Curso"}
                   </Button>
+                )}
+              </View>
+            </View>
+          </Modal>
+        </Portal>
 
-                  {questoesPagina.map((questao, index) => (
-                    <Card
-                      key={questao.id}
-                      style={{
-                        marginBottom: 8,
-                        backgroundColor: theme.colors.surfaceVariant,
-                      }}
+        {/* Dialog Página */}
+        <Portal>
+          <Dialog
+            visible={dialogPaginaVisivel}
+            onDismiss={() => setDialogPaginaVisivel(false)}
+            style={{ maxHeight: "90%" }}
+          >
+            <Dialog.Title>
+              {paginaEditando ? "Editar Página" : "Nova Página"}
+            </Dialog.Title>
+            <Dialog.Content>
+              <ScrollView
+                style={{ maxHeight: 500 }}
+                showsVerticalScrollIndicator={false}
+              >
+                <TextInput
+                  label="Título da Página *"
+                  value={paginaTitulo}
+                  onChangeText={setPaginaTitulo}
+                  mode="outlined"
+                  style={styles.input}
+                  returnKeyType={paginaTipo === "conteudo" ? "next" : "done"}
+                  onSubmitEditing={() => {
+                    if (paginaTipo === "conteudo") {
+                      // Focus no campo de conteúdo
+                    }
+                  }}
+                />
+
+                <Text
+                  variant="bodySmall"
+                  style={{ marginTop: 12, marginBottom: 4 }}
+                >
+                  Tipo de Página:
+                </Text>
+                <SegmentedButtons
+                  value={paginaTipo}
+                  onValueChange={(value) => setPaginaTipo(value as any)}
+                  buttons={[
+                    { value: "conteudo", label: "Conteúdo", icon: "text-box" },
+                    {
+                      value: "exercicio",
+                      label: "Exercício",
+                      icon: "file-question",
+                    },
+                  ]}
+                  style={{ marginBottom: 16 }}
+                />
+
+                {paginaTipo === "conteudo" && (
+                  <TextInput
+                    label="Conteúdo *"
+                    value={paginaConteudo}
+                    onChangeText={setPaginaConteudo}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={8}
+                    style={styles.input}
+                  />
+                )}
+
+                <Button
+                  mode="outlined"
+                  icon="image"
+                  onPress={selecionarImagem}
+                  style={{ marginVertical: 8 }}
+                >
+                  {paginaImagemUrl
+                    ? "Alterar Imagem"
+                    : "Adicionar Imagem (Opcional)"}
+                </Button>
+
+                {paginaTipo === "exercicio" && (
+                  <View style={{ marginTop: 16 }}>
+                    <Button
+                      mode="contained"
+                      icon="plus"
+                      onPress={() => abrirDialogQuestao()}
+                      style={{ marginBottom: 12 }}
                     >
-                      <Card.Content>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text variant="bodyMedium" numberOfLines={2}>
-                              {index + 1}. {questao.pergunta}
-                            </Text>
+                      Adicionar Questão
+                    </Button>
+
+                    {questoesPagina.map((questao, index) => (
+                      <Card
+                        key={questao.id}
+                        style={{
+                          marginBottom: 8,
+                          backgroundColor: theme.colors.surfaceVariant,
+                        }}
+                      >
+                        <Card.Content>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text variant="bodyMedium" numberOfLines={2}>
+                                {index + 1}. {questao.pergunta}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: "row" }}>
+                              <IconButton
+                                icon="pencil"
+                                size={18}
+                                onPress={() => abrirDialogQuestao(questao)}
+                              />
+                              <IconButton
+                                icon="delete"
+                                size={18}
+                                onPress={() => removerQuestao(questao.id)}
+                              />
+                            </View>
                           </View>
-                          <View style={{ flexDirection: "row" }}>
-                            <IconButton
-                              icon="pencil"
-                              size={18}
-                              onPress={() => abrirDialogQuestao(questao)}
-                            />
-                            <IconButton
-                              icon="delete"
-                              size={18}
-                              onPress={() => removerQuestao(questao.id)}
-                            />
-                          </View>
-                        </View>
-                      </Card.Content>
-                    </Card>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogPaginaVisivel(false)}>
-              Cancelar
-            </Button>
-            <Button onPress={salvarPagina}>Salvar Página</Button>
-          </Dialog.Actions>
-        </Dialog>
+                        </Card.Content>
+                      </Card>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setDialogPaginaVisivel(false)}>
+                Cancelar
+              </Button>
+              <Button onPress={salvarPagina}>Salvar Página</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
         {/* Dialog Questão */}
-        <Dialog
-          visible={dialogQuestaoVisivel}
-          onDismiss={() => setDialogQuestaoVisivel(false)}
-          style={{ maxHeight: "90%" }}
-        >
-          <Dialog.Title>
-            {questaoEditando ? "Editar Questão" : "Nova Questão"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <ScrollView
-              style={{ maxHeight: 500 }}
-              showsVerticalScrollIndicator={false}
-            >
-              <TextInput
-                label="Pergunta *"
-                value={questaoPergunta}
-                onChangeText={setQuestaoPergunta}
-                mode="outlined"
-                multiline
-                numberOfLines={3}
-                style={styles.input}
-                returnKeyType="next"
-              />
-
-              <Text
-                variant="titleSmall"
-                style={{ marginTop: 16, marginBottom: 8 }}
+        <Portal>
+          <Dialog
+            visible={dialogQuestaoVisivel}
+            onDismiss={() => setDialogQuestaoVisivel(false)}
+            style={{ maxHeight: "90%" }}
+          >
+            <Dialog.Title>
+              {questaoEditando ? "Editar Questão" : "Nova Questão"}
+            </Dialog.Title>
+            <Dialog.Content>
+              <ScrollView
+                style={{ maxHeight: 500 }}
+                showsVerticalScrollIndicator={false}
               >
-                Alternativas:
-              </Text>
-              {alternativas.map((alt, index) => (
-                <View key={alt.id} style={{ marginBottom: 12 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Chip
-                      selected={alt.correta}
-                      onPress={() =>
-                        atualizarAlternativa(index, "correta", true)
-                      }
-                      style={{ minWidth: 40 }}
-                    >
-                      {alt.id.toUpperCase()}
-                    </Chip>
-                    <TextInput
-                      value={alt.texto}
-                      onChangeText={(text) =>
-                        atualizarAlternativa(index, "texto", text)
-                      }
-                      mode="outlined"
-                      dense
-                      style={{ flex: 1 }}
-                      placeholder={`Alternativa ${alt.id.toUpperCase()}`}
-                    />
-                  </View>
-                </View>
-              ))}
+                <TextInput
+                  label="Pergunta *"
+                  value={questaoPergunta}
+                  onChangeText={setQuestaoPergunta}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                  returnKeyType="next"
+                />
 
-              <TextInput
-                label="Explicação (Opcional)"
-                value={questaoExplicacao}
-                onChangeText={setQuestaoExplicacao}
-                mode="outlined"
-                multiline
-                numberOfLines={3}
-                style={styles.input}
-                returnKeyType="done"
-              />
-            </ScrollView>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogQuestaoVisivel(false)}>
-              Cancelar
-            </Button>
-            <Button onPress={salvarQuestao}>Salvar Questão</Button>
-          </Dialog.Actions>
-        </Dialog>
+                <Text
+                  variant="titleSmall"
+                  style={{ marginTop: 16, marginBottom: 8 }}
+                >
+                  Alternativas:
+                </Text>
+                {alternativas.map((alt, index) => (
+                  <View key={alt.id} style={{ marginBottom: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Chip
+                        selected={alt.correta}
+                        onPress={() =>
+                          atualizarAlternativa(index, "correta", true)
+                        }
+                        style={{ minWidth: 40 }}
+                      >
+                        {alt.id.toUpperCase()}
+                      </Chip>
+                      <TextInput
+                        value={alt.texto}
+                        onChangeText={(text) =>
+                          atualizarAlternativa(index, "texto", text)
+                        }
+                        mode="outlined"
+                        dense
+                        style={{ flex: 1 }}
+                        placeholder={`Alternativa ${alt.id.toUpperCase()}`}
+                      />
+                    </View>
+                  </View>
+                ))}
+
+                <TextInput
+                  label="Explicação (Opcional)"
+                  value={questaoExplicacao}
+                  onChangeText={setQuestaoExplicacao}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                  returnKeyType="done"
+                />
+              </ScrollView>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setDialogQuestaoVisivel(false)}>
+                Cancelar
+              </Button>
+              <Button onPress={salvarQuestao}>Salvar Questão</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
         {/* Dialog Excluir */}
-        <Dialog
-          visible={dialogExcluirVisivel}
-          onDismiss={() => setDialogExcluirVisivel(false)}
-        >
-          <Dialog.Icon icon="alert-circle-outline" size={60} />
-          <Dialog.Title style={styles.textDialog}>
-            Solicitar Exclusão de Curso
-          </Dialog.Title>
-          <Dialog.Content>
-            {cursoExcluir && (
-              <>
-                <Text style={styles.textDialog} variant="titleMedium">
-                  {cursoExcluir.titulo}
-                </Text>
-                <Text
-                  style={[
-                    styles.textDialog,
-                    { marginTop: 8, marginBottom: 12 },
-                  ]}
-                  variant="bodySmall"
-                >
-                  {(cursoExcluir as any).fonte === "xml"
-                    ? "⚠️ Este é um curso XML estático do sistema"
-                    : "📝 Curso criado por colaborador"}
-                </Text>
-              </>
-            )}
-            <Text style={styles.textDialog} variant="bodyMedium">
-              A exclusão requer aprovação do administrador. Informe o motivo:
-            </Text>
-            <TextInput
-              mode="outlined"
-              placeholder="Ex: Conteúdo desatualizado, informações incorretas..."
-              value={motivoExclusao}
-              onChangeText={setMotivoExclusao}
-              multiline
-              numberOfLines={4}
-              style={{ marginTop: 12 }}
-              returnKeyType="done"
-              blurOnSubmit={true}
-              onSubmitEditing={() => {
-                Keyboard.dismiss();
-              }}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button
-              onPress={() => {
-                setDialogExcluirVisivel(false);
-                setMotivoExclusao("");
-                setCursoExcluir(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onPress={() => cursoExcluir && solicitarExclusao(cursoExcluir)}
-              loading={carregando}
-              disabled={carregando || !motivoExclusao.trim()}
-              textColor={theme.colors.error}
-            >
-              Solicitar Exclusão
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={dialogExcluirVisivel}
+            onDismiss={() => setDialogExcluirVisivel(false)}
+          >
+            <Dialog.Icon icon="alert-circle-outline" size={60} />
+            <Dialog.Title style={styles.textDialog}>
+              Solicitar Exclusão de Curso
+            </Dialog.Title>
+            <Dialog.Content>
+              {cursoExcluir && (
+                <>
+                  <Text style={styles.textDialog} variant="titleMedium">
+                    {cursoExcluir.titulo}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.textDialog,
+                      { marginTop: 8, marginBottom: 12 },
+                    ]}
+                    variant="bodySmall"
+                  >
+                    {(cursoExcluir as any).fonte === "xml"
+                      ? "⚠️ Este é um curso XML estático do sistema"
+                      : "📝 Curso criado por colaborador"}
+                  </Text>
+                </>
+              )}
+              <Text style={styles.textDialog} variant="bodyMedium">
+                A exclusão requer aprovação do administrador. Informe o motivo:
+              </Text>
+              <TextInput
+                mode="outlined"
+                placeholder="Ex: Conteúdo desatualizado, informações incorretas..."
+                value={motivoExclusao}
+                onChangeText={setMotivoExclusao}
+                multiline
+                numberOfLines={4}
+                style={{ marginTop: 12 }}
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={() => {
+                  Keyboard.dismiss();
+                }}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button
+                onPress={() => {
+                  setDialogExcluirVisivel(false);
+                  setMotivoExclusao("");
+                  setCursoExcluir(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={() => cursoExcluir && solicitarExclusao(cursoExcluir)}
+                loading={carregando}
+                disabled={carregando || !motivoExclusao.trim()}
+                textColor={theme.colors.error}
+              >
+                Solicitar Exclusão
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
         {/* Dialog Mensagem */}
-        <Dialog
-          visible={dialogMensagemVisivel}
-          onDismiss={() => setDialogMensagemVisivel(false)}
-        >
-          <Dialog.Icon
-            icon={
-              mensagem.tipo === "erro"
-                ? "alert-circle-outline"
-                : "check-circle-outline"
-            }
-            size={60}
-          />
-          <Dialog.Title style={styles.textDialog}>
-            {mensagem.tipo === "erro" ? "Erro" : "Sucesso"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              {mensagem.mensagem}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogMensagemVisivel(false)}>OK</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={dialogMensagemVisivel}
+            onDismiss={() => setDialogMensagemVisivel(false)}
+          >
+            <Dialog.Icon
+              icon={
+                mensagem.tipo === "erro"
+                  ? "alert-circle-outline"
+                  : "check-circle-outline"
+              }
+              size={60}
+            />
+            <Dialog.Title style={styles.textDialog}>
+              {mensagem.tipo === "erro" ? "Erro" : "Sucesso"}
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.textDialog} variant="bodyLarge">
+                {mensagem.mensagem}
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setDialogMensagemVisivel(false)}>OK</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+
+        {/* Dialog Criar/Editar Documentação */}
+        <Portal>
+          <Modal
+            visible={dialogDocVisivel}
+            onDismiss={() => setDialogDocVisivel(false)}
+            contentContainerStyle={{
+              backgroundColor: theme.colors.surface,
+              margin: 20,
+              borderRadius: 12,
+              height: "90%",
+            }}
+          >
+            <View style={{ flex: 1, padding: 20 }}>
+              <Text
+                variant="headlineSmall"
+                style={{ marginBottom: 16, fontWeight: "bold" }}
+              >
+                {docEditando ? "Editar Documentação" : "Nova Documentação"}
+              </Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+                >
+                  <TextInput
+                    label="Título *"
+                    value={docTitulo}
+                    onChangeText={setDocTitulo}
+                    mode="outlined"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    label="Conteúdo *"
+                    value={docConteudo}
+                    onChangeText={setDocConteudo}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={10}
+                    style={styles.input}
+                  />
+                  <TextInput
+                    label="Link (Opcional)"
+                    value={docLink}
+                    onChangeText={setDocLink}
+                    mode="outlined"
+                    placeholder="https://..."
+                    style={styles.input}
+                  />
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <TextInput
+                      label="Versão"
+                      value={docVersao}
+                      onChangeText={setDocVersao}
+                      mode="outlined"
+                      style={[styles.input, { flex: 1 }]}
+                    />
+                    <TextInput
+                      label="Data (DD/MM/AAAA)"
+                      value={docDataRef}
+                      onChangeText={setDocDataRef}
+                      mode="outlined"
+                      style={[styles.input, { flex: 1 }]}
+                    />
+                  </View>
+                </KeyboardAvoidingView>
+              </ScrollView>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.outlineVariant,
+                }}
+              >
+                <Button onPress={() => setDialogDocVisivel(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={salvarDocumentacao}
+                  loading={carregando}
+                  disabled={carregando}
+                >
+                  {docEditando ? "Salvar" : "Criar"}
+                </Button>
+              </View>
+            </View>
+          </Modal>
+        </Portal>
       </SafeAreaView>
     </View>
   );
