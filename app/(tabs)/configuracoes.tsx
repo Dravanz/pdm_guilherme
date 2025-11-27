@@ -4,32 +4,37 @@ import { globalStyles, ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Badge } from "@/model/Badge";
 import { Curso } from "@/model/Curso";
+
 import { Perfil } from "@/model/Perfil";
-import { BadgeAdminService } from "@/services/BadgeAdminService";
-import { CursoService } from "@/services/CursoService";
-import { SolicitacaoService } from "@/services/SolicitacaoService";
+import { BadgeAdminService } from "@/services/badge/BadgeAdminService";
+import { CursoService } from "@/services/curso/CursoService";
+
+import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useContext, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import {
-  FlatList,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    FlatList,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Chip,
-  Dialog,
-  Icon,
-  IconButton,
-  Menu,
-  Text,
-  TextInput,
-  useTheme,
+    Button,
+    Card,
+    Chip,
+    Dialog,
+    Icon,
+    IconButton,
+    Menu,
+    Modal,
+    Portal,
+    Searchbar,
+    Text,
+    TextInput,
+    useTheme
 } from "react-native-paper";
 
 export default function Configuracoes() {
@@ -61,6 +66,8 @@ export default function Configuracoes() {
   const [carregandoBadges, setCarregandoBadges] = useState(false);
   const [dialogBadgeVisivel, setDialogBadgeVisivel] = useState(false);
   const [badgeEditando, setBadgeEditando] = useState<Badge | null>(null);
+  const [searchBadges, setSearchBadges] = useState("");
+  const [mostrarTodasBadges, setMostrarTodasBadges] = useState(false);
 
   // Campos do formulário de badge
   const [badgeId, setBadgeId] = useState("");
@@ -93,17 +100,19 @@ export default function Configuracoes() {
   const [menuPerfilVisivel, setMenuPerfilVisivel] = useState(false);
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
 
+
+
   React.useEffect(() => {
     if (userFirebase) {
       setNome(userFirebase.nome || "");
-
-      // Carregar badges e cursos se for admin
       if (userFirebase.perfil === Perfil.Admin) {
         carregarCursos();
         carregarBadges();
       }
     }
-  }, [userFirebase]);
+  }, [userFirebase, carregarCursos, carregarBadges]);
+
+
 
   async function handleLogout() {
     const res = await sair();
@@ -187,16 +196,16 @@ export default function Configuracoes() {
 
   // ============= FUNÇÕES DE GERENCIAMENTO DE BADGES (ADMIN) =============
 
-  async function carregarCursos() {
+  const carregarCursos = useCallback(async () => {
     try {
       const cursos = await CursoService.listarCursos();
       setCursosDisponiveis(cursos);
     } catch (error) {
       console.error("Erro ao carregar cursos:", error);
     }
-  }
+  }, []);
 
-  async function carregarBadges() {
+  const carregarBadges = useCallback(async () => {
     setCarregandoBadges(true);
     try {
       const badgesFirestore = await BadgeAdminService.listarBadges();
@@ -211,7 +220,7 @@ export default function Configuracoes() {
     } finally {
       setCarregandoBadges(false);
     }
-  }
+  }, []);
 
   function abrirDialogNovaBadge() {
     limparFormularioBadge();
@@ -389,6 +398,8 @@ export default function Configuracoes() {
   }
 
   // ============= FIM DAS FUNÇÕES DE BADGES =============
+
+
 
   function getBadgeTipoLabel(tipo: string): string {
     const tipos = {
@@ -809,6 +820,13 @@ export default function Configuracoes() {
                 Crie e gerencie as badges/conquistas do sistema
               </Text>
 
+              <Searchbar
+                placeholder="Buscar badges..."
+                onChangeText={setSearchBadges}
+                value={searchBadges}
+                style={{ marginBottom: 16 }}
+              />
+
               {carregandoBadges ? (
                 <Text style={{ textAlign: "center", padding: 20 }}>
                   Carregando badges...
@@ -824,11 +842,22 @@ export default function Configuracoes() {
                   Nenhuma badge cadastrada ainda
                 </Text>
               ) : (
-                <FlatList
-                  data={badges}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
+                <>
+                  <FlatList
+                    data={badges
+                      .filter((badge) => {
+                        if (!searchBadges.trim()) return true;
+                        const query = searchBadges.toLowerCase();
+                        return (
+                          badge.nome.toLowerCase().includes(query) ||
+                          badge.descricao.toLowerCase().includes(query) ||
+                          badge.tipo.toLowerCase().includes(query)
+                        );
+                      })
+                      .slice(0, mostrarTodasBadges ? undefined : 5)}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
                     <Card
                       style={{
                         marginBottom: 8,
@@ -920,10 +949,47 @@ export default function Configuracoes() {
                     </Card>
                   )}
                 />
+                {badges.filter((badge) => {
+                  if (!searchBadges.trim()) return true;
+                  const query = searchBadges.toLowerCase();
+                  return (
+                    badge.nome.toLowerCase().includes(query) ||
+                    badge.descricao.toLowerCase().includes(query) ||
+                    badge.tipo.toLowerCase().includes(query)
+                  );
+                }).length > 5 && !mostrarTodasBadges && (
+                  <Button
+                    mode="outlined"
+                    onPress={() => setMostrarTodasBadges(true)}
+                    style={{ marginTop: 12 }}
+                  >
+                    Ver todas ({badges.filter((badge) => {
+                      if (!searchBadges.trim()) return true;
+                      const query = searchBadges.toLowerCase();
+                      return (
+                        badge.nome.toLowerCase().includes(query) ||
+                        badge.descricao.toLowerCase().includes(query) ||
+                        badge.tipo.toLowerCase().includes(query)
+                      );
+                    }).length})
+                  </Button>
+                )}
+                {mostrarTodasBadges && (
+                  <Button
+                    mode="outlined"
+                    onPress={() => setMostrarTodasBadges(false)}
+                    style={{ marginTop: 12 }}
+                  >
+                    Ver menos
+                  </Button>
+                )}
+              </>
               )}
             </Card.Content>
           </Card>
         )}
+
+
 
         <Card
           style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}
@@ -956,185 +1022,165 @@ export default function Configuracoes() {
           </Card.Content>
         </Card>
 
-        <Dialog
-          visible={dialogVisivel}
-          onDismiss={() => setDialogVisivel(false)}
-        >
-          <Dialog.Icon icon="alert-circle-outline" size={60} />
-          <Dialog.Title style={styles.textDialog}>Excluir Conta</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              Tem certeza que deseja excluir sua conta? Esta ação não pode ser
-              desfeita.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogVisivel(false)}>Cancelar</Button>
-            <Button
-              onPress={() => {
-                setDialogVisivel(false);
-                setConfirmDelete(true);
-              }}
-              textColor="#ff0000"
-            >
-              Excluir
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={dialogVisivel}
+            onDismiss={() => setDialogVisivel(false)}
+          >
+            <Dialog.Icon icon="alert-circle-outline" size={60} />
+            <Dialog.Title style={styles.textDialog}>Excluir Conta</Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.textDialog} variant="bodyLarge">
+                Tem certeza que deseja excluir sua conta? Esta ação não pode ser
+                desfeita.
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setDialogVisivel(false)}>Cancelar</Button>
+              <Button
+                onPress={() => {
+                  setDialogVisivel(false);
+                  setConfirmDelete(true);
+                }}
+                textColor="#ff0000"
+              >
+                Excluir
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
-        <Dialog
-          visible={confirmDelete}
-          onDismiss={() => setConfirmDelete(false)}
-        >
-          <Dialog.Icon icon="alert-octagon-outline" size={60} />
-          <Dialog.Title style={styles.textDialog}>
-            Você tem certeza?
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              Esta é sua última chance. Sua conta será permanentemente excluída.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setConfirmDelete(false)}>Cancelar</Button>
-            <Button
-              onPress={() => {
-                excluirConta();
-              }}
-              loading={requisitando}
-              disabled={requisitando}
-              textColor="#ff0000"
-            >
-              {!requisitando ? "Sim, excluir" : "Excluindo..."}
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={confirmDelete}
+            onDismiss={() => setConfirmDelete(false)}
+          >
+            <Dialog.Icon icon="alert-octagon-outline" size={60} />
+            <Dialog.Title style={styles.textDialog}>
+              Você tem certeza?
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.textDialog} variant="bodyLarge">
+                Esta é sua última chance. Sua conta será permanentemente excluída.
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setConfirmDelete(false)}>Cancelar</Button>
+              <Button
+                onPress={() => {
+                  excluirConta();
+                }}
+                loading={requisitando}
+                disabled={requisitando}
+                textColor="#ff0000"
+              >
+                {!requisitando ? "Sim, excluir" : "Excluindo..."}
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
-        <Dialog
-          visible={dialogFotoVisivel}
-          onDismiss={() => setDialogFotoVisivel(false)}
-        >
-          <Dialog.Icon icon="camera" size={60} />
-          <Dialog.Title style={styles.textDialog}>Alterar Foto</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              Escolha como deseja alterar sua foto de perfil
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={tiraFoto} icon="camera" disabled={alterandoFoto}>
-              Tirar Foto
-            </Button>
-            <Button
-              onPress={buscaNaGaleria}
-              icon="image"
-              disabled={alterandoFoto}
-            >
-              Galeria
-            </Button>
-            <Button onPress={() => setDialogFotoVisivel(false)}>
-              Cancelar
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={dialogFotoVisivel}
+            onDismiss={() => setDialogFotoVisivel(false)}
+          >
+            <Dialog.Icon icon="camera" size={60} />
+            <Dialog.Title style={styles.textDialog}>Alterar Foto</Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.textDialog} variant="bodyLarge">
+                Escolha como deseja alterar sua foto de perfil
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={tiraFoto} icon="camera" disabled={alterandoFoto}>
+                Tirar Foto
+              </Button>
+              <Button
+                onPress={buscaNaGaleria}
+                icon="image"
+                disabled={alterandoFoto}
+              >
+                Galeria
+              </Button>
+              <Button onPress={() => setDialogFotoVisivel(false)}>
+                Cancelar
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
-        <Dialog
-          visible={dialogMensagemVisivel}
-          onDismiss={() => {
-            setDialogMensagemVisivel(false);
-            setMensagem({ tipo: "", mensagem: "" });
-          }}
-        >
-          <Dialog.Icon
-            icon={
-              mensagem.tipo === "erro"
-                ? "alert-circle-outline"
-                : "check-circle-outline"
-            }
-            size={60}
-          />
-          <Dialog.Title style={styles.textDialog}>
-            {mensagem.tipo === "erro"
-              ? "Erro"
-              : mensagem.tipo === "sucesso"
-              ? "Sucesso"
-              : "Informação"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              {mensagem.mensagem}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button
-              onPress={() => {
-                setDialogMensagemVisivel(false);
-                setMensagem({ tipo: "", mensagem: "" });
-              }}
-            >
-              OK
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-
-        <Dialog
-          visible={dialogColaborarVisivel}
-          onDismiss={() => {
-            setDialogColaborarVisivel(false);
-            setConhecimentos("");
-          }}
-        >
-          <Dialog.Icon icon="account-plus" size={60} />
-          <Dialog.Title style={styles.textDialog}>
-            Colaborar com o Projeto
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyMedium">
-              Como você deseja colaborar? Informe seus conhecimentos e
-              experiências:
-            </Text>
-            <TextInput
-              mode="outlined"
-              placeholder="Ex: Tenho experiência em JavaScript, Python e criação de cursos..."
-              value={conhecimentos}
-              onChangeText={setConhecimentos}
-              multiline
-              numberOfLines={4}
-              style={{ marginTop: 12 }}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button
-              onPress={() => {
-                setDialogColaborarVisivel(false);
-                setConhecimentos("");
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onPress={enviarSolicitacaoColaboracao}
-              loading={enviandoSolicitacao}
-              disabled={enviandoSolicitacao || !conhecimentos.trim()}
-            >
-              Enviar
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Portal>
+          <Dialog
+            visible={dialogColaborarVisivel}
+            onDismiss={() => {
+              setDialogColaborarVisivel(false);
+              setConhecimentos("");
+            }}
+          >
+            <Dialog.Icon icon="account-plus" size={60} />
+            <Dialog.Title style={styles.textDialog}>
+              Colaborar com o Projeto
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.textDialog} variant="bodyMedium">
+                Como você deseja colaborar? Informe seus conhecimentos e
+                experiências:
+              </Text>
+              <TextInput
+                mode="outlined"
+                placeholder="Ex: Tenho experiência em JavaScript, Python e criação de cursos..."
+                value={conhecimentos}
+                onChangeText={setConhecimentos}
+                multiline
+                numberOfLines={4}
+                style={{ marginTop: 12 }}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button
+                onPress={() => {
+                  setDialogColaborarVisivel(false);
+                  setConhecimentos("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={enviarSolicitacaoColaboracao}
+                loading={enviandoSolicitacao}
+                disabled={enviandoSolicitacao || !conhecimentos.trim()}
+              >
+                Enviar
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
       </ScrollView>
 
       {/* Dialog de Criar Badge */}
-      <Dialog
-        visible={dialogBadgeVisivel}
-        onDismiss={() => setDialogBadgeVisivel(false)}
-        style={{ maxHeight: "90%" }}
-      >
-        <Dialog.Title>
-          🏅 {badgeEditando ? "Editar Badge" : "Nova Badge"}
-        </Dialog.Title>
-        <Dialog.ScrollArea>
-          <ScrollView>
-            <Dialog.Content>
+      <Portal>
+        <Modal
+          visible={dialogBadgeVisivel}
+          onDismiss={() => setDialogBadgeVisivel(false)}
+          contentContainerStyle={{
+            backgroundColor: theme.colors.surface,
+            margin: 20,
+            borderRadius: 12,
+            height: "90%",
+          }}
+        >
+          <View style={{ flex: 1, padding: 20 }}>
+            <Text
+              variant="headlineSmall"
+              style={{ marginBottom: 16, fontWeight: "bold" }}
+            >
+              🏅 {badgeEditando ? "Editar Badge" : "Nova Badge"}
+            </Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
               <TextInput
                 label="ID da Badge"
                 value={badgeId}
@@ -1407,16 +1453,57 @@ export default function Configuracoes() {
                   style={styles.textInput}
                 />
               )}
-            </Dialog.Content>
-          </ScrollView>
-        </Dialog.ScrollArea>
-        <Dialog.Actions>
-          <Button onPress={() => setDialogBadgeVisivel(false)}>Cancelar</Button>
-          <Button onPress={salvarBadge} mode="contained">
-            {badgeEditando ? "💾 Salvar" : "➕ Criar"}
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
+            </ScrollView>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                gap: 8,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.outlineVariant,
+              }}
+            >
+              <Button onPress={() => setDialogBadgeVisivel(false)}>
+                Cancelar
+              </Button>
+              <Button onPress={salvarBadge} mode="contained">
+                {badgeEditando ? "💾 Salvar" : "➕ Criar"}
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Dialog Mensagem */}
+      <Portal>
+        <Dialog
+          visible={dialogMensagemVisivel}
+          onDismiss={() => setDialogMensagemVisivel(false)}
+        >
+          <Dialog.Icon
+            icon={
+              mensagem.tipo === "erro"
+                ? "alert-circle-outline"
+                : "check-circle-outline"
+            }
+            size={60}
+          />
+          <Dialog.Title style={styles.textDialog}>
+            {mensagem.tipo === "erro" ? "Erro" : "Sucesso"}
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyLarge">
+              {mensagem.mensagem}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDialogMensagemVisivel(false)}>OK</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+
     </SafeAreaView>
   );
 }
