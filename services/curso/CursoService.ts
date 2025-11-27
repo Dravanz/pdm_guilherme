@@ -1,22 +1,24 @@
 import { Asset } from "expo-asset";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
-import { CourseConfig } from "../config/CourseConfig";
-import { firestore, storage } from "../firebase/FirebaseInit";
-import { Curso, PaginaCurso, UsuarioCurso } from "../model/Curso";
-import { BadgeService } from "./BadgeService";
-import { ImageUploadService } from "./ImageUploadService";
-import { QuestaoService } from "./QuestaoService";
+import { CourseConfig } from "../../config/CourseConfig";
+import { firestore, storage } from "../../firebase/FirebaseInit";
+import { Curso, PaginaCurso, UsuarioCurso } from "../../model/Curso";
+import { BadgeService } from "../badge/BadgeService";
+import { ImageUploadService } from "../image/ImageUploadService";
+import { QuestaoService } from "../questao/QuestaoService";
+import { DecayService } from "../shared/DecayService";
+import { TentativaService } from "../shared/TentativaService";
 
 export class CursoService {
   /**
@@ -39,6 +41,25 @@ export class CursoService {
     } catch (error) {
       console.error("Erro ao listar cursos:", error);
       return [];
+    }
+  }
+
+  /**
+   * Obtém um curso pelo ID, carregando do XML se necessário
+   */
+  static async obterCursoPorId(cursoId: string): Promise<Curso | null> {
+    try {
+      // Tentar carregar como XML primeiro (já que nossa estrutura principal é XML)
+      // Se falhar, tenta buscar do Firestore direto se tivermos cursos puramente Firestore no futuro
+      return await this.carregarCursoXML(cursoId);
+    } catch (error) {
+      console.error(`Erro ao obter curso ${cursoId}:`, error);
+      // Fallback: tentar buscar apenas no Firestore se o XML falhar
+      const cursoFirestore = await this.buscarCursoFirestore(cursoId);
+      if (cursoFirestore) {
+        return cursoFirestore as Curso;
+      }
+      return null;
     }
   }
 
@@ -192,9 +213,9 @@ export class CursoService {
 
   private static async carregarXMLDoArquivo(cursoId: string): Promise<string> {
     const xmlFiles: { [key: string]: any } = {
-      "javascript-basico": require("../assets/courses/javascript-basico.xml"),
-      "python-basico": require("../assets/courses/python-basico.xml"),
-      "react-basico": require("../assets/courses/react-basico.xml"),
+      "javascript-basico": require("../../assets/courses/javascript-basico.xml"),
+      "python-basico": require("../../assets/courses/python-basico.xml"),
+      "react-basico": require("../../assets/courses/react-basico.xml"),
     };
 
     const xmlAsset = xmlFiles[cursoId as keyof typeof xmlFiles];
@@ -298,8 +319,12 @@ export class CursoService {
 
       if (trimmed.includes("<questao-ref")) {
         const idMatch = trimmed.match(/id="([^"]+)"/);
+        const linkMatch = trimmed.match(/linkDocumentacao="([^"]+)"/);
         if (idMatch) {
           questaoRefs.push(idMatch[1]);
+          // TODO: Armazenar linkDocumentacao se necessário associar à questão aqui
+          // Mas como QuestaoService carrega a questão, talvez seja melhor atualizar a questão lá
+          // Ou podemos injetar o link na questão carregada abaixo
         }
       }
 
@@ -308,6 +333,12 @@ export class CursoService {
           const questoes = await QuestaoService.obterMultiplasQuestoes(
             questaoRefs
           );
+          
+          // Tentar extrair links de documentação do XML e associar às questões
+          // Isso requereria um parse mais complexo ou armazenar os links temporariamente
+          // Por simplicidade, vamos assumir que o link vem da própria questão no Firestore
+          // ou que o XML define a questão completa (o que não é o caso aqui, é ref)
+          
           paginaAtual.questoes = questoes;
         }
         paginas.push(paginaAtual);
@@ -334,6 +365,7 @@ export class CursoService {
       dataInicio: new Date(),
       dataUltimaAtualizacao: new Date(),
       concluido: false,
+      tentativasPorQuestao: {},
     };
 
     try {
@@ -435,6 +467,84 @@ export class CursoService {
       questoesErradas: usuarioCurso.questoesErradas || [],
       percentualAcerto: Math.round(percentualAcerto),
       novasBadges,
+    };
+  }
+
+  static async registrarResposta(
+    usuarioCurso: UsuarioCurso,
+    questaoId: string,
+    correta: boolean,
+    tags: string[] = []
+  ): Promise<{ novoCoeficiente: number; usuarioCursoAtualizado: UsuarioCurso }> {
+    // 1. Atualizar contagem de tentativas
+    const tentativasAtuais = usuarioCurso.tentativasPorQuestao?.[questaoId] || 0;
+    const novasTentativas = tentativasAtuais + 1;
+    
+    const tentativasPorQuestao = {
+      ...(usuarioCurso.tentativasPorQuestao || {}),
+      [questaoId]: novasTentativas,
+    };
+
+    // 2. Registrar tentativa no histórico
+    await TentativaService.registrarTentativa({
+      usuarioId: usuarioCurso.usuarioId,
+      cursoId: usuarioCurso.cursoId,
+      questaoId,
+      respostaUsuario: "", // Idealmente passaríamos a resposta aqui
+      correta,
+      tags,
+    });
+
+    // 3. Atualizar listas de questões
+    let questoesRespondidas = [...usuarioCurso.questoesRespondidas];
+    if (!questoesRespondidas.includes(questaoId)) {
+      questoesRespondidas.push(questaoId);
+    }
+
+    let questoesCorretas = [...usuarioCurso.questoesCorretas];
+    if (correta && !questoesCorretas.includes(questaoId)) {
+      questoesCorretas.push(questaoId);
+    }
+
+    let questoesErradas = [...(usuarioCurso.questoesErradas || [])];
+    if (!correta && !questoesErradas.includes(questaoId)) {
+      questoesErradas.push(questaoId);
+    } else if (correta) {
+      // Se acertou, remove dos erros (opcional, dependendo da lógica desejada)
+      // questoesErradas = questoesErradas.filter(q => q !== questaoId);
+    }
+
+    // 4. Calcular novo coeficiente com decaimento
+    let pontuacaoTotal = 0;
+    const totalQuestoesRespondidas = questoesRespondidas.length;
+
+    questoesCorretas.forEach((qId) => {
+      const tentativas = tentativasPorQuestao[qId] || 1;
+      pontuacaoTotal += DecayService.calcularPontuacaoComDecaimento(tentativas);
+    });
+
+    // Coeficiente é a média da pontuação das questões respondidas
+    // (ou poderia ser sobre o total do curso, mas mantendo a lógica anterior de progresso)
+    const novoCoeficiente =
+      totalQuestoesRespondidas > 0
+        ? Math.round(pontuacaoTotal / totalQuestoesRespondidas)
+        : 0;
+
+    const novoUsuarioCurso: UsuarioCurso = {
+      ...usuarioCurso,
+      questoesRespondidas,
+      questoesCorretas,
+      questoesErradas,
+      tentativasPorQuestao,
+      coeficiente: novoCoeficiente,
+      dataUltimaAtualizacao: new Date(), // Será convertido para Timestamp ao salvar
+    };
+
+    await this.salvarProgresso(novoUsuarioCurso);
+
+    return {
+      novoCoeficiente,
+      usuarioCursoAtualizado: novoUsuarioCurso,
     };
   }
 

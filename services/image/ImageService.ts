@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "../firebase/FirebaseInit";
+import { storage } from "../../firebase/FirebaseInit";
 
 export class ImageService {
   // Mapeamento de cursos para IDs curtos

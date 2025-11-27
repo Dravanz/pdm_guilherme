@@ -9,7 +9,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { auth, firestore } from "../firebase/FirebaseInit";
+import { auth, firestore } from "../../firebase/FirebaseInit";
 
 export interface RankingUsuario {
   uid: string;
@@ -161,7 +161,7 @@ export class RankingService {
   ): Promise<void> {
     try {
       // Obter todas as badges de ranking existentes de uma vez
-      const { BadgeService } = await import("./BadgeService");
+      const { BadgeService } = await import("../badge/BadgeService");
       const badgesExistentes = await BadgeService.obterTodasBadgesRanking();
 
       for (const usuario of usuarios) {

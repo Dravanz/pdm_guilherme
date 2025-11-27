@@ -1,7 +1,7 @@
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { firestore } from '../firebase/FirebaseInit';
-import { UsuarioCurso } from '../model/Curso';
-import { CourseConfig } from '../config/CourseConfig';
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { CourseConfig } from "../../config/CourseConfig";
+import { firestore } from "../../firebase/FirebaseInit";
+import { UsuarioCurso } from "../../model/Curso";
 
 export interface DashboardData {
   estatisticas: {
@@ -30,30 +30,29 @@ export interface DashboardData {
 }
 
 export class DashboardService {
-  
   static async obterDadosDashboard(usuarioId: string): Promise<DashboardData> {
     try {
       const [estatisticas, noticias, cursosDestaque] = await Promise.all([
         this.obterEstatisticasUsuario(usuarioId),
         this.obterNoticias(),
-        this.obterCursosDestaque()
+        this.obterCursosDestaque(),
       ]);
 
       return {
         estatisticas,
         noticias,
-        cursosDestaque
+        cursosDestaque,
       };
     } catch (error) {
-      console.error('Erro ao obter dados da dashboard:', error);
+      console.error("Erro ao obter dados da dashboard:", error);
       return this.obterDadosOffline();
     }
   }
 
   static async obterEstatisticasUsuario(usuarioId: string) {
     try {
-      const usuariosCursosRef = collection(firestore, 'usuariosCursos');
-      const q = query(usuariosCursosRef, where('usuarioId', '==', usuarioId));
+      const usuariosCursosRef = collection(firestore, "usuariosCursos");
+      const q = query(usuariosCursosRef, where("usuarioId", "==", usuarioId));
       const querySnapshot = await getDocs(q);
 
       let cursosAtivos = 0;
@@ -64,7 +63,7 @@ export class DashboardService {
 
       querySnapshot.forEach((doc) => {
         const usuarioCurso = doc.data() as UsuarioCurso;
-        
+
         if (usuarioCurso.concluido) {
           cursosCompletos++;
         } else {
@@ -73,12 +72,13 @@ export class DashboardService {
 
         totalQuestoes += usuarioCurso.questoesRespondidas.length;
         questoesCorretas += usuarioCurso.questoesCorretas.length;
-        questoesErradas += (usuarioCurso.questoesErradas?.length || 0);
+        questoesErradas += usuarioCurso.questoesErradas?.length || 0;
       });
 
-      const coeficienteGeral = totalQuestoes > 0 
-        ? Math.round((questoesCorretas / totalQuestoes) * 100) 
-        : 0;
+      const coeficienteGeral =
+        totalQuestoes > 0
+          ? Math.round((questoesCorretas / totalQuestoes) * 100)
+          : 0;
 
       return {
         cursosAtivos,
@@ -86,17 +86,17 @@ export class DashboardService {
         totalQuestoes,
         questoesCorretas,
         questoesErradas,
-        coeficienteGeral
+        coeficienteGeral,
       };
     } catch (error) {
-      console.error('Erro ao obter estatísticas:', error);
+      console.error("Erro ao obter estatísticas:", error);
       return {
         cursosAtivos: 0,
         cursosCompletos: 0,
         totalQuestoes: 0,
         questoesCorretas: 0,
         questoesErradas: 0,
-        coeficienteGeral: 0
+        coeficienteGeral: 0,
       };
     }
   }
@@ -105,31 +105,37 @@ export class DashboardService {
     // Dados mockados para noticias
     return [
       {
-        id: '1',
-        titulo: 'Novo Curso de TypeScript Disponível!',
-        descricao: 'Aprenda TypeScript do básico ao avançado com nosso novo curso.',
-        imagem: 'https://via.placeholder.com/300x150/007acc/ffffff?text=TypeScript',
-        data: new Date()
+        id: "1",
+        titulo: "Novo Curso de TypeScript Disponível!",
+        descricao:
+          "Aprenda TypeScript do básico ao avançado com nosso novo curso.",
+        imagem:
+          "https://via.placeholder.com/300x150/007acc/ffffff?text=TypeScript",
+        data: new Date(),
       },
       {
-        id: '2',
-        titulo: 'Atualização da Plataforma',
-        descricao: 'Melhorias na interface e novos recursos foram adicionados.',
-        imagem: 'https://via.placeholder.com/300x150/28a745/ffffff?text=Update',
-        data: new Date(Date.now() - 86400000) // 1 dia atrás
-      }
+        id: "2",
+        titulo: "Atualização da Plataforma",
+        descricao: "Melhorias na interface e novos recursos foram adicionados.",
+        imagem: "https://via.placeholder.com/300x150/28a745/ffffff?text=Update",
+        data: new Date(Date.now() - 86400000), // 1 dia atrás
+      },
     ];
   }
 
   static async obterCursosDestaque() {
     const courses = CourseConfig.getAllCourses();
-    return courses.map(course => ({
+    return courses.map((course) => ({
       id: course.id,
       titulo: course.titulo,
-      categoria: course.categoria.charAt(0).toUpperCase() + course.categoria.slice(1),
+      categoria:
+        course.categoria.charAt(0).toUpperCase() + course.categoria.slice(1),
       nivel: course.nivel.charAt(0).toUpperCase() + course.nivel.slice(1),
-      imagem: `https://via.placeholder.com/200x120/${course.color.replace('#', '')}/ffffff?text=${course.icon}`,
-      descricao: course.description
+      imagem: `https://via.placeholder.com/200x120/${course.color.replace(
+        "#",
+        ""
+      )}/ffffff?text=${course.icon}`,
+      descricao: course.description,
     }));
   }
 
@@ -141,10 +147,10 @@ export class DashboardService {
         totalQuestoes: 0,
         questoesCorretas: 0,
         questoesErradas: 0,
-        coeficienteGeral: 0
+        coeficienteGeral: 0,
       },
       noticias: [],
-      cursosDestaque: []
+      cursosDestaque: [],
     };
   }
 
@@ -152,11 +158,10 @@ export class DashboardService {
     // Atualiza ranking a cada 1 minuto e meio
     setInterval(async () => {
       try {
-        const { RankingService } = await import('./RankingService');
+        const { RankingService } = await import("./RankingService");
         await RankingService.forcarAtualizacaoRanking();
-
       } catch (error) {
-        console.error('Erro na atualização automática do ranking:', error);
+        console.error("Erro na atualização automática do ranking:", error);
       }
     }, 1.5 * 60 * 1000); // 1 minuto e meio
   }

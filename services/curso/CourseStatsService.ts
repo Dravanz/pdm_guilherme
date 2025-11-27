@@ -1,6 +1,6 @@
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from '@/firebase/FirebaseInit';
-import { CourseConfig } from '@/config/CourseConfig';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { CursoService } from './CursoService';
 
 export interface CourseStats {
   cursoId: string;
@@ -14,7 +14,8 @@ export interface CourseStats {
 export class CourseStatsService {
   static async obterEstatisticasCursos(): Promise<CourseStats[]> {
     try {
-      const courses = CourseConfig.getAllCourses();
+      // Buscar cursos dinamicamente do Firestore
+      const courses = await CursoService.listarCursos();
       const stats: CourseStats[] = [];
 
       for (const course of courses) {

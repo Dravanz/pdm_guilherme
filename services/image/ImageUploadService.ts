@@ -1,5 +1,5 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "../firebase/FirebaseInit";
+import { storage } from "../../firebase/FirebaseInit";
 
 export class ImageUploadService {
   private static readonly COURSE_IMAGES_PATH = "imagens/cursos";
