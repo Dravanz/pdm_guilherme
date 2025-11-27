@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Image, ImageProps, ActivityIndicator, View } from 'react-native';
-import { ImageCacheService } from '@/services/ImageCacheService';
+import { ImageCacheService } from "@/services/image/ImageCacheService";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Image, ImageProps, View } from "react-native";
 
-interface CachedImageProps extends Omit<ImageProps, 'source'> {
+interface CachedImageProps extends Omit<ImageProps, "source"> {
   userId: string;
   firebaseUrl: string;
   placeholder?: React.ReactNode;
@@ -29,7 +29,10 @@ export const CachedImage: React.FC<CachedImageProps> = ({
     }
 
     // Se não é uma URL válida do Firebase, usar diretamente
-    if (!firebaseUrl.startsWith('https://') || firebaseUrl.includes('/path/to/image.png')) {
+    if (
+      !firebaseUrl.startsWith("https://") ||
+      firebaseUrl.includes("/path/to/image.png")
+    ) {
       setImageUri(firebaseUrl);
       setLoading(false);
       return;
@@ -37,10 +40,13 @@ export const CachedImage: React.FC<CachedImageProps> = ({
 
     try {
       setLoading(true);
-      const cachedUri = await ImageCacheService.getCachedImage(userId, firebaseUrl);
+      const cachedUri = await ImageCacheService.getCachedImage(
+        userId,
+        firebaseUrl
+      );
       setImageUri(cachedUri);
     } catch (error) {
-      console.error('Erro ao carregar imagem:', error);
+      console.error("Erro ao carregar imagem:", error);
       setImageUri(firebaseUrl); // Fallback
     } finally {
       setLoading(false);
@@ -49,7 +55,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
 
   if (loading) {
     return (
-      <View style={[style, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[style, { justifyContent: "center", alignItems: "center" }]}>
         {placeholder || <ActivityIndicator size="small" />}
       </View>
     );
@@ -57,7 +63,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
 
   if (!imageUri) {
     return (
-      <View style={[style, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[style, { justifyContent: "center", alignItems: "center" }]}>
         {placeholder}
       </View>
     );

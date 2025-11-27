@@ -1,5 +1,5 @@
 import { borderRadius, containerPadding, spacing } from "@/constants/Layout";
-import { ImageService } from "@/services/ImageService";
+import { ImageService } from "@/services/image/ImageService";
 import React, { useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Card, RadioButton, Text, useTheme } from "react-native-paper";
@@ -14,7 +14,8 @@ interface CursoViewerProps {
     questaoId: string,
     alternativaId: string,
     correta: boolean,
-    explicacao: string
+    explicacao: string,
+    linkDocumentacao?: string
   ) => Promise<any>;
 }
 
@@ -58,13 +59,39 @@ export function CursoViewer({
         questao.id,
         alternativaSelecionada,
         correta,
-        questao.explicacao
+        questao.explicacao,
+        questao.linkDocumentacao
       );
 
-      Alert.alert(
-        resultado.sucesso ? "Sucesso!" : "Incorreto",
-        `${resultado.explicacao}\n\nCoeficiente atual: ${resultado.novoCoeficiente}%`
-      );
+      if (resultado.sucesso) {
+        Alert.alert(
+          "Sucesso!",
+          `${resultado.explicacao}\n\nCoeficiente atual: ${resultado.novoCoeficiente}%`
+        );
+      } else {
+        const botoes: any[] = [{ text: "OK" }];
+        
+        if (questao.linkDocumentacao) {
+          botoes.push({
+            text: "Ver Documentação",
+            onPress: () => {
+              // Aqui idealmente abriríamos o link. 
+              // Como é um link externo ou interno, precisaríamos de um handler.
+              // Por enquanto, vamos assumir que é um link web e usar Linking,
+              // ou se for interno, usar router.
+              // Vamos tentar abrir como link externo se começar com http,
+              // senão assumir que é uma rota interna ou apenas mostrar o link.
+              Alert.alert("Link", questao.linkDocumentacao);
+            }
+          });
+        }
+
+        Alert.alert(
+          "Incorreto",
+          `${resultado.explicacao}\n\nCoeficiente atual: ${resultado.novoCoeficiente}%`,
+          botoes
+        );
+      }
     } catch (error) {
       Alert.alert(
         "Erro",

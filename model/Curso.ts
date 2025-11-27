@@ -3,6 +3,7 @@ export interface Questao {
   pergunta: string;
   alternativas: Alternativa[];
   explicacao: string;
+  linkDocumentacao?: string;
 }
 
 export interface Alternativa {
@@ -14,7 +15,7 @@ export interface Alternativa {
 export interface PaginaCurso {
   id: string;
   titulo: string;
-  tipo: 'conteudo' | 'exercicio';
+  tipo: "conteudo" | "exercicio";
   conteudo?: string;
   imagem?: string;
   questoes?: Questao[];
@@ -25,7 +26,8 @@ export interface Curso {
   titulo: string;
   descricao: string;
   categoria: string;
-  nivel: 'iniciante' | 'intermediario' | 'avancado';
+  nivel: "iniciante" | "intermediario" | "avancado";
+  versaoLinguagem?: string; // Versão da linguagem (ex: "ES6+", "Python 3.12", "React 18")
   imageUrl?: string;
   paginas: PaginaCurso[];
   coeficienteMaximo: number;
@@ -45,4 +47,5 @@ export interface UsuarioCurso {
   dataInicio: any;
   dataUltimaAtualizacao: any;
   concluido: boolean;
+  tentativasPorQuestao?: { [questaoId: string]: number };
 }

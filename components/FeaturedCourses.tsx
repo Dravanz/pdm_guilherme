@@ -1,8 +1,12 @@
-import { CourseStats, CourseStatsService } from "@/services/CourseStatsService";
-import { ImageService } from "@/services/ImageService";
+import { UserContext } from "@/context/UserProvider";
+import {
+    CourseStats,
+    CourseStatsService,
+} from "@/services/curso/CourseStatsService";
+import { ImageService } from "@/services/image/ImageService";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Card, Chip, Text, useTheme } from "react-native-paper";
 
@@ -18,6 +22,7 @@ export function FeaturedCourses({
   const theme = useTheme();
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const { userFirebase } = useContext<any>(UserContext);
 
   useEffect(() => {
     loadCourseStats();
@@ -42,6 +47,8 @@ export function FeaturedCourses({
       params: { id: cursoId },
     });
   };
+
+
 
   if (loading) {
     return (
@@ -148,11 +155,15 @@ export function FeaturedCourses({
                     🔥 {course.usuariosAtivos} estudando agora
                   </Text>
                 )}
+
+
               </Card.Content>
             </Card>
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+
     </View>
   );
 }
