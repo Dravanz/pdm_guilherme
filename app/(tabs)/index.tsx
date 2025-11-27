@@ -1,35 +1,53 @@
-import React, { useContext, useState, useCallback, useRef } from "react";
-import { SafeAreaView, StyleSheet, View, ScrollView, Dimensions } from "react-native";
-import { spacing, containerPadding } from "@/constants/Layout";
-import { Card, Text, useTheme, ProgressBar, ActivityIndicator } from "react-native-paper";
-import { PieChart } from 'react-native-chart-kit';
-import { useFocusEffect } from '@react-navigation/native';
-import { router } from 'expo-router';
-import { UserContext } from "@/context/UserProvider";
-import { DashboardService, DashboardData } from "@/services/DashboardService";
-import { NewsList } from "@/components/NewsList";
+import { DocumentationList } from "@/components/DocumentationList";
 import { FeaturedCourses } from "@/components/FeaturedCourses";
+import { containerPadding, spacing } from "@/constants/Layout";
+import { UserContext } from "@/context/UserProvider";
+import {
+    DashboardData,
+    DashboardService,
+} from "@/services/shared/DashboardService";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useContext, useRef, useState } from "react";
+import {
+    Dimensions,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    View,
+} from "react-native";
+import { PieChart } from "react-native-chart-kit";
+import {
+    ActivityIndicator,
+    Card,
+    ProgressBar,
+    Text,
+    useTheme,
+} from "react-native-paper";
 
-const screenWidth = Dimensions.get('window').width;
+const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const theme = useTheme();
   const { userFirebase } = useContext<any>(UserContext);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
   const [carregando, setCarregando] = useState(true);
   const dadosCarregados = useRef(false);
-  
+
   const carregarDados = async (forcar = false) => {
     if (!userFirebase) return;
     if (dadosCarregados.current && !forcar) return;
-    
+
     try {
       setCarregando(true);
-      const dados = await DashboardService.obterDadosDashboard(userFirebase.uid);
+      const dados = await DashboardService.obterDadosDashboard(
+        userFirebase.uid
+      );
       setDashboardData(dados);
       dadosCarregados.current = true;
     } catch (error) {
-      console.error('Erro ao carregar dashboard:', error);
+      console.error("Erro ao carregar dashboard:", error);
     } finally {
       setCarregando(false);
     }
@@ -41,8 +59,6 @@ export default function Dashboard() {
     }, [userFirebase])
   );
 
-
-
   const chartConfig = {
     backgroundGradientFrom: theme.colors.surface,
     backgroundGradientTo: theme.colors.surface,
@@ -53,44 +69,63 @@ export default function Dashboard() {
 
   if (carregando) {
     return (
-      <SafeAreaView style={[{ flex: 1, backgroundColor: theme.colors.background }]}>
+      <SafeAreaView
+        style={[{ flex: 1, backgroundColor: theme.colors.background }]}
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
-          <Text style={{ color: theme.colors.onBackground, marginTop: 16 }}>Carregando dashboard...</Text>
+          <Text style={{ color: theme.colors.onBackground, marginTop: 16 }}>
+            Carregando dashboard...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const pieData = dashboardData?.estatisticas?.totalQuestoes && dashboardData.estatisticas.totalQuestoes > 0 ? [
-    {
-      name: 'Corretas',
-      population: dashboardData?.estatisticas?.questoesCorretas || 0,
-      color: '#22c55e',
-      legendFontColor: theme.colors.onBackground,
-      legendFontSize: 12,
-    },
-    {
-      name: 'Erradas',
-      population: dashboardData?.estatisticas?.questoesErradas || 0,
-      color: '#ef4444',
-      legendFontColor: theme.colors.onBackground,
-      legendFontSize: 12,
-    },
-  ] : [];
-  
+  const pieData =
+    dashboardData?.estatisticas?.totalQuestoes &&
+    dashboardData.estatisticas.totalQuestoes > 0
+      ? [
+          {
+            name: "Corretas",
+            population: dashboardData?.estatisticas?.questoesCorretas || 0,
+            color: "#22c55e",
+            legendFontColor: theme.colors.onBackground,
+            legendFontSize: 12,
+          },
+          {
+            name: "Incorretas",
+            population: dashboardData?.estatisticas?.questoesErradas || 0,
+            color: "#ef4444",
+            legendFontColor: theme.colors.onBackground,
+            legendFontSize: 12,
+          },
+        ]
+      : [];
+
   return (
-    <SafeAreaView style={[{ flex: 1, backgroundColor: theme.colors.background }]}>
-      <ScrollView 
+    <SafeAreaView
+      style={[{ flex: 1, backgroundColor: theme.colors.background }]}
+    >
+      <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={[styles.welcomeText, { color: theme.colors.onBackground }]}>
+          <Text
+            variant="headlineMedium"
+            style={[styles.welcomeText, { color: theme.colors.onBackground }]}
+          >
             Olá, {userFirebase?.nome || "Usuário"}! 👋
           </Text>
-          <Text variant="bodyLarge" style={[styles.subtitleText, { color: theme.colors.onSurfaceVariant }]}>
+          <Text
+            variant="bodyLarge"
+            style={[
+              styles.subtitleText,
+              { color: theme.colors.onSurfaceVariant },
+            ]}
+          >
             Continue sua jornada de aprendizado
           </Text>
         </View>
@@ -98,23 +133,65 @@ export default function Dashboard() {
         {/* Estatísticas Rápidas */}
         <View style={styles.section}>
           <View style={styles.statsGrid}>
-            <Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <Card
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
               <Card.Content style={styles.statContent}>
-                <Text variant="headlineMedium" style={[styles.statNumber, { color: '#22c55e' }]}>📚</Text>
-                <Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>
+                <Text
+                  variant="headlineMedium"
+                  style={[styles.statNumber, { color: "#22c55e" }]}
+                >
+                  📚
+                </Text>
+                <Text
+                  variant="titleMedium"
+                  style={[styles.statValue, { color: theme.colors.onSurface }]}
+                >
                   {dashboardData?.estatisticas.cursosCompletos || 0}
                 </Text>
-                <Text variant="bodySmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Concluídos</Text>
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.statLabel,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  Concluídos
+                </Text>
               </Card.Content>
             </Card>
-            
-            <Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+
+            <Card
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
               <Card.Content style={styles.statContent}>
-                <Text variant="headlineMedium" style={[styles.statNumber, { color: '#3b82f6' }]}>🎯</Text>
-                <Text variant="titleMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>
+                <Text
+                  variant="headlineMedium"
+                  style={[styles.statNumber, { color: "#3b82f6" }]}
+                >
+                  🎯
+                </Text>
+                <Text
+                  variant="titleMedium"
+                  style={[styles.statValue, { color: theme.colors.onSurface }]}
+                >
                   {dashboardData?.estatisticas.cursosAtivos || 0}
                 </Text>
-                <Text variant="bodySmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Em Progresso</Text>
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.statLabel,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  Em Progresso
+                </Text>
               </Card.Content>
             </Card>
           </View>
@@ -122,20 +199,46 @@ export default function Dashboard() {
 
         {/* Coeficiente Geral */}
         <View style={styles.section}>
-          <Card style={[styles.performanceCard, { backgroundColor: theme.colors.surface }]}>
+          <Card
+            style={[
+              styles.performanceCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             <Card.Content>
-              <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Desempenho Geral</Text>
+              <Text
+                variant="titleLarge"
+                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+              >
+                Seu Desempenho
+              </Text>
               <View style={styles.progressContainer}>
-                <Text variant="headlineLarge" style={[styles.percentageText, { color: theme.colors.primary }]}>
+                <Text
+                  variant="headlineLarge"
+                  style={[
+                    styles.percentageText,
+                    { color: theme.colors.primary },
+                  ]}
+                >
                   {dashboardData?.estatisticas.coeficienteGeral || 0}%
                 </Text>
-                <ProgressBar 
-                  progress={(dashboardData?.estatisticas.coeficienteGeral || 0) / 100} 
+                <ProgressBar
+                  progress={
+                    (dashboardData?.estatisticas.coeficienteGeral || 0) / 100
+                  }
                   color={theme.colors.primary}
                   style={styles.progressBar}
                 />
-                <Text variant="bodyMedium" style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>
-                  {dashboardData?.estatisticas.questoesCorretas || 0} de {dashboardData?.estatisticas.totalQuestoes || 0} questões corretas
+                <Text
+                  variant="bodyMedium"
+                  style={[
+                    styles.progressText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {dashboardData?.estatisticas.questoesCorretas || 0} de{" "}
+                  {dashboardData?.estatisticas.totalQuestoes || 0} questões
+                  corretas
                 </Text>
               </View>
             </Card.Content>
@@ -145,9 +248,22 @@ export default function Dashboard() {
         {/* Gráfico de Acertos/Erros */}
         {pieData.length > 0 && (
           <View style={styles.section}>
-            <Card style={[styles.chartCard, { backgroundColor: theme.colors.surface }]}>
+            <Card
+              style={[
+                styles.chartCard,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
               <Card.Content>
-                <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Distribuição de Respostas</Text>
+                <Text
+                  variant="titleLarge"
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.colors.onSurface },
+                  ]}
+                >
+                  Distribuição de Respostas
+                </Text>
                 <View style={styles.chartContainer}>
                   <PieChart
                     data={pieData}
@@ -167,7 +283,7 @@ export default function Dashboard() {
 
         {/* Notícias */}
         <View style={styles.section}>
-          <NewsList showHeader={true} horizontal={true} />
+          <DocumentationList showHeader={true} horizontal={true} />
         </View>
 
         {/* Cursos em Destaque */}
@@ -187,28 +303,28 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     marginBottom: spacing.xl,
   },
   welcomeText: {
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   subtitleText: {
-    fontWeight: '400',
+    fontWeight: "400",
   },
   section: {
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: spacing.lg,
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
   },
   statCard: {
@@ -217,47 +333,47 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statContent: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.lg,
   },
   statNumber: {
     marginBottom: 4,
   },
   statValue: {
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   statLabel: {
-    textAlign: 'center',
-    fontWeight: '500',
+    textAlign: "center",
+    fontWeight: "500",
   },
   performanceCard: {
     borderRadius: spacing.md,
     elevation: 2,
   },
   progressContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.lg,
   },
   percentageText: {
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: spacing.md,
   },
   progressBar: {
-    width: '100%',
+    width: "100%",
     height: spacing.sm,
     borderRadius: spacing.xs,
     marginBottom: spacing.sm,
   },
   progressText: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   chartCard: {
     borderRadius: spacing.md,
     elevation: 2,
   },
   chartContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.sm,
   },
   newsCard: {
@@ -266,7 +382,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   newsContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: spacing.md,
   },
   newsImage: {
@@ -279,7 +395,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   newsTitle: {
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: spacing.xs,
   },
   newsDescription: {
@@ -296,7 +412,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   courseImage: {
-    width: '100%',
+    width: "100%",
     height: 100,
     borderTopLeftRadius: spacing.md,
     borderTopRightRadius: spacing.md,
@@ -305,12 +421,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   courseHighlightTitle: {
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: spacing.xs,
   },
   courseCategory: {
     marginBottom: spacing.xs,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   courseDescription: {
     lineHeight: 16,
