@@ -4,12 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import { AuthProvider } from "@/context/AuthProvider";
+import { ThemeProvider } from "@/context/ThemeProvider";
 import { UserProvider } from "@/context/UserProvider";
+import { DashboardService } from "@/services/shared/DashboardService";
 import React from "react";
 import { useColorScheme } from "react-native";
-import { ThemeProvider } from "@/context/ThemeProvider";
-import { DashboardService } from "@/services/DashboardService";
-
 
 export default function RootLayout() {
   const [loaded] = useFonts({
