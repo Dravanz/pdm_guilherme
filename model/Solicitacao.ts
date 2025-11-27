@@ -1,7 +1,6 @@
 export enum TipoSolicitacao {
   Colaboracao = "Colaboracao",
   ExclusaoCurso = "ExclusaoCurso",
-  Documentacao = "Documentacao",
 }
 
 export enum StatusSolicitacao {
@@ -43,24 +42,4 @@ export interface SolicitacaoExclusaoCurso {
   motivoRejeicao?: string;
 }
 
-export interface SolicitacaoDocumentacao {
-  id: string;
-  tipo: TipoSolicitacao.Documentacao;
-  documentacaoId: string;
-  documentacaoTitulo: string;
-  documentacaoLink: string;
-  documentacaoConteudo: string;
-  autorId: string;
-  autorNome: string;
-  status: StatusSolicitacao;
-  dataSolicitacao: any;
-  dataResposta?: any;
-  aprovadoPorId?: string;
-  aprovadoPorNome?: string;
-  motivoRejeicao?: string;
-}
-
-export type Solicitacao =
-  | SolicitacaoColaboracao
-  | SolicitacaoExclusaoCurso
-  | SolicitacaoDocumentacao;
+export type Solicitacao = SolicitacaoColaboracao | SolicitacaoExclusaoCurso;

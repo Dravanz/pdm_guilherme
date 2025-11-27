@@ -16,10 +16,10 @@ import {
   ref,
   uploadBytes,
 } from "firebase/storage";
-import { firestore, storage } from "../../firebase/FirebaseInit";
+import { firestore, storage } from "../firebase/FirebaseInit";
 
-import { Curso } from "../../model/Curso";
-import { SolicitacaoService } from "../shared/SolicitacaoService";
+import { Curso } from "../model/Curso";
+import { SolicitacaoService } from "./SolicitacaoService";
 
 export class ColaboradorCursoService {
   /**

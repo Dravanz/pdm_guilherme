@@ -1,28 +1,21 @@
-import { CursoViewer } from "@/components/CursoViewer";
-import { ThemeContext } from "@/context/ThemeProvider";
-import { UserContext } from "@/context/UserProvider";
-import { Curso, UsuarioCurso } from "@/model/Curso";
-import { CursoService } from "@/services/curso/CursoService";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useContext, useEffect, useState } from "react";
-import { Alert, SafeAreaView, StyleSheet, View } from "react-native";
-import {
-    ActivityIndicator,
-    IconButton,
-    Text,
-    useTheme,
-} from "react-native-paper";
+import React, { useState, useEffect, useContext } from 'react';
+import { SafeAreaView, StyleSheet, Alert, View } from 'react-native';
+import { Text, useTheme, ActivityIndicator, IconButton } from 'react-native-paper';
+import { useLocalSearchParams, router } from 'expo-router';
+import { ThemeContext } from '@/context/ThemeProvider';
+import { UserContext } from '@/context/UserProvider';
+import { CursoViewer } from '@/components/CursoViewer';
+import { Curso, UsuarioCurso } from '@/model/Curso';
+import { CursoService } from '@/services/CursoService';
 
 export default function CursoDetalhes() {
   const { id, modo } = useLocalSearchParams<{ id: string; modo?: string }>();
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
-
+  
   const [curso, setCurso] = useState<Curso | null>(null);
-  const [progressoCurso, setProgressoCurso] = useState<UsuarioCurso | null>(
-    null
-  );
+  const [progressoCurso, setProgressoCurso] = useState<UsuarioCurso | null>(null);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [modoRevisao, setModoRevisao] = useState(false);
@@ -37,7 +30,7 @@ export default function CursoDetalhes() {
       setCarregando(false);
       return;
     }
-
+    
     if (!user) {
       setTimeout(() => carregarCurso(), 1000);
       return;
@@ -45,18 +38,15 @@ export default function CursoDetalhes() {
 
     try {
       setCarregando(true);
-
-      const cursoCarregado = await CursoService.carregarCursoXML(
-        id,
-        user?.urlFoto
-      );
+      
+      const cursoCarregado = await CursoService.carregarCursoXML(id, user?.urlFoto);
       setCurso(cursoCarregado);
 
-      const isRevisao = modo === "revisao";
+      const isRevisao = modo === 'revisao';
       setModoRevisao(isRevisao);
-
+      
       let progresso = await CursoService.obterProgressoCurso(user.uid, id);
-
+      
       if (!progresso && !isRevisao) {
         progresso = await CursoService.iniciarCurso(user.uid, id);
       } else if (isRevisao && !progresso) {
@@ -75,67 +65,65 @@ export default function CursoDetalhes() {
           concluido: false,
         };
       }
-
+      
       setProgressoCurso(progresso);
       setPaginaAtual(0);
       setRespostasRevisao([]);
+
     } catch (error) {
-      console.error("Erro detalhado:", error);
-      Alert.alert("Erro", `Não foi possível carregar o curso: ${error}`);
+      console.error('Erro detalhado:', error);
+      Alert.alert('Erro', `Não foi possível carregar o curso: ${error}`);
       router.back();
     } finally {
       setCarregando(false);
     }
   };
 
-  const responderQuestao = async (
-    questaoId: string,
-    alternativaId: string,
-    correta: boolean,
-    explicacao: string,
-    linkDocumentacao?: string
-  ) => {
+  const responderQuestao = async (questaoId: string, alternativaId: string, correta: boolean, explicacao: string) => {
     if (!progressoCurso) return;
-
+    
     if (modoRevisao) {
       // Modo revisão: não salvar dados, apenas dar feedback
       if (respostasRevisao.includes(questaoId)) {
-        throw new Error("Questão já foi respondida nesta sessão de revisão");
+        throw new Error('Questão já foi respondida nesta sessão de revisão');
       }
-
-      setRespostasRevisao((prev) => [...prev, questaoId]);
-
+      
+      setRespostasRevisao(prev => [...prev, questaoId]);
+      
       return {
         sucesso: correta,
         explicacao: `${explicacao}\n\n(Modo Revisão - Dados não salvos)`,
         novoCoeficiente: 0,
       };
     }
-
-    // Modo normal
-    // A verificação de "já respondida" agora é feita dentro do CursoService.registrarResposta
-    // ou podemos manter aqui se quisermos bloquear na UI antes de chamar o serviço.
-    // Mas para permitir múltiplas tentativas (para o decaimento), NÃO devemos bloquear se já foi respondida ERRADA.
-    // Se foi respondida CORRETA, aí sim talvez bloquear.
     
-    if (progressoCurso.questoesCorretas.includes(questaoId)) {
-       throw new Error("Você já acertou esta questão!");
+    // Modo normal
+    if (progressoCurso.questoesRespondidas.includes(questaoId)) {
+      throw new Error('Questão já foi respondida');
     }
 
-    // Usar o novo método do serviço que lida com tentativas e decaimento
-    const { novoCoeficiente, usuarioCursoAtualizado } = await CursoService.registrarResposta(
-      progressoCurso,
-      questaoId,
-      correta,
-      curso?.categoria ? [curso.categoria] : [] // Tags básicas
-    );
+    const novoProgresso = {
+      ...progressoCurso,
+      questoesRespondidas: [...progressoCurso.questoesRespondidas, questaoId],
+      questoesCorretas: correta 
+        ? [...progressoCurso.questoesCorretas, questaoId]
+        : progressoCurso.questoesCorretas,
+      questoesErradas: !correta
+        ? [...(progressoCurso.questoesErradas || []), questaoId]
+        : progressoCurso.questoesErradas || [],
+    };
 
-    setProgressoCurso(usuarioCursoAtualizado);
+    const totalRespondidas = novoProgresso.questoesRespondidas.length;
+    const totalCorretas = novoProgresso.questoesCorretas.length;
+    novoProgresso.coeficiente = Math.round((totalCorretas / totalRespondidas) * 100);
+
+    setProgressoCurso(novoProgresso);
+    await CursoService.salvarProgresso(novoProgresso);
 
     return {
       sucesso: correta,
       explicacao,
-      novoCoeficiente,
+      novoCoeficiente: novoProgresso.coeficiente,
     };
   };
 
@@ -147,48 +135,42 @@ export default function CursoDetalhes() {
     } else {
       if (modoRevisao) {
         Alert.alert(
-          "Revisão Concluída!",
-          "Você terminou de revisar o curso. Esperamos que tenha refrescado sua memória!",
-          [{ text: "OK", onPress: () => router.back() }]
+          'Revisão Concluída!',
+          'Você terminou de revisar o curso. Esperamos que tenha refrescado sua memória!',
+          [{ text: 'OK', onPress: () => router.back() }]
         );
         return;
       }
-
-      const resultado = await CursoService.verificarConclusaoCurso(
-        progressoCurso,
-        curso
-      );
-
+      
+      const resultado = await CursoService.verificarConclusaoCurso(progressoCurso, curso);
+      
       if (resultado.podeCompletar) {
         let mensagem = `Parabéns! Você concluiu o curso com ${resultado.percentualAcerto}% de acerto.`;
-
+        
         if (resultado.novasBadges && resultado.novasBadges.length > 0) {
-          const badgesTexto = resultado.novasBadges
-            .map((b) => `${b.icone} ${b.nome}`)
-            .join("\n");
+          const badgesTexto = resultado.novasBadges.map(b => `${b.icone} ${b.nome}`).join('\n');
           mensagem += `\n\nNovas badges conquistadas:\n${badgesTexto}`;
         }
-
-        Alert.alert("Curso Concluído!", mensagem, [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        
+        Alert.alert(
+          'Curso Concluído!',
+          mensagem,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
       } else {
         Alert.alert(
-          "Curso Não Concluído",
+          'Curso Não Concluído',
           `Você precisa de pelo menos 70% de acerto. Atual: ${resultado.percentualAcerto}%.\n\nRefazer questões erradas?`,
           [
-            { text: "Não", onPress: () => router.back() },
-            {
-              text: "Sim",
+            { text: 'Não', onPress: () => router.back() },
+            { 
+              text: 'Sim', 
               onPress: () => {
-                const novoProgresso = CursoService.reiniciarQuestoes(
-                  progressoCurso,
-                  resultado.questoesErradas
-                );
+                const novoProgresso = CursoService.reiniciarQuestoes(progressoCurso, resultado.questoesErradas);
                 setProgressoCurso(novoProgresso);
                 setPaginaAtual(0);
-              },
-            },
+              }
+            }
           ]
         );
       }
@@ -197,21 +179,13 @@ export default function CursoDetalhes() {
 
   if (carregando) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" style={styles.loading} />
-        <Text style={{ textAlign: "center", color: theme.colors.onBackground }}>
+        <Text style={{ textAlign: 'center', color: theme.colors.onBackground }}>
           Carregando curso... {id}
         </Text>
-        <Text
-          style={{
-            textAlign: "center",
-            color: theme.colors.onBackground,
-            marginTop: 10,
-          }}
-        >
-          Usuário: {user?.nome || "Carregando..."}
+        <Text style={{ textAlign: 'center', color: theme.colors.onBackground, marginTop: 10 }}>
+          Usuário: {user?.nome || 'Carregando...'}
         </Text>
       </SafeAreaView>
     );
@@ -219,10 +193,8 @@ export default function CursoDetalhes() {
 
   if (!curso || !progressoCurso) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
-        <Text style={{ textAlign: "center", color: theme.colors.onBackground }}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Text style={{ textAlign: 'center', color: theme.colors.onBackground }}>
           Curso não encontrado
         </Text>
       </SafeAreaView>
@@ -233,13 +205,11 @@ export default function CursoDetalhes() {
     if (!modoRevisao && progressoCurso) {
       await CursoService.salvarProgresso(progressoCurso);
     }
-    router.push("/(tabs)");
+    router.push('/(tabs)');
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
         <IconButton
           icon="arrow-left"
@@ -247,22 +217,16 @@ export default function CursoDetalhes() {
           onPress={voltarParaDashboard}
           iconColor={theme.colors.onBackground}
         />
-        <Text
-          variant="titleLarge"
-          style={[styles.titulo, { color: theme.colors.onBackground }]}
-        >
-          {curso.titulo} {modoRevisao ? "(Revisão)" : ""} - Página{" "}
-          {paginaAtual + 1}/{curso.paginas.length}
+        <Text variant="titleLarge" style={[styles.titulo, { color: theme.colors.onBackground }]}>
+          {curso.titulo} {modoRevisao ? '(Revisão)' : ''} - Página {paginaAtual + 1}/{curso.paginas.length}
         </Text>
         <View style={{ width: 48 }} />
       </View>
-
+      
       <CursoViewer
         pagina={curso.paginas[paginaAtual]}
         onProximaPagina={proximaPagina}
-        questoesRespondidas={
-          modoRevisao ? respostasRevisao : progressoCurso.questoesRespondidas
-        }
+        questoesRespondidas={modoRevisao ? respostasRevisao : progressoCurso.questoesRespondidas}
         onResponderQuestao={responderQuestao}
       />
     </SafeAreaView>
@@ -275,18 +239,18 @@ const styles = StyleSheet.create({
   },
   loading: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
   titulo: {
     flex: 1,
-    textAlign: "center",
-    fontWeight: "bold",
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });

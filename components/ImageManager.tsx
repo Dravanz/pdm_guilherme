@@ -1,23 +1,23 @@
-import { ImageService } from "@/services/image/ImageService";
-import { Image } from "expo-image";
-import React, { useState } from "react";
-import { Alert, StyleSheet } from "react-native";
-import { Button, Card, Text, useTheme } from "react-native-paper";
+import React, { useState } from 'react';
+import { StyleSheet, Alert } from 'react-native';
+import { Button, Card, Text, useTheme } from 'react-native-paper';
+import { Image } from 'expo-image';
+import { ImageService } from '@/services/ImageService';
 
 interface ImageManagerProps {
   courseId: string;
   currentImageUrl?: string;
   onImageUpdate: (newUrl: string) => void;
-  type: "course" | "content";
+  type: 'course' | 'content';
   contentId?: string;
 }
 
-export function ImageManager({
-  courseId,
-  currentImageUrl,
-  onImageUpdate,
-  type,
-  contentId,
+export function ImageManager({ 
+  courseId, 
+  currentImageUrl, 
+  onImageUpdate, 
+  type, 
+  contentId 
 }: ImageManagerProps) {
   const theme = useTheme();
   const [uploading, setUploading] = useState(false);
@@ -28,24 +28,18 @@ export function ImageManager({
       if (!imageUri) return;
 
       setUploading(true);
-
+      
       let downloadUrl: string;
-      if (type === "course") {
-        downloadUrl = await ImageService.uploadImageWithPattern(
-          `${courseId}-cover`,
-          imageUri
-        );
+      if (type === 'course') {
+        downloadUrl = await ImageService.uploadImageWithPattern(`${courseId}-cover`, imageUri);
       } else {
-        downloadUrl = await ImageService.uploadImageWithPattern(
-          `${courseId}-${contentId}`,
-          imageUri
-        );
+        downloadUrl = await ImageService.uploadImageWithPattern(`${courseId}-${contentId}`, imageUri);
       }
-
+      
       onImageUpdate(downloadUrl);
-      Alert.alert("Sucesso", "Imagem atualizada com sucesso!");
+      Alert.alert('Sucesso', 'Imagem atualizada com sucesso!');
     } catch (error) {
-      Alert.alert("Erro", "Falha ao fazer upload da imagem");
+      Alert.alert('Erro', 'Falha ao fazer upload da imagem');
     } finally {
       setUploading(false);
     }
@@ -55,9 +49,9 @@ export function ImageManager({
     <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       <Card.Content>
         <Text variant="titleMedium" style={{ marginBottom: 12 }}>
-          {type === "course" ? "Imagem do Curso" : "Imagem do Conteúdo"}
+          {type === 'course' ? 'Imagem do Curso' : 'Imagem do Conteúdo'}
         </Text>
-
+        
         {currentImageUrl && (
           <Image
             source={{ uri: currentImageUrl }}
@@ -65,7 +59,7 @@ export function ImageManager({
             contentFit="cover"
           />
         )}
-
+        
         <Button
           mode="contained"
           onPress={handleImagePick}
@@ -73,7 +67,7 @@ export function ImageManager({
           disabled={uploading}
           style={styles.button}
         >
-          {currentImageUrl ? "Alterar Imagem" : "Adicionar Imagem"}
+          {currentImageUrl ? 'Alterar Imagem' : 'Adicionar Imagem'}
         </Button>
       </Card.Content>
     </Card>
@@ -85,7 +79,7 @@ const styles = StyleSheet.create({
     margin: 16,
   },
   image: {
-    width: "100%",
+    width: '100%',
     height: 200,
     borderRadius: 8,
     marginBottom: 12,

@@ -124,25 +124,6 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null; // Permitir que qualquer usuário autenticado atualize o cache
     }
-    
-    // Regras para documentações
-    match /documentacoes/{docId} {
-      // Qualquer usuário autenticado pode ler documentações
-      allow read: if request.auth != null;
-      
-      // Colaboradores e admins podem criar documentações
-      allow create: if request.auth != null && 
-        isColaboradorOrAdmin() &&
-        request.resource.data.autorId == request.auth.uid;
-      
-      // Apenas o autor ou admin pode atualizar
-      allow update: if request.auth != null && 
-        (resource.data.autorId == request.auth.uid || isAdmin());
-      
-      // Apenas o autor ou admin pode excluir
-      allow delete: if request.auth != null && 
-        (resource.data.autorId == request.auth.uid || isAdmin());
-    }
   }
 }
 `;
@@ -278,4 +259,3 @@ service firebase.storage {
 // Elas NÃO devem ser coladas nas Firestore Rules
 
 export { firestoreRules, storageRules };
-

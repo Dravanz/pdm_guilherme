@@ -1,50 +1,36 @@
-import { UsuarioCurso } from "@/model/Curso";
-import { CursoService } from "@/services/curso/CursoService";
-import React, { createContext, useContext, useState } from "react";
-import { UserContext } from "./UserProvider";
+import React, { createContext, useState, useContext } from 'react';
+import { UsuarioCurso } from '@/model/Curso';
+import { CursoService } from '@/services/CursoService';
+import { UserContext } from './UserProvider';
 
 interface CursoContextType {
   progressoCurso: UsuarioCurso | null;
   setProgressoCurso: (progresso: UsuarioCurso) => void;
-  responderQuestao: (
-    questaoId: string,
-    alternativaId: string,
-    correta: boolean,
-    explicacao: string
-  ) => Promise<any>;
+  responderQuestao: (questaoId: string, alternativaId: string, correta: boolean, explicacao: string) => Promise<any>;
   salvarProgresso: () => Promise<void>;
 }
 
-export const CursoContext = createContext<CursoContextType>(
-  {} as CursoContextType
-);
+export const CursoContext = createContext<CursoContextType>({} as CursoContextType);
 
 export const CursoProvider = ({ children }: any) => {
-  const [progressoCurso, setProgressoCurso] = useState<UsuarioCurso | null>(
-    null
-  );
+  const [progressoCurso, setProgressoCurso] = useState<UsuarioCurso | null>(null);
   const { userFirebase } = useContext<any>(UserContext);
 
-  const responderQuestao = async (
-    questaoId: string,
-    alternativaId: string,
-    correta: boolean,
-    explicacao: string
-  ) => {
+  const responderQuestao = async (questaoId: string, alternativaId: string, correta: boolean, explicacao: string) => {
     if (!progressoCurso || !userFirebase) {
-      throw new Error("Progresso ou usuário não encontrado");
+      throw new Error('Progresso ou usuário não encontrado');
     }
 
     // Verificar se já foi respondida
     if (progressoCurso.questoesRespondidas.includes(questaoId)) {
-      throw new Error("Questão já foi respondida");
+      throw new Error('Questão já foi respondida');
     }
 
     // Atualizar progresso local
     const novoProgresso = {
       ...progressoCurso,
       questoesRespondidas: [...progressoCurso.questoesRespondidas, questaoId],
-      questoesCorretas: correta
+      questoesCorretas: correta 
         ? [...progressoCurso.questoesCorretas, questaoId]
         : progressoCurso.questoesCorretas,
       questoesErradas: !correta
@@ -55,9 +41,7 @@ export const CursoProvider = ({ children }: any) => {
     // Calcular coeficiente
     const totalRespondidas = novoProgresso.questoesRespondidas.length;
     const totalCorretas = novoProgresso.questoesCorretas.length;
-    novoProgresso.coeficiente = Math.round(
-      (totalCorretas / totalRespondidas) * 100
-    );
+    novoProgresso.coeficiente = Math.round((totalCorretas / totalRespondidas) * 100);
 
     setProgressoCurso(novoProgresso);
 
@@ -78,14 +62,12 @@ export const CursoProvider = ({ children }: any) => {
   };
 
   return (
-    <CursoContext.Provider
-      value={{
-        progressoCurso,
-        setProgressoCurso,
-        responderQuestao,
-        salvarProgresso,
-      }}
-    >
+    <CursoContext.Provider value={{
+      progressoCurso,
+      setProgressoCurso,
+      responderQuestao,
+      salvarProgresso,
+    }}>
       {children}
     </CursoContext.Provider>
   );

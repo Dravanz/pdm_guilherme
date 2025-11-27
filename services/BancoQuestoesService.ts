@@ -1,7 +1,7 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { firestore } from "../../firebase/FirebaseInit";
-import { QuestaoFirestore } from "../../model/BancoQuestoes";
-import { Questao } from "../../model/Curso";
+import { firestore } from "../firebase/FirebaseInit";
+import { QuestaoFirestore } from "../model/BancoQuestoes";
+import { Questao } from "../model/Curso";
 
 export class BancoQuestoesService {
   static async obterQuestao(questaoId: string): Promise<Questao | null> {

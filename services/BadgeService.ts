@@ -8,26 +8,30 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import { firestore } from "../../firebase/FirebaseInit";
-import { Badge, BadgeRequisito } from "../../model/Badge";
+import { firestore } from "../firebase/FirebaseInit";
+import { Badge, BadgeRequisito, BADGES_DISPONIVEIS } from "../model/Badge";
 
 export class BadgeService {
   /**
-   * Buscar todas as badges do Firestore
+   * Buscar todas as badges (locais + Firestore)
    */
   static async obterTodasBadges(): Promise<Badge[]> {
     try {
+      // Badges locais
+      const badgesLocais = [...BADGES_DISPONIVEIS];
+
+      // Badges do Firestore
       const badgesRef = collection(firestore, "badges");
       const snapshot = await getDocs(badgesRef);
-      const badges = snapshot.docs.map((doc) => ({
+      const badgesFirestore = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Badge[];
 
-      return badges;
+      return [...badgesLocais, ...badgesFirestore];
     } catch (error) {
       console.error("Erro ao obter badges:", error);
-      return [];
+      return BADGES_DISPONIVEIS;
     }
   }
 
@@ -209,16 +213,13 @@ export class BadgeService {
         return false;
       }
 
-      // Buscar badge "execlogger" do Firestore
-      const badgeRef = doc(firestore, "badges", "execlogger");
-      const badgeSnap = await getDoc(badgeRef);
+      // Buscar badge "execlogger" local
+      const badge = BADGES_DISPONIVEIS.find((b) => b.id === "execlogger");
 
-      if (!badgeSnap.exists()) {
-        console.error('Badge "execlogger" não encontrada no Firestore');
+      if (!badge) {
+        console.error('Badge "execlogger" não encontrada');
         return false;
       }
-
-      const badge = { id: badgeSnap.id, ...badgeSnap.data() } as Badge;
 
       // Conceder badge
       await this.concederBadge(usuarioId, badge);
@@ -245,11 +246,8 @@ export class BadgeService {
 
       const perfil = usuarioSnap.data().perfil;
 
-      // Buscar todas as badges do Firestore
-      const todasBadges = await this.obterTodasBadges();
-
       // Verificar badges de perfil específico
-      const badgesPerfil = todasBadges.filter(
+      const badgesPerfil = BADGES_DISPONIVEIS.filter(
         (b) =>
           b.requisitos.tipo === "perfil_especifico" &&
           b.requisitos.perfil === perfil
@@ -329,11 +327,8 @@ export class BadgeService {
     try {
       const jaTemBadge = await this.usuarioTemBadge(usuarioId, badgeId);
       if (!jaTemBadge) {
-        const badgeRef = doc(firestore, "badges", badgeId);
-        const badgeSnap = await getDoc(badgeRef);
-
-        if (badgeSnap.exists()) {
-          const badge = { id: badgeSnap.id, ...badgeSnap.data() } as Badge;
+        const badge = BADGES_DISPONIVEIS.find((b) => b.id === badgeId);
+        if (badge) {
           await this.concederBadge(usuarioId, badge);
         }
       }

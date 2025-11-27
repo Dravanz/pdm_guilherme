@@ -2,11 +2,11 @@ import { CourseConfig } from "@/config/CourseConfig";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Curso } from "@/model/Curso";
-import { CursoService } from "@/services/curso/CursoService";
-import { ImageService } from "@/services/image/ImageService";
+import { CursoService } from "@/services/CursoService";
+import { ImageService } from "@/services/ImageService";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { Button, Card, Text, useTheme } from "react-native-paper";
 
@@ -24,10 +24,30 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
   );
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
 
-  const carregarCursos = useCallback(async () => {
+  useEffect(() => {
+    carregarCursos();
+  }, []);
+
+  useEffect(() => {
+    if (user && cursosDisponiveis.length > 0) {
+      verificarStatusCursos();
+    }
+  }, [user, cursosDisponiveis]);
+
+  const carregarCursos = async () => {
     try {
       // Buscar cursos de ambas as fontes (XML + Firestore)
       const todosCursos = await CursoService.listarCursos();
+
+      console.log(`📚 Total de cursos carregados: ${todosCursos.length}`);
+      console.log(
+        "Cursos:",
+        todosCursos.map((c) => ({
+          id: c.id,
+          titulo: c.titulo,
+          fonte: (c as any).fonte,
+        }))
+      );
 
       // Adicionar cursos do Firestore ao CourseConfig dinamicamente
       todosCursos.forEach((curso) => {
@@ -71,11 +91,9 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
       const limitedCourses = limit ? courses.slice(0, limit) : courses;
       setCursosDisponiveis(limitedCourses);
     }
-  }, [limit]);
+  };
 
-  const verificarStatusCursos = useCallback(async () => {
-    if (!user?.uid) return;
-
+  const verificarStatusCursos = async () => {
     const status: { [key: string]: boolean } = {};
 
     for (const curso of cursosDisponiveis) {
@@ -87,17 +105,7 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
     }
 
     setCursosStatus(status);
-  }, [user, cursosDisponiveis]);
-
-  useEffect(() => {
-    carregarCursos();
-  }, [carregarCursos]);
-
-  useEffect(() => {
-    if (user && cursosDisponiveis.length > 0) {
-      verificarStatusCursos();
-    }
-  }, [user, cursosDisponiveis, verificarStatusCursos]);
+  };
 
   const iniciarCurso = (curso: Curso) => {
     router.push({
@@ -139,7 +147,7 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
               item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)
             } • ${
               item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)
-            }${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
+            }`}
             titleStyle={{ color: theme.colors.onSurface }}
             subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />

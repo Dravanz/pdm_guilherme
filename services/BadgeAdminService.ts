@@ -9,8 +9,8 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { firestore } from "../../firebase/FirebaseInit";
-import { Badge } from "../../model/Badge";
+import { firestore } from "../firebase/FirebaseInit";
+import { Badge } from "../model/Badge";
 
 export class BadgeAdminService {
   /**

@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { firestore, storage } from "@/firebase/FirebaseInit";
 import { Usuario } from "@/model/Usuario";
-import { BadgeService } from "@/services/badge/BadgeService";
-import { ImageCacheService } from "@/services/image/ImageCacheService";
-import { DecayService } from "@/services/shared/DecayService";
+import { BadgeService } from "@/services/BadgeService";
+import { DecayService } from "@/services/DecayService";
+import { ImageCacheService } from "@/services/ImageCacheService";
 import * as ImageManipulator from "expo-image-manipulator";
 import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
