@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Card, Text, useTheme, Chip } from 'react-native-paper';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { CourseStatsService, CourseStats } from '@/services/CourseStatsService';
-import { ImageService } from '@/services/ImageService';
+import { CourseStats, CourseStatsService } from "@/services/CourseStatsService";
+import { ImageService } from "@/services/ImageService";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Card, Chip, Text, useTheme } from "react-native-paper";
 
 interface FeaturedCoursesProps {
   showHeader?: boolean;
   limit?: number;
 }
 
-export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCoursesProps) {
+export function FeaturedCourses({
+  showHeader = true,
+  limit = 3,
+}: FeaturedCoursesProps) {
   const theme = useTheme();
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +28,7 @@ export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCourse
       const stats = await CourseStatsService.obterEstatisticasCursos();
       setCourseStats(limit ? stats.slice(0, limit) : stats);
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
+      console.error("Erro ao carregar estatísticas:", error);
       // Em caso de erro, usar dados vazios
       setCourseStats([]);
     } finally {
@@ -36,7 +39,7 @@ export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCourse
   const navegarParaCurso = (cursoId: string) => {
     router.push({
       pathname: "/curso/[id]",
-      params: { id: cursoId }
+      params: { id: cursoId },
     });
   };
 
@@ -44,11 +47,20 @@ export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCourse
     return (
       <View>
         {showHeader && (
-          <Text variant="headlineMedium" style={[styles.header, { color: theme.colors.onBackground }]}>
+          <Text
+            variant="headlineMedium"
+            style={[styles.header, { color: theme.colors.onBackground }]}
+          >
             🌟 Cursos em Destaque
           </Text>
         )}
-        <Text style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', padding: 20 }}>
+        <Text
+          style={{
+            color: theme.colors.onSurfaceVariant,
+            textAlign: "center",
+            padding: 20,
+          }}
+        >
           Carregando cursos...
         </Text>
       </View>
@@ -58,53 +70,81 @@ export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCourse
   return (
     <View>
       {showHeader && (
-        <Text variant="headlineMedium" style={[styles.header, { color: theme.colors.onBackground }]}>
+        <Text
+          variant="headlineMedium"
+          style={[styles.header, { color: theme.colors.onBackground }]}
+        >
           🌟 Cursos em Destaque
         </Text>
       )}
-      
-      <ScrollView 
-        horizontal 
+
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.container}
       >
         {courseStats.map((course) => (
-          <TouchableOpacity key={course.cursoId} onPress={() => navegarParaCurso(course.cursoId)}>
-            <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity
+            key={course.cursoId}
+            onPress={() => navegarParaCurso(course.cursoId)}
+          >
+            <Card
+              style={[styles.card, { backgroundColor: theme.colors.surface }]}
+            >
               {course.imageUrl && (
                 <Image
-                  source={{ uri: ImageService.getImageUrl(course.imageUrl) }}
+                  source={{
+                    uri: course.imageUrl.startsWith("http")
+                      ? course.imageUrl
+                      : ImageService.getImageUrl(course.imageUrl),
+                  }}
                   style={styles.courseImage}
                   contentFit="contain"
                   placeholder="https://via.placeholder.com/200x100/cccccc/666666?text=Curso"
                 />
               )}
-              
+
               <Card.Content style={styles.content}>
-                <Text variant="titleMedium" style={[styles.title, { color: theme.colors.onSurface }]} numberOfLines={2}>
+                <Text
+                  variant="titleMedium"
+                  style={[styles.title, { color: theme.colors.onSurface }]}
+                  numberOfLines={2}
+                >
                   {course.titulo}
                 </Text>
-                
+
                 <View style={styles.statsContainer}>
-                  <Chip 
-                    icon="account-group" 
-                    style={[styles.chip, { backgroundColor: theme.colors.primaryContainer }]}
+                  <Chip
+                    icon="account-group"
+                    style={[
+                      styles.chip,
+                      { backgroundColor: theme.colors.primaryContainer },
+                    ]}
                     textStyle={{ fontSize: 12 }}
                   >
                     {course.totalUsuarios} usuários
                   </Chip>
-                  
-                  <Chip 
-                    icon="check-circle" 
-                    style={[styles.chip, { backgroundColor: theme.colors.secondaryContainer }]}
+
+                  <Chip
+                    icon="check-circle"
+                    style={[
+                      styles.chip,
+                      { backgroundColor: theme.colors.secondaryContainer },
+                    ]}
                     textStyle={{ fontSize: 12 }}
                   >
                     {course.usuariosConcluidos} concluídos
                   </Chip>
                 </View>
-                
+
                 {course.usuariosAtivos > 0 && (
-                  <Text variant="bodySmall" style={[styles.activeUsers, { color: theme.colors.primary }]}>
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.activeUsers,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
                     🔥 {course.usuariosAtivos} estudando agora
                   </Text>
                 )}
@@ -119,9 +159,9 @@ export function FeaturedCourses({ showHeader = true, limit = 3 }: FeaturedCourse
 
 const styles = StyleSheet.create({
   header: {
-    textAlign: 'center',
+    textAlign: "center",
     marginVertical: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   container: {
     paddingHorizontal: 4,
@@ -134,7 +174,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   courseImage: {
-    width: '100%',
+    width: "100%",
     height: 80,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
@@ -144,13 +184,13 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   title: {
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
     minHeight: 40,
   },
   statsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 4,
     marginBottom: 8,
   },
@@ -158,8 +198,8 @@ const styles = StyleSheet.create({
     height: 28,
   },
   activeUsers: {
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     marginTop: 4,
   },
 });

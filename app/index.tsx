@@ -7,13 +7,6 @@ import { Text, useTheme } from "react-native-paper";
 import { Rect, Svg, Text as SvgText } from "react-native-svg";
 import * as Notifications from 'expo-notifications';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-	shouldShowAlert: true,
-	shouldPlaySound: true,
-	shouldSetBadge: false,
-  }),
-});
 	
 export default function Preload() {
 	const theme = useTheme();

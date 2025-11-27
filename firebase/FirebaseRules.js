@@ -4,20 +4,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Regras para usuários
-    match /usuarios/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Função auxiliar para verificar perfil do usuário
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil;
     }
     
-    // Regras para cursos (apenas leitura para usuários autenticados)
+    function isAdmin() {
+      return getUserProfile() == 'Admin';
+    }
+    
+    function isColaborador() {
+      return getUserProfile() == 'Colaborador';
+    }
+    
+    function isColaboradorOrAdmin() {
+      return isColaborador() || isAdmin();
+    }
+    
+    // Regras para usuários
+    match /usuarios/{userId} {
+      // Permitir leitura do próprio perfil
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir leitura de dados públicos para ranking e estatísticas
+      allow get: if request.auth != null;
+      
+      // Permitir queries (list) apenas para campos públicos necessários ao ranking
+      allow list: if request.auth != null;
+      
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Apenas admins podem alterar perfil de usuários
+      allow update: if request.auth != null && 
+        (request.auth.uid == userId || isAdmin()) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['perfil']) || isAdmin());
+    }
+    
+    // Regras para cursos
     match /cursos/{cursoId} {
       allow read: if request.auth != null;
-      allow write: if false; // Apenas admins podem criar/editar cursos
+      allow create: if request.auth != null && isColaboradorOrAdmin();
+      allow update: if request.auth != null && isColaboradorOrAdmin();
+      allow delete: if request.auth != null && isAdmin();
     }
     
     // Regras para progresso dos usuários nos cursos
     match /usuariosCursos/{usuarioCursoId} {
-      allow read, write: if request.auth != null && 
+      // Permitir leitura para queries agregadas (estatísticas) e leitura própria
+      allow read: if request.auth != null;
+      
+      // Apenas o próprio usuário pode escrever
+      allow write: if request.auth != null && 
         resource.data.usuarioId == request.auth.uid;
       
       // Validações para criação/atualização
@@ -46,103 +83,179 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false; // Gerado automaticamente por Cloud Functions
     }
+    
+    // Regras para solicitações
+    match /solicitacoes/{solicitacaoId} {
+      // Usuários autenticados podem criar solicitações de colaboração
+      // Colaboradores podem criar solicitações de exclusão de cursos
+      allow create: if request.auth != null && 
+        (request.resource.data.usuarioId == request.auth.uid ||
+         (isColaboradorOrAdmin() && request.resource.data.colaboradorId == request.auth.uid));
+      
+      // Apenas admins podem ler e atualizar solicitações
+      allow read, update: if request.auth != null && isAdmin();
+      
+      // Usuários podem ler suas próprias solicitações
+      allow read: if request.auth != null && 
+        (resource.data.usuarioId == request.auth.uid ||
+         resource.data.colaboradorId == request.auth.uid);
+    }
+    
+    // Regras para banco de questões
+    match /questoes/{questaoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isColaboradorOrAdmin();
+    }
+    
+    // Regras para badges (catálogo de badges do sistema)
+    match /badges/{badgeId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+    
+    // Regras para badges dos usuários
+    match /usuariosBadges/{badgeId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // Permitir que o sistema conceda badges
+    }
+    
+    // Regras para sistema (cache de ranking, configurações)
+    match /sistema/{documentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // Permitir que qualquer usuário autenticado atualize o cache
+    }
   }
 }
 `;
 
-// Funções Cloud Functions para manter integridade dos dados
-const cloudFunctions = `
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp();
-
-const db = admin.firestore();
-
-// Função para atualizar coeficiente total quando usuário responde questão
-exports.atualizarCoeficienteTotal = functions.firestore
-  .document('usuariosCursos/{usuarioCursoId}')
-  .onUpdate(async (change, context) => {
-    const novosDados = change.after.data();
-    const usuarioId = novosDados.usuarioId;
+// Regras de segurança do Firebase Storage
+const storageRules = `
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
     
-    // Buscar todos os cursos do usuário
-    const usuariosCursosRef = db.collection('usuariosCursos');
-    const snapshot = await usuariosCursosRef
-      .where('usuarioId', '==', usuarioId)
-      .get();
-    
-    let coeficienteTotal = 0;
-    let totalCursos = 0;
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      coeficienteTotal += data.coeficiente;
-      totalCursos++;
-    });
-    
-    const coeficienteMedio = totalCursos > 0 ? Math.round(coeficienteTotal / totalCursos) : 0;
-    
-    // Atualizar usuário
-    await db.collection('usuarios').doc(usuarioId).update({
-      coeficienteConhecimento: coeficienteMedio
-    });
-  });
-
-// Função para gerar ranking automaticamente
-exports.gerarRanking = functions.pubsub
-  .schedule('every 24 hours')
-  .onRun(async (context) => {
-    const usuariosRef = db.collection('usuarios');
-    const snapshot = await usuariosRef
-      .orderBy('coeficienteConhecimento', 'desc')
-      .limit(100)
-      .get();
-    
-    const ranking = [];
-    let posicao = 1;
-    
-    snapshot.forEach(doc => {
-      const usuario = doc.data();
-      ranking.push({
-        posicao,
-        usuarioId: doc.id,
-        nome: usuario.nome,
-        coeficiente: usuario.coeficienteConhecimento || 0,
-        urlFoto: usuario.urlFoto
-      });
-      posicao++;
-    });
-    
-    // Salvar ranking
-    await db.collection('ranking').doc('global').set({
-      ranking,
-      dataAtualizacao: admin.firestore.FieldValue.serverTimestamp()
-    });
-  });
-
-// Função para validar integridade dos dados
-exports.validarIntegridade = functions.firestore
-  .document('usuariosCursos/{usuarioCursoId}')
-  .onWrite(async (change, context) => {
-    if (!change.after.exists) return;
-    
-    const dados = change.after.data();
-    
-    // Validações de integridade
-    if (dados.questoesCorretas.length > dados.questoesRespondidas.length) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Número de questões corretas não pode ser maior que respondidas'
-      );
+    // Função auxiliar para verificar perfil do usuário
+    function getUserProfile() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.perfil;
     }
     
-    if (dados.coeficiente < 0 || dados.coeficiente > 100) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Coeficiente deve estar entre 0 e 100'
-      );
+    function isAdmin() {
+      return getUserProfile() == 'Admin';
     }
-  });
+    
+    function isColaborador() {
+      return getUserProfile() == 'Colaborador';
+    }
+    
+    function isColaboradorOrAdmin() {
+      return isColaborador() || isAdmin();
+    }
+    
+    // Validações de arquivo
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isXML() {
+      return request.resource.contentType == 'text/xml' || 
+             request.resource.contentType == 'application/xml';
+    }
+    
+    function isValidSize() {
+      return request.resource.size < 5 * 1024 * 1024; // 5MB
+    }
+    
+    // Fotos de perfil dos usuários
+    match /usuarios/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                     request.auth.uid == userId && 
+                     isImage() && 
+                     isValidSize();
+    }
+    
+    // Imagens dos cursos (caminho antigo)
+    match /courses/{fileName} {
+      // Permitir leitura para todos usuários autenticados
+      allow read: if request.auth != null;
+      
+      // Apenas colaboradores e admins podem fazer upload de imagens de cursos
+      allow write: if request.auth != null && 
+                     isColaboradorOrAdmin() && 
+                     (isImage() || isXML()) && 
+                     isValidSize();
+      
+      // Permitir listagem para admins (necessário para operações de exclusão)
+      allow list: if request.auth != null && isAdmin();
+      
+      // Apenas admins podem excluir
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Imagens dos cursos (novo caminho padronizado com subpastas)
+    match /imagens/cursos/{cursoId}/{fileName} {
+      // Permitir leitura para todos usuários autenticados
+      allow read: if request.auth != null;
+      
+      // Apenas colaboradores e admins podem fazer upload de imagens de cursos
+      // Permitir upload em pastas temporárias (temp-*) durante criação
+      allow write: if request.auth != null && 
+                     isColaboradorOrAdmin() && 
+                     isImage() && 
+                     isValidSize();
+      
+      // Permitir listagem (list) da pasta para admins (necessário para excluir)
+      allow list: if request.auth != null && isAdmin();
+      
+      // Apenas admins podem excluir
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Imagens dos cursos (caminho direto sem subpastas - LEITURA PÚBLICA)
+    match /imagens/cursos/{fileName} {
+      // Permitir leitura pública (sem autenticação necessária)
+      allow read: if true;
+      
+      // Apenas colaboradores e admins podem fazer upload
+      allow write: if request.auth != null && 
+                     isColaboradorOrAdmin() && 
+                     isImage() && 
+                     isValidSize();
+      
+      // Permitir listagem para admins
+      allow list: if request.auth != null && isAdmin();
+      
+      // Apenas admins podem excluir
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Suporte retrocompatível para caminhos antigos
+    match /course-images/{cursoId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isColaboradorOrAdmin() && isImage() && isValidSize();
+      allow list: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Imagens temporárias ou de cache
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && 
+                           request.auth.uid == userId && 
+                           isImage() && 
+                           isValidSize();
+    }
+    
+    // Badges (apenas leitura)
+    match /badges/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+  }
+}
 `;
 
-export { firestoreRules, cloudFunctions };
+// ⚠️ ATENÇÃO: Cloud Functions são OPCIONAIS e devem ser configuradas separadamente
+// Veja o arquivo CLOUD_FUNCTIONS_SETUP.md para instruções detalhadas
+// Elas NÃO devem ser coladas nas Firestore Rules
+
+export { firestoreRules, storageRules };

@@ -1,14 +1,15 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { firestore, storage } from "@/firebase/FirebaseInit";
-import { Perfil as PerfilEnum } from "@/model/Perfil";
 import { Usuario } from "@/model/Usuario";
+import { BadgeService } from "@/services/BadgeService";
+import { DecayService } from "@/services/DecayService";
+import { ImageCacheService } from "@/services/ImageCacheService";
 import * as ImageManipulator from "expo-image-manipulator";
 import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { AuthContext } from "./AuthProvider";
-import { DecayService } from "@/services/DecayService";
-import { ImageCacheService } from "@/services/ImageCacheService";
 
 export const UserContext = createContext({});
 
@@ -55,12 +56,19 @@ export const UserProvider = ({ children }: any) => {
           }
         },
         (error) => {
-          console.error("Erro no listener do Firestore:", error);
+          // Silenciar erro de permissão quando usuário desloga
+          if (error.code !== "permission-denied") {
+            console.error("Erro no listener do Firestore:", error);
+          }
         }
       );
 
-      return () => unsubscribe();
+      // Cleanup: cancela listener quando componente desmonta ou userAuth muda
+      return () => {
+        unsubscribe();
+      };
     } else {
+      // Quando não há userAuth, limpa o estado
       setUserFirebase(null);
     }
   }, [userAuth]);
@@ -71,12 +79,16 @@ export const UserProvider = ({ children }: any) => {
     userData: any
   ): { diasAtivos: number; coeficiente: number; diasInatividade: number } {
     const agora = new Date();
-    const ultimoAcesso = userData.dataUltimoAcesso 
-      ? new Date(userData.dataUltimoAcesso) 
+    const ultimoAcesso = userData.dataUltimoAcesso
+      ? new Date(userData.dataUltimoAcesso)
       : new Date(lastSignInTime);
 
     // Normaliza datas para meia-noite (00:00:00)
-    const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    const inicioHoje = new Date(
+      agora.getFullYear(),
+      agora.getMonth(),
+      agora.getDate()
+    );
     const inicioUltimoAcesso = new Date(
       ultimoAcesso.getFullYear(),
       ultimoAcesso.getMonth(),
@@ -141,23 +153,27 @@ export const UserProvider = ({ children }: any) => {
           calculateStreakAndCoefficient(lastSignInTime, userData);
 
         // Atualizar array de dias de login
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = new Date().toISOString().split("T")[0];
         let diasLogin = userData.diasLogin || [];
-        
+
         // Adicionar hoje se não estiver na lista
         if (!diasLogin.includes(hoje)) {
           diasLogin = [...diasLogin, hoje].sort();
           // Manter apenas os últimos 30 dias
           const trintaDiasAtras = new Date();
           trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-          diasLogin = diasLogin.filter((data: string) => new Date(data) >= trintaDiasAtras);
-          
+          diasLogin = diasLogin.filter(
+            (data: string) => new Date(data) >= trintaDiasAtras
+          );
+
           // Salvar imediatamente no Firestore (sem await para não bloquear)
           setDoc(
             doc(firestore, "usuarios", userAuth.user.uid),
             { diasLogin },
             { merge: true }
-          ).catch(error => console.error('Erro ao salvar dias de login:', error));
+          ).catch((error) =>
+            console.error("Erro ao salvar dias de login:", error)
+          );
         }
 
         const usuario: Usuario = {
@@ -187,6 +203,37 @@ export const UserProvider = ({ children }: any) => {
           },
           { merge: true }
         );
+
+        // Verificar e conceder badge de primeiro login (Execlogger)
+        const primeiroLogin = userData.primeiroLoginFeito !== true;
+        if (primeiroLogin) {
+          // Conceder badge Execlogger (retorna true se foi concedida)
+          const badgeConcedida = await BadgeService.concederBadgePrimeiroLogin(
+            usuario.uid
+          );
+
+          // Marcar que o primeiro login foi feito
+          await setDoc(
+            doc(firestore, "usuarios", usuario.uid),
+            { primeiroLoginFeito: true },
+            { merge: true }
+          );
+
+          // Mostrar Alert de boas-vindas se badge foi concedida
+          if (badgeConcedida) {
+            setTimeout(() => {
+              Alert.alert(
+                "🎉 Bem-vindo ao Execlog!",
+                "🎖️ Parabéns! Você recebeu a conquista Execlogger por iniciar sua jornada de aprendizado conosco!\n\n" +
+                  "Continue firme nos estudos e pratique bastante para conquistar mais badges e conhecimento. Boa sorte! 📚✨",
+                [{ text: "Vamos lá!", style: "default" }]
+              );
+            }, 500);
+          }
+        }
+
+        // Verificar e conceder badges baseadas no perfil (Colaborador/Admin)
+        await BadgeService.verificarEConcederBadgesPerfil(usuario.uid);
 
         setUserFirebase(usuario);
       } else {

@@ -1,82 +1,116 @@
-import React, { useContext, useState, useEffect } from "react";
-import { FlatList, SafeAreaView, StyleSheet, View, Dimensions } from "react-native";
-import { Card, Text, useTheme, Button } from "react-native-paper";
-import { Image } from "expo-image";
+import { CourseConfig } from "@/config/CourseConfig";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
+import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
-import { CursoService } from "@/services/CursoService";
-import { CourseConfig } from "@/config/CourseConfig";
 import { ImageService } from "@/services/ImageService";
+import { Image } from "expo-image";
 import { router } from "expo-router";
-
-
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import React, { useContext, useEffect, useState } from "react";
+import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
+import { Button, Card, Text, useTheme } from "react-native-paper";
 
 export default function Cursos() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
-  const [cursosStatus, setCursosStatus] = useState<{[key: string]: boolean}>({});
+  const [cursosStatus, setCursosStatus] = useState<{ [key: string]: boolean }>(
+    {}
+  );
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
-  
+
   useEffect(() => {
-    carregarCursos();
+    // Configurar listener em tempo real para mudanças na coleção de cursos
+    const cursosRef = collection(firestore, "cursos");
+    const unsubscribe = onSnapshot(
+      cursosRef,
+      (snapshot) => {
+        const cursosAtualizados = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            ...data,
+            fonte: data.migradoDeLocal ? "xml" : ("firestore" as const),
+          };
+        }) as Curso[];
+
+        setCursosDisponiveis(cursosAtualizados);
+      },
+      (error) => {
+        console.error("Erro ao escutar mudanças nos cursos:", error);
+        // Fallback para cursos estáticos em caso de erro
+        const courses = CourseConfig.getAllCourses().map((course) => ({
+          id: course.id,
+          titulo: course.titulo,
+          descricao: course.description,
+          categoria: course.categoria,
+          nivel: course.nivel as "iniciante" | "intermediario" | "avancado",
+          imageUrl: course.imageUrl,
+          paginas: [],
+          coeficienteMaximo: 100,
+          createdAt: null,
+          updatedAt: null,
+        }));
+        setCursosDisponiveis(courses);
+      }
+    );
+
+    // Cleanup: remover listener quando componente desmontar
+    return () => unsubscribe();
   }, []);
-  
+
+  // Listener em tempo real para progresso dos cursos do usuário
   useEffect(() => {
-    if (user && cursosDisponiveis.length > 0) {
-      verificarStatusCursos();
-    }
-  }, [user, cursosDisponiveis]);
-  
-  const carregarCursos = () => {
-    const courses = CourseConfig.getAllCourses().map(course => ({
-      id: course.id,
-      titulo: course.titulo,
-      descricao: course.description,
-      categoria: course.categoria,
-      nivel: course.nivel as 'iniciante' | 'intermediario' | 'avancado',
-      imageUrl: course.imageUrl,
-      paginas: [],
-      coeficienteMaximo: 100,
-      createdAt: null,
-      updatedAt: null,
-    }));
-    setCursosDisponiveis(courses);
-  };
-  
-  const verificarStatusCursos = async () => {
-    const status: {[key: string]: boolean} = {};
-    
-    for (const curso of cursosDisponiveis) {
-      const concluido = await CursoService.verificarCursoConcluido(user.uid, curso.id);
-      status[curso.id] = concluido;
-    }
-    
-    setCursosStatus(status);
-  };
-  
+    if (!user?.uid) return;
+
+    const usuariosCursosRef = collection(firestore, "usuariosCursos");
+    const q = query(usuariosCursosRef, where("usuarioId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const novoStatus: { [key: string]: boolean } = {};
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        novoStatus[data.cursoId] = data.concluido || false;
+      });
+
+      setCursosStatus(novoStatus);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
   const iniciarCurso = (curso: Curso) => {
     router.push({
       pathname: "/curso/[id]",
-      params: { id: curso.id }
+      params: { id: curso.id },
     });
   };
-  
+
   const revisarCurso = (curso: Curso) => {
     router.push({
       pathname: "/curso/[id]",
-      params: { id: curso.id, modo: "revisao" }
+      params: { id: curso.id, modo: "revisao" },
     });
   };
 
   return (
-    <SafeAreaView style={[themeStyles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[
+        themeStyles.container,
+        { backgroundColor: theme.colors.background },
+      ]}
+    >
       <FlatList
         data={cursosDisponiveis}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card
+            style={[
+              themeStyles.card,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             {item.imageUrl && (
               <View style={styles.imageContainer}>
                 <Image
@@ -87,25 +121,45 @@ export default function Cursos() {
                 />
               </View>
             )}
-            <Card.Title 
-              title={item.titulo} 
-              subtitle={`Nível: ${item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)} • ${item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)}`}
+            <Card.Title
+              title={item.titulo}
+              subtitle={`Nível: ${
+                item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)
+              } • ${
+                item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)
+              }`}
               titleStyle={{ color: theme.colors.onSurface }}
               subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
             />
             <Card.Content>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurface }}
+              >
                 {item.descricao}
               </Text>
             </Card.Content>
             <Card.Actions>
               {cursosStatus[item.id] ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <Text style={{ color: '#22c55e', fontWeight: 'bold', fontSize: 16 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#22c55e",
+                      fontWeight: "bold",
+                      fontSize: 16,
+                    }}
+                  >
                     ✅ Curso concluído
                   </Text>
-                  <Button 
-                    mode="outlined" 
+                  <Button
+                    mode="outlined"
                     onPress={() => revisarCurso(item)}
                     icon="refresh"
                   >
@@ -113,8 +167,8 @@ export default function Cursos() {
                   </Button>
                 </View>
               ) : (
-                <Button 
-                  mode="contained" 
+                <Button
+                  mode="contained"
                   onPress={() => iniciarCurso(item)}
                   style={{ backgroundColor: "#22c55e" }}
                 >
@@ -124,13 +178,21 @@ export default function Cursos() {
             </Card.Actions>
           </Card>
         )}
-        ItemSeparatorComponent={() => <View style={{ height: themeStyles.spacing.sm }} />}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: themeStyles.spacing.sm }} />
+        )}
         ListHeaderComponent={
-          <Text variant="headlineMedium" style={[themeStyles.header, { color: theme.colors.onBackground }]}>
+          <Text
+            variant="headlineMedium"
+            style={[themeStyles.header, { color: theme.colors.onBackground }]}
+          >
             Cursos Disponíveis
           </Text>
         }
-        contentContainerStyle={{ padding: themeStyles.spacing.md, paddingBottom: 100 }}
+        contentContainerStyle={{
+          padding: themeStyles.spacing.md,
+          paddingBottom: 100,
+        }}
       />
     </SafeAreaView>
   );
@@ -138,14 +200,14 @@ export default function Cursos() {
 
 const styles = StyleSheet.create({
   imageContainer: {
-    width: '100%',
+    width: "100%",
     height: 150,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   courseImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
 });
