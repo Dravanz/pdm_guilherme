@@ -3,29 +3,29 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import {
-    Solicitacao,
-    StatusSolicitacao,
-    TipoSolicitacao
+  Solicitacao,
+  StatusSolicitacao,
+  TipoSolicitacao,
 } from "@/model/Solicitacao";
-import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
+import { SolicitacaoService } from "@/services/SolicitacaoService";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import {
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    View,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import {
-    Avatar,
-    Button,
-    Card,
-    Chip,
-    Dialog,
-    Text,
-    TextInput,
-    useTheme,
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  Text,
+  TextInput,
+  useTheme,
 } from "react-native-paper";
 
 export default function Solicitacoes() {
@@ -47,7 +47,7 @@ export default function Solicitacoes() {
   useEffect(() => {
     // Listener em tempo real para solicitações
     const solicitacoesRef = collection(firestore, "solicitacoes");
-    const q = query(solicitacoesRef, orderBy("dataSolicitacao", "desc"));
+    const q = query(solicitacoesRef, orderBy("dataEnvio", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
@@ -55,9 +55,7 @@ export default function Solicitacoes() {
         const solicitacoesAtualizadas = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          dataSolicitacao:
-            doc.data().dataSolicitacao?.toDate?.() ||
-            doc.data().dataSolicitacao,
+          dataEnvio: doc.data().dataEnvio?.toDate?.() || doc.data().dataEnvio,
           dataProcessamento:
             doc.data().dataProcessamento?.toDate?.() ||
             doc.data().dataProcessamento,
@@ -106,13 +104,6 @@ export default function Solicitacoes() {
           userFirebase.uid,
           userFirebase.nome
         );
-      } else if (solicitacao.tipo === TipoSolicitacao.Documentacao) {
-        await SolicitacaoService.aprovarSolicitacaoDocumentacao(
-          solicitacao.id,
-          solicitacao.documentacaoId,
-          userFirebase.uid,
-          userFirebase.nome
-        );
       }
       // Listener onSnapshot atualiza automaticamente
     } catch (error) {
@@ -138,14 +129,6 @@ export default function Solicitacoes() {
       ) {
         await SolicitacaoService.rejeitarExclusaoCurso(
           solicitacaoSelecionada.id,
-          userFirebase.uid,
-          userFirebase.nome,
-          motivoRejeicao
-        );
-      } else if (solicitacaoSelecionada.tipo === TipoSolicitacao.Documentacao) {
-        await SolicitacaoService.rejeitarSolicitacaoDocumentacao(
-          solicitacaoSelecionada.id,
-          solicitacaoSelecionada.documentacaoId,
           userFirebase.uid,
           userFirebase.nome,
           motivoRejeicao
@@ -294,8 +277,6 @@ export default function Solicitacoes() {
                     >
                       {solicitacao.tipo === TipoSolicitacao.Colaboracao
                         ? `${solicitacao.usuarioNome} - Colaboração`
-                        : solicitacao.tipo === TipoSolicitacao.Documentacao
-                        ? `Doc: ${solicitacao.documentacaoTitulo}`
                         : `Exclusão: ${solicitacao.cursoTitulo}`}
                     </Text>
                     <Text
@@ -361,37 +342,6 @@ export default function Solicitacoes() {
                       style={{ color: theme.colors.onSurfaceVariant }}
                     >
                       {solicitacao.motivo}
-                    </Text>
-                  </>
-                )}
-
-                {solicitacao.tipo === TipoSolicitacao.Documentacao && (
-                  <>
-                    <Text
-                      variant="bodyMedium"
-                      style={{ color: theme.colors.onSurface, marginBottom: 4 }}
-                    >
-                      <Text style={{ fontWeight: "bold" }}>Autor:</Text>{" "}
-                      {solicitacao.autorNome}
-                    </Text>
-                    <Text
-                      variant="bodyMedium"
-                      style={{ color: theme.colors.onSurface, marginBottom: 4 }}
-                    >
-                      <Text style={{ fontWeight: "bold" }}>Link:</Text>{" "}
-                      {solicitacao.documentacaoLink}
-                    </Text>
-                    <Text
-                      variant="bodyMedium"
-                      style={{ color: theme.colors.onSurface, marginBottom: 8 }}
-                    >
-                      <Text style={{ fontWeight: "bold" }}>Conteúdo:</Text>
-                    </Text>
-                    <Text
-                      variant="bodyMedium"
-                      style={{ color: theme.colors.onSurfaceVariant }}
-                    >
-                      {solicitacao.documentacaoConteudo}
                     </Text>
                   </>
                 )}
