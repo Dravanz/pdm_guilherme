@@ -2,7 +2,7 @@
 import { AuthContext } from "@/context/AuthProvider";
 import { globalStyles, ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
-import { Badge, BADGES_DISPONIVEIS } from "@/model/Badge";
+import { Badge } from "@/model/Badge";
 import { Curso } from "@/model/Curso";
 import { Perfil } from "@/model/Perfil";
 import { BadgeAdminService } from "@/services/BadgeAdminService";
@@ -27,7 +27,6 @@ import {
   Icon,
   IconButton,
   Menu,
-  SegmentedButtons,
   Text,
   TextInput,
   useTheme,
@@ -312,7 +311,8 @@ export default function Configuracoes() {
         if (!badgeRequisitoPerfil) {
           setMensagem({
             tipo: "erro",
-            mensagem: "Selecione um perfil para o requisito 'Perfil Específico'",
+            mensagem:
+              "Selecione um perfil para o requisito 'Perfil Específico'",
           });
           setDialogMensagemVisivel(true);
           return;
@@ -356,7 +356,7 @@ export default function Configuracoes() {
       setDialogBadgeVisivel(false);
       limparFormularioBadge();
       await carregarBadges(); // Recarregar lista
-      
+
       setTimeout(() => {
         setDialogMensagemVisivel(true);
       }, 100);

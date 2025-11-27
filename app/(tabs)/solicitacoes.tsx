@@ -1,14 +1,14 @@
 // @ts-nocheck
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
+import { firestore } from "@/firebase/FirebaseInit";
 import {
   Solicitacao,
   StatusSolicitacao,
   TipoSolicitacao,
 } from "@/model/Solicitacao";
 import { SolicitacaoService } from "@/services/SolicitacaoService";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { firestore } from "@/firebase/FirebaseInit";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import {
   RefreshControl,
@@ -48,7 +48,7 @@ export default function Solicitacoes() {
     // Listener em tempo real para solicitações
     const solicitacoesRef = collection(firestore, "solicitacoes");
     const q = query(solicitacoesRef, orderBy("dataEnvio", "desc"));
-    
+
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -56,9 +56,11 @@ export default function Solicitacoes() {
           id: doc.id,
           ...doc.data(),
           dataEnvio: doc.data().dataEnvio?.toDate?.() || doc.data().dataEnvio,
-          dataProcessamento: doc.data().dataProcessamento?.toDate?.() || doc.data().dataProcessamento,
+          dataProcessamento:
+            doc.data().dataProcessamento?.toDate?.() ||
+            doc.data().dataProcessamento,
         })) as Solicitacao[];
-        
+
         setSolicitacoes(solicitacoesAtualizadas);
         setCarregando(false);
       },
