@@ -1,31 +1,28 @@
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from "firebase/firestore";
 import { deleteObject, listAll, ref } from "firebase/storage";
-import { firestore, storage } from "../firebase/FirebaseInit";
-import { Perfil } from "../model/Perfil";
+import { firestore, storage } from "../../firebase/FirebaseInit";
 import {
-  Solicitacao,
-  SolicitacaoColaboracao,
-  SolicitacaoExclusaoCurso,
-  StatusSolicitacao,
-  TipoSolicitacao,
-} from "../model/Solicitacao";
+    Solicitacao,
+    SolicitacaoColaboracao,
+    SolicitacaoDocumentacao,
+    SolicitacaoExclusaoCurso,
+    StatusSolicitacao,
+    TipoSolicitacao,
+} from "../../model/Solicitacao";
 
 export class SolicitacaoService {
-  /**
-   * Cria uma nova solicitação de colaboração
-   */
   static async criarSolicitacaoColaboracao(
     usuarioId: string,
     usuarioNome: string,
@@ -177,11 +174,6 @@ export class SolicitacaoService {
     adminNome: string
   ): Promise<string> {
     try {
-      // Atualizar perfil do usuário para Colaborador
-      const usuarioRef = doc(firestore, "usuarios", usuarioId);
-      await updateDoc(usuarioRef, {
-        perfil: Perfil.Colaborador,
-      });
 
       // Atualizar status da solicitação
       const solicitacaoRef = doc(firestore, "solicitacoes", solicitacaoId);
@@ -311,6 +303,112 @@ export class SolicitacaoService {
       return "ok";
     } catch (error) {
       console.error("Erro ao rejeitar exclusão de curso:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cria uma solicitação de aprovação de documentação
+   */
+  static async criarSolicitacaoDocumentacao(
+    documentacaoId: string,
+    documentacaoTitulo: string,
+    documentacaoLink: string,
+    documentacaoConteudo: string,
+    autorId: string,
+    autorNome: string
+  ): Promise<string> {
+    try {
+      const solicitacaoRef = doc(collection(firestore, "solicitacoes"));
+      const solicitacao: SolicitacaoDocumentacao = {
+        id: solicitacaoRef.id,
+        tipo: TipoSolicitacao.Documentacao,
+        documentacaoId,
+        documentacaoTitulo,
+        documentacaoLink,
+        documentacaoConteudo,
+        autorId,
+        autorNome,
+        status: StatusSolicitacao.Pendente,
+        dataSolicitacao: serverTimestamp(),
+      };
+
+      await setDoc(solicitacaoRef, solicitacao);
+      return "ok";
+    } catch (error) {
+      console.error("Erro ao criar solicitação de documentação:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Aprova uma solicitação de documentação
+   */
+  static async aprovarSolicitacaoDocumentacao(
+    solicitacaoId: string,
+    documentacaoId: string,
+    adminId: string,
+    adminNome: string
+  ): Promise<string> {
+    try {
+      // 1. Atualizar status da documentação
+      const docRef = doc(firestore, "documentacoes", documentacaoId);
+      await updateDoc(docRef, {
+        status: "Aprovada", // StatusDocumentacao.Aprovada
+        dataPublicacao: serverTimestamp(),
+        aprovadoPorId: adminId,
+        aprovadoPorNome: adminNome,
+      });
+
+      // 2. Atualizar status da solicitação
+      const solicitacaoRef = doc(firestore, "solicitacoes", solicitacaoId);
+      await updateDoc(solicitacaoRef, {
+        status: StatusSolicitacao.Aprovada,
+        dataResposta: serverTimestamp(),
+        aprovadoPorId: adminId,
+        aprovadoPorNome: adminNome,
+      });
+
+      return "ok";
+    } catch (error) {
+      console.error("Erro ao aprovar solicitação de documentação:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rejeita uma solicitação de documentação
+   */
+  static async rejeitarSolicitacaoDocumentacao(
+    solicitacaoId: string,
+    documentacaoId: string,
+    adminId: string,
+    adminNome: string,
+    motivo?: string
+  ): Promise<string> {
+    try {
+      // 1. Atualizar status da documentação
+      const docRef = doc(firestore, "documentacoes", documentacaoId);
+      await updateDoc(docRef, {
+        status: "Rejeitada", // StatusDocumentacao.Rejeitada
+        aprovadoPorId: adminId,
+        aprovadoPorNome: adminNome,
+        motivoRejeicao: motivo || "Não especificado",
+      });
+
+      // 2. Atualizar status da solicitação
+      const solicitacaoRef = doc(firestore, "solicitacoes", solicitacaoId);
+      await updateDoc(solicitacaoRef, {
+        status: StatusSolicitacao.Rejeitada,
+        dataResposta: serverTimestamp(),
+        aprovadoPorId: adminId,
+        aprovadoPorNome: adminNome,
+        motivoRejeicao: motivo || "Não especificado",
+      });
+
+      return "ok";
+    } catch (error) {
+      console.error("Erro ao rejeitar solicitação de documentação:", error);
       throw error;
     }
   }
