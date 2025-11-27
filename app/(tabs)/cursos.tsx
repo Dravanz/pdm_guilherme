@@ -1,15 +1,16 @@
+import { PerformanceModal } from "@/components/PerformanceModal";
 import { CourseConfig } from "@/config/CourseConfig";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
-import { ImageService } from "@/services/ImageService";
+import { ImageService } from "@/services/image/ImageService";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
-import { Button, Card, Text, useTheme } from "react-native-paper";
+import { Button, Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 
 export default function Cursos() {
   const theme = useTheme();
@@ -19,6 +20,10 @@ export default function Cursos() {
     {}
   );
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cursosFiltrados, setCursosFiltrados] = useState<Curso[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<{id: string, titulo: string} | null>(null);
 
   useEffect(() => {
     // Configurar listener em tempo real para mudanças na coleção de cursos
@@ -29,10 +34,11 @@ export default function Cursos() {
         const cursosAtualizados = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
+            id: doc.id,
             ...data,
             fonte: data.migradoDeLocal ? "xml" : ("firestore" as const),
-          };
-        }) as Curso[];
+          } as unknown as Curso;
+        });
 
         setCursosDisponiveis(cursosAtualizados);
       },
@@ -80,6 +86,27 @@ export default function Cursos() {
     return () => unsubscribe();
   }, [user?.uid]);
 
+  // Filtrar cursos com base na busca
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setCursosFiltrados(cursosDisponiveis);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtrados = cursosDisponiveis.filter((curso) => {
+      return (
+        curso.titulo.toLowerCase().includes(query) ||
+        curso.descricao.toLowerCase().includes(query) ||
+        curso.categoria.toLowerCase().includes(query) ||
+        curso.nivel.toLowerCase().includes(query) ||
+        (curso.versaoLinguagem && curso.versaoLinguagem.toLowerCase().includes(query))
+      );
+    });
+
+    setCursosFiltrados(filtrados);
+  }, [searchQuery, cursosDisponiveis]);
+
   const iniciarCurso = (curso: Curso) => {
     router.push({
       pathname: "/curso/[id]",
@@ -94,6 +121,11 @@ export default function Cursos() {
     });
   };
 
+  const abrirDesempenho = (cursoId: string, titulo: string) => {
+    setSelectedCourse({ id: cursoId, titulo });
+    setModalVisible(true);
+  };
+
   return (
     <SafeAreaView
       style={[
@@ -101,8 +133,16 @@ export default function Cursos() {
         { backgroundColor: theme.colors.background },
       ]}
     >
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Buscar cursos..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={{ backgroundColor: theme.colors.surface }}
+        />
+      </View>
       <FlatList
-        data={cursosDisponiveis}
+        data={cursosFiltrados}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Card
@@ -127,7 +167,7 @@ export default function Cursos() {
                 item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)
               } • ${
                 item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)
-              }`}
+              }${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
               titleStyle={{ color: theme.colors.onSurface }}
               subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
             />
@@ -146,22 +186,21 @@ export default function Cursos() {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    width: "100%",
+                    flex: 1,
                   }}
                 >
-                  <Text
-                    style={{
-                      color: "#22c55e",
-                      fontWeight: "bold",
-                      fontSize: 16,
-                    }}
+                  <Chip
+                    icon="check-circle"
+                    style={{ backgroundColor: "transparent" }}
+                    textStyle={{ color: "#22c55e", fontWeight: "bold" }}
                   >
-                    ✅ Curso concluído
-                  </Text>
+                    Concluído
+                  </Chip>
                   <Button
                     mode="outlined"
                     onPress={() => revisarCurso(item)}
                     icon="refresh"
+                    compact
                   >
                     Revisar
                   </Button>
@@ -175,6 +214,13 @@ export default function Cursos() {
                   Iniciar Curso
                 </Button>
               )}
+              <Button 
+                mode="text" 
+                onPress={() => abrirDesempenho(item.id, item.titulo)}
+                style={{ marginLeft: 8 }}
+              >
+                Desempenho
+              </Button>
             </Card.Actions>
           </Card>
         )}
@@ -194,11 +240,24 @@ export default function Cursos() {
           paddingBottom: 100,
         }}
       />
+      {selectedCourse && user && (
+        <PerformanceModal
+          visible={modalVisible}
+          onDismiss={() => setModalVisible(false)}
+          usuarioId={user.uid}
+          cursoId={selectedCourse.id}
+          cursoTitulo={selectedCourse.titulo}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    padding: 16,
+    paddingBottom: 8,
+  },
   imageContainer: {
     width: "100%",
     height: 150,
