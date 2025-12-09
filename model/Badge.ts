@@ -21,7 +21,7 @@ export interface BadgeRequisito {
     | "primeiro_login";
   valor?: string | number;
   cursoId?: string;
-  perfil?: "Colaborador" | "Admin";
+  perfil?: "Colaborador" | "Moderador";
 }
 
 export const BADGES_DISPONIVEIS: Badge[] = [
@@ -152,7 +152,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
     icone: "👨‍💼",
     descricao: "Equipe Execlog",
     tipo: "especial",
-    requisitos: { tipo: "perfil_especifico", perfil: "Admin" },
+    requisitos: { tipo: "perfil_especifico", perfil: "Moderador" },
   },
   {
     id: "expert_learner",

@@ -2,6 +2,7 @@ import {
     collection,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
     onSnapshot,
     orderBy,
@@ -260,6 +261,30 @@ export class DocumentacaoService {
     } catch (error) {
       console.error("Erro ao rejeitar documentação:", error);
       throw error;
+    }
+  }
+  /**
+   * Obter documentação por ID
+   */
+  static async obterDocumentacaoPorId(id: string): Promise<Documentacao | null> {
+    try {
+      const docRef = doc(firestore, "documentacoes", id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          dataCriacao: data.dataCriacao?.toDate?.() || data.dataCriacao,
+          dataPublicacao: data.dataPublicacao?.toDate?.() || data.dataPublicacao,
+        } as Documentacao;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error("Erro ao obter documentação:", error);
+      return null;
     }
   }
 }

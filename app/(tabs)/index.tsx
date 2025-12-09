@@ -1,28 +1,41 @@
+import { CourseListModal } from "@/components/CourseListModal";
 import { DocumentationList } from "@/components/DocumentationList";
 import { FeaturedCourses } from "@/components/FeaturedCourses";
+import { PerformanceModal } from "@/components/PerformanceModal";
+import { CourseConfig } from "@/config/CourseConfig";
 import { containerPadding, spacing } from "@/constants/Layout";
 import { UserContext } from "@/context/UserProvider";
+import { firestore } from "@/firebase/FirebaseInit";
+import { Curso } from "@/model/Curso";
+import { Perfil } from "@/model/Perfil";
+import { StatusSolicitacao } from "@/model/Solicitacao";
 import {
     DashboardData,
     DashboardService,
 } from "@/services/shared/DashboardService";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useContext, useRef, useState } from "react";
+import { router } from "expo-router";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
     Dimensions,
     SafeAreaView,
     ScrollView,
     StyleSheet,
+    TouchableOpacity,
     View,
 } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import {
     ActivityIndicator,
+    Button,
     Card,
+    Icon,
     ProgressBar,
     Text,
     useTheme,
 } from "react-native-paper";
+
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -34,6 +47,36 @@ export default function Dashboard() {
   );
   const [carregando, setCarregando] = useState(true);
   const dadosCarregados = useRef(false);
+  const [solicitacoesPendentes, setSolicitacoesPendentes] = useState(0);
+
+  useEffect(() => {
+    if (userFirebase?.perfil === Perfil.Moderador) {
+      fetchSolicitacoesPendentes();
+    }
+  }, [userFirebase]);
+
+  const fetchSolicitacoesPendentes = async () => {
+    try {
+      const q = query(
+        collection(firestore, "solicitacoes"),
+        where("status", "==", StatusSolicitacao.Pendente)
+      );
+      const snapshot = await getDocs(q);
+      setSolicitacoesPendentes(snapshot.size);
+    } catch (error) {
+      console.error("Erro ao buscar solicitações pendentes:", error);
+    }
+  };
+
+  // Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalCourses, setModalCourses] = useState<Curso[]>([]);
+  const [modalType, setModalType] = useState<"completed" | "in_progress">("in_progress");
+  
+  // Performance Modal State
+  const [perfModalVisible, setPerfModalVisible] = useState(false);
+  const [selectedPerfCourse, setSelectedPerfCourse] = useState<{id: string, titulo: string} | null>(null);
 
   const carregarDados = async (forcar = false) => {
     if (!userFirebase) return;
@@ -45,6 +88,9 @@ export default function Dashboard() {
         userFirebase.uid
       );
       setDashboardData(dados);
+      if (userFirebase?.perfil === Perfil.Moderador) {
+        await fetchSolicitacoesPendentes();
+      }
       dadosCarregados.current = true;
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
@@ -55,9 +101,76 @@ export default function Dashboard() {
 
   useFocusEffect(
     useCallback(() => {
-      carregarDados();
+      // Forçar recarregamento sempre que a tela ganhar foco
+      carregarDados(true);
     }, [userFirebase])
   );
+
+  const openCourseList = async (type: "completed" | "in_progress") => {
+    if (!userFirebase) return;
+
+    setModalType(type);
+    setModalTitle(type === "completed" ? "Cursos Concluídos" : "Cursos em Progresso");
+    setModalCourses([]); // Limpar lista anterior
+    setModalVisible(true);
+
+    try {
+      // 1. Buscar progresso do usuário
+      const usuariosCursosRef = collection(firestore, "usuariosCursos");
+      const q = query(usuariosCursosRef, where("usuarioId", "==", userFirebase.uid));
+      const snapshot = await getDocs(q);
+
+      const userCoursesMap: {[key: string]: any} = {};
+      snapshot.docs.forEach(doc => {
+        userCoursesMap[doc.data().cursoId] = doc.data();
+      });
+
+      // 2. Buscar todos os cursos (para ter os detalhes)
+      // Idealmente, buscaríamos apenas os IDs necessários, mas o Firestore não tem "where in" ilimitado
+      // Como fallback, pegamos do Config ou buscamos todos.
+      // Vamos pegar do Config para ser mais rápido e garantir dados, 
+      // mas se quiser dados dinâmicos do Firestore, precisaria buscar lá.
+      // Vamos tentar buscar do Firestore primeiro.
+      
+      const cursosRef = collection(firestore, "cursos");
+      const cursosSnapshot = await getDocs(cursosRef);
+      let allCourses: Curso[] = cursosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as Curso));
+
+      if (allCourses.length === 0) {
+         allCourses = CourseConfig.getAllCourses() as unknown as Curso[];
+      } else {
+        // Merge: garantir que cursos estáticos do Config também estejam na lista se não vieram do Firestore
+        const staticCourses = CourseConfig.getAllCourses();
+        staticCourses.forEach(staticCourse => {
+            if (!allCourses.find(c => c.id === staticCourse.id)) {
+                allCourses.push(staticCourse as unknown as Curso);
+            }
+        });
+      }
+
+      // 3. Filtrar
+      const filteredCourses = allCourses.filter(curso => {
+        const userProgress = userCoursesMap[curso.id];
+        if (!userProgress) return false;
+
+        if (type === "completed") {
+          return userProgress.concluido;
+        } else {
+          return !userProgress.concluido; // Assumindo que se tem progresso e não tá concluído, tá em progresso
+        }
+      });
+
+      setModalCourses(filteredCourses);
+
+    } catch (error) {
+      console.error("Erro ao carregar cursos para modal:", error);
+    }
+  };
+
+  const openPerformance = (courseId: string, title: string) => {
+    setSelectedPerfCourse({ id: courseId, titulo: title });
+    setPerfModalVisible(true);
+  };
 
   const chartConfig = {
     backgroundGradientFrom: theme.colors.surface,
@@ -113,12 +226,15 @@ export default function Dashboard() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text
-            variant="headlineMedium"
-            style={[styles.welcomeText, { color: theme.colors.onBackground }]}
-          >
-            Olá, {userFirebase?.nome || "Usuário"}! 👋
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text
+              variant="headlineMedium"
+              style={[styles.welcomeText, { color: theme.colors.onBackground }]}
+            >
+              Olá, {userFirebase?.nome || "Usuário"}!
+            </Text>
+            <Icon source="hand-wave" size={24} color="#FFC107" />
+          </View>
           <Text
             variant="bodyLarge"
             style={[
@@ -130,70 +246,145 @@ export default function Dashboard() {
           </Text>
         </View>
 
+        {/* Card de Moderação */}
+        {userFirebase?.perfil === Perfil.Moderador && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer, marginBottom: 16 }]}>
+            <Card.Content>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Icon source="shield-account" size={32} color={theme.colors.onErrorContainer} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onErrorContainer, fontWeight: 'bold' }}>
+                    Moderação
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onErrorContainer }}>
+                    Você tem {solicitacoesPendentes} solicitações pendentes.
+                  </Text>
+                </View>
+                <Button 
+                  mode="contained" 
+                  onPress={() => router.push("/(tabs)/solicitacoes")}
+                  textColor={theme.colors.errorContainer}
+                  buttonColor={theme.colors.onErrorContainer}
+                  compact
+                >
+                  Ver
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Card de Colaboração */}
+        {(userFirebase?.perfil === Perfil.Colaborador || userFirebase?.perfil === Perfil.Moderador) && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.secondaryContainer, marginBottom: 16 }]}>
+            <Card.Content>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <Icon source="handshake" size={32} color={theme.colors.onSecondaryContainer} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onSecondaryContainer, fontWeight: 'bold' }}>
+                    Área do Colaborador
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSecondaryContainer }}>
+                    Contribua com a comunidade!
+                  </Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button 
+                  mode="contained" 
+                  onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'cursos' } })}
+                  style={{ flex: 1 }}
+                  buttonColor={theme.colors.onSecondaryContainer}
+                  textColor={theme.colors.secondaryContainer}
+                  icon="plus"
+                  compact
+                >
+                  Novo Curso
+                </Button>
+                <Button 
+                  mode="contained" 
+                  onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'documentacao' } })}
+                  style={{ flex: 1 }}
+                  buttonColor={theme.colors.onSecondaryContainer}
+                  textColor={theme.colors.secondaryContainer}
+                  icon="file-document-plus"
+                  compact
+                >
+                  Nova Doc
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         {/* Estatísticas Rápidas */}
         <View style={styles.section}>
           <View style={styles.statsGrid}>
-            <Card
-              style={[
-                styles.statCard,
-                { backgroundColor: theme.colors.surface },
-              ]}
+            <TouchableOpacity 
+              style={{ flex: 1 }}
+              onPress={() => openCourseList("completed")}
             >
-              <Card.Content style={styles.statContent}>
-                <Text
-                  variant="headlineMedium"
-                  style={[styles.statNumber, { color: "#22c55e" }]}
-                >
-                  📚
-                </Text>
-                <Text
-                  variant="titleMedium"
-                  style={[styles.statValue, { color: theme.colors.onSurface }]}
-                >
-                  {dashboardData?.estatisticas.cursosCompletos || 0}
-                </Text>
-                <Text
-                  variant="bodySmall"
-                  style={[
-                    styles.statLabel,
-                    { color: theme.colors.onSurfaceVariant },
-                  ]}
-                >
-                  Concluídos
-                </Text>
-              </Card.Content>
-            </Card>
+              <Card
+                style={[
+                  styles.statCard,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+              >
+                <Card.Content style={styles.statContent}>
+                  <View style={styles.statIconContainer}>
+                    <Icon source="book-check" size={32} color="#22c55e" />
+                  </View>
+                  <Text
+                    variant="titleMedium"
+                    style={[styles.statValue, { color: theme.colors.onSurface }]}
+                  >
+                    {dashboardData?.estatisticas.cursosCompletos || 0}
+                  </Text>
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.statLabel,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    Concluídos
+                  </Text>
+                </Card.Content>
+              </Card>
+            </TouchableOpacity>
 
-            <Card
-              style={[
-                styles.statCard,
-                { backgroundColor: theme.colors.surface },
-              ]}
+            <TouchableOpacity 
+              style={{ flex: 1 }}
+              onPress={() => openCourseList("in_progress")}
             >
-              <Card.Content style={styles.statContent}>
-                <Text
-                  variant="headlineMedium"
-                  style={[styles.statNumber, { color: "#3b82f6" }]}
-                >
-                  🎯
-                </Text>
-                <Text
-                  variant="titleMedium"
-                  style={[styles.statValue, { color: theme.colors.onSurface }]}
-                >
-                  {dashboardData?.estatisticas.cursosAtivos || 0}
-                </Text>
-                <Text
-                  variant="bodySmall"
-                  style={[
-                    styles.statLabel,
-                    { color: theme.colors.onSurfaceVariant },
-                  ]}
-                >
-                  Em Progresso
-                </Text>
-              </Card.Content>
-            </Card>
+              <Card
+                style={[
+                  styles.statCard,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+              >
+                <Card.Content style={styles.statContent}>
+                  <View style={styles.statIconContainer}>
+                    <Icon source="target" size={32} color="#3b82f6" />
+                  </View>
+                  <Text
+                    variant="titleMedium"
+                    style={[styles.statValue, { color: theme.colors.onSurface }]}
+                  >
+                    {dashboardData?.estatisticas.cursosAtivos || 0}
+                  </Text>
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.statLabel,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    Em Progresso
+                  </Text>
+                </Card.Content>
+              </Card>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -291,6 +482,25 @@ export default function Dashboard() {
           <FeaturedCourses showHeader={true} limit={5} />
         </View>
       </ScrollView>
+
+      <CourseListModal
+        visible={modalVisible}
+        onDismiss={() => setModalVisible(false)}
+        title={modalTitle}
+        courses={modalCourses}
+        type={modalType}
+        onOpenPerformance={openPerformance}
+      />
+
+      {selectedPerfCourse && userFirebase && (
+        <PerformanceModal
+          visible={perfModalVisible}
+          onDismiss={() => setPerfModalVisible(false)}
+          usuarioId={userFirebase.uid}
+          cursoId={selectedPerfCourse.id}
+          cursoTitulo={selectedPerfCourse.titulo}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -316,6 +526,10 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontWeight: "400",
   },
+  card: {
+    borderRadius: spacing.md,
+    elevation: 2,
+  },
   section: {
     marginBottom: spacing.xl,
   },
@@ -338,6 +552,9 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     marginBottom: 4,
+  },
+  statIconContainer: {
+    marginBottom: 8,
   },
   statValue: {
     fontWeight: "700",

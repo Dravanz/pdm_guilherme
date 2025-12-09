@@ -3,7 +3,6 @@ import { AuthContext } from "@/context/AuthProvider";
 import { globalStyles, ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Badge } from "@/model/Badge";
-import { Curso } from "@/model/Curso";
 
 import { Perfil } from "@/model/Perfil";
 import { BadgeAdminService } from "@/services/badge/BadgeAdminService";
@@ -12,7 +11,7 @@ import { CursoService } from "@/services/curso/CursoService";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
     FlatList,
     SafeAreaView,
@@ -58,7 +57,12 @@ export default function Configuracoes() {
   const [mensagem, setMensagem] = useState({ tipo: "", mensagem: "" });
   const [dialogMensagemVisivel, setDialogMensagemVisivel] = useState(false);
   const [dialogColaborarVisivel, setDialogColaborarVisivel] = useState(false);
+  
   const [conhecimentos, setConhecimentos] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [github, setGithub] = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [experiencia, setExperiencia] = useState("");
   const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
 
   // Estados para CRUD de Badges (Admin)
@@ -90,7 +94,7 @@ export default function Configuracoes() {
   const [badgeRequisitoValor, setBadgeRequisitoValor] = useState("");
   const [badgeRequisitoCursoId, setBadgeRequisitoCursoId] = useState("");
   const [badgeRequisitoPerfil, setBadgeRequisitoPerfil] = useState<
-    "Colaborador" | "Admin" | ""
+    "Colaborador" | "Moderador" | ""
   >("");
 
   // Estados para Menus
@@ -100,25 +104,109 @@ export default function Configuracoes() {
   const [menuPerfilVisivel, setMenuPerfilVisivel] = useState(false);
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
 
-
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (userFirebase) {
       setNome(userFirebase.nome || "");
-      if (userFirebase.perfil === Perfil.Admin) {
+      if (userFirebase.perfil === Perfil.Moderador) {
         carregarCursos();
         carregarBadges();
       }
     }
   }, [userFirebase, carregarCursos, carregarBadges]);
 
-
-
   async function handleLogout() {
     const res = await sair();
     if (res === "ok") {
       router.replace("/signIn");
     }
+  }
+
+  async function enviarSolicitacaoColaboracao() {
+    if (!userFirebase || !conhecimentos.trim()) {
+      setMensagem({
+        tipo: "erro",
+        mensagem: "Por favor, informe seus conhecimentos e experiências.",
+      });
+      setDialogMensagemVisivel(true);
+      return;
+    }
+
+    setEnviandoSolicitacao(true);
+    try {
+      await SolicitacaoService.criarSolicitacaoColaboracao(
+        userFirebase.uid,
+        userFirebase.nome,
+        userFirebase.email,
+        userFirebase.urlFoto,
+        conhecimentos,
+        linkedin,
+        github,
+        portfolio,
+        experiencia
+      );
+
+      setDialogColaborarVisivel(false);
+      setConhecimentos("");
+      setLinkedin("");
+      setGithub("");
+      setPortfolio("");
+      setExperiencia("");
+      
+      setMensagem({
+        tipo: "sucesso",
+        mensagem:
+          "Solicitação enviada com sucesso! Aguarde a aprovação de um administrador.",
+      });
+      setDialogMensagemVisivel(true);
+    } catch (error: any) {
+      setMensagem({
+        tipo: "erro",
+        mensagem:
+          error.message || "Erro ao enviar solicitação. Tente novamente.",
+      });
+      setDialogMensagemVisivel(true);
+    }
+    setEnviandoSolicitacao(false);
+  }
+
+  async function tiraFoto() {
+    setAlterandoFoto(true);
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled) {
+        await sendImageToStorage(result.assets[0].uri);
+        setDialogFotoVisivel(false);
+      }
+    } catch (error) {
+      console.error("Erro ao tirar foto:", error);
+    }
+    setAlterandoFoto(false);
+  }
+
+  async function buscaNaGaleria() {
+    setAlterandoFoto(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled) {
+        await sendImageToStorage(result.assets[0].uri);
+        setDialogFotoVisivel(false);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar na galeria:", error);
+    }
+    setAlterandoFoto(false);
   }
 
   async function salvarPerfil() {
@@ -153,45 +241,6 @@ export default function Configuracoes() {
     }
     setRequisitando(false);
     setConfirmDelete(false);
-  }
-
-  async function enviarSolicitacaoColaboracao() {
-    if (!userFirebase || !conhecimentos.trim()) {
-      setMensagem({
-        tipo: "erro",
-        mensagem: "Por favor, informe seus conhecimentos e experiências.",
-      });
-      setDialogMensagemVisivel(true);
-      return;
-    }
-
-    setEnviandoSolicitacao(true);
-    try {
-      await SolicitacaoService.criarSolicitacaoColaboracao(
-        userFirebase.uid,
-        userFirebase.nome,
-        userFirebase.email,
-        userFirebase.urlFoto,
-        conhecimentos
-      );
-
-      setDialogColaborarVisivel(false);
-      setConhecimentos("");
-      setMensagem({
-        tipo: "sucesso",
-        mensagem:
-          "Solicitação enviada com sucesso! Aguarde a aprovação de um administrador.",
-      });
-      setDialogMensagemVisivel(true);
-    } catch (error: any) {
-      setMensagem({
-        tipo: "erro",
-        mensagem:
-          error.message || "Erro ao enviar solicitação. Tente novamente.",
-      });
-      setDialogMensagemVisivel(true);
-    }
-    setEnviandoSolicitacao(false);
   }
 
   // ============= FUNÇÕES DE GERENCIAMENTO DE BADGES (ADMIN) =============
@@ -774,8 +823,8 @@ export default function Configuracoes() {
           </Card>
         )}
 
-        {/* CRUD de Badges - apenas para Admin */}
-        {userFirebase?.perfil === Perfil.Admin && (
+        {/* CRUD de Badges - apenas para Moderador */}
+        {userFirebase?.perfil === Perfil.Moderador && (
           <Card
             style={[
               themeStyles.card,
@@ -1122,20 +1171,68 @@ export default function Configuracoes() {
             <Dialog.Title style={styles.textDialog}>
               Colaborar com o Projeto
             </Dialog.Title>
-            <Dialog.Content>
-              <Text style={styles.textDialog} variant="bodyMedium">
-                Como você deseja colaborar? Informe seus conhecimentos e
-                experiências:
-              </Text>
-              <TextInput
-                mode="outlined"
-                placeholder="Ex: Tenho experiência em JavaScript, Python e criação de cursos..."
-                value={conhecimentos}
-                onChangeText={setConhecimentos}
-                multiline
-                numberOfLines={4}
-                style={{ marginTop: 12 }}
-              />
+            <Dialog.Content style={{ maxHeight: 500 }}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={{ marginBottom: 16 }}>
+                  Para se tornar um colaborador, precisamos saber um pouco mais sobre você.
+                  Preencha os campos abaixo (alguns são opcionais).
+                </Text>
+
+                <TextInput
+                  label="Conhecimentos Técnicos *"
+                  placeholder="Ex: React Native, Firebase, TypeScript..."
+                  mode="outlined"
+                  value={conhecimentos}
+                  onChangeText={setConhecimentos}
+                  multiline
+                  numberOfLines={3}
+                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
+                />
+
+                <TextInput
+                  label="Experiência Profissional / Acadêmica"
+                  placeholder="Ex: Desenvolvedor Jr, Professor, Estudante..."
+                  mode="outlined"
+                  value={experiencia}
+                  onChangeText={setExperiencia}
+                  multiline
+                  numberOfLines={2}
+                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
+                />
+
+                <TextInput
+                  label="LinkedIn (Opcional)"
+                  placeholder="https://linkedin.com/in/..."
+                  mode="outlined"
+                  value={linkedin}
+                  onChangeText={setLinkedin}
+                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
+                  keyboardType="url"
+                  autoCapitalize="none"
+                />
+
+                <TextInput
+                  label="GitHub (Opcional)"
+                  placeholder="https://github.com/..."
+                  mode="outlined"
+                  value={github}
+                  onChangeText={setGithub}
+                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
+                  keyboardType="url"
+                  autoCapitalize="none"
+                />
+
+                <TextInput
+                  label="Portfólio / Lattes (Opcional)"
+                  placeholder="Link para seu portfólio ou currículo"
+                  mode="outlined"
+                  value={portfolio}
+                  onChangeText={setPortfolio}
+                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
+                  keyboardType="url"
+                  autoCapitalize="none"
+                />
+              </ScrollView>
             </Dialog.Content>
             <Dialog.Actions>
               <Button
@@ -1164,13 +1261,11 @@ export default function Configuracoes() {
           visible={dialogBadgeVisivel}
           onDismiss={() => setDialogBadgeVisivel(false)}
           contentContainerStyle={{
-            backgroundColor: theme.colors.surface,
             margin: 20,
-            borderRadius: 12,
             height: "90%",
           }}
         >
-          <View style={{ flex: 1, padding: 20 }}>
+          <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
             <Text
               variant="headlineSmall"
               style={{ marginBottom: 16, fontWeight: "bold" }}
@@ -1420,10 +1515,10 @@ export default function Configuracoes() {
                     />
                     <Menu.Item
                       onPress={() => {
-                        setBadgeRequisitoPerfil("Admin");
+                        setBadgeRequisitoPerfil("Moderador");
                         setMenuPerfilVisivel(false);
                       }}
-                      title="👨‍💼 Admin"
+                      title="👨‍💼 Moderador"
                     />
                   </Menu>
                 </>

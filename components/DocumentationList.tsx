@@ -112,18 +112,20 @@ export function DocumentationList({
             icon="file-document"
             style={[
               styles.chip,
-              { backgroundColor: theme.colors.primaryContainer },
+              { backgroundColor: theme.colors.primaryContainer, flexShrink: 1, marginRight: 8 },
             ]}
+            textStyle={{ fontSize: 12 }}
+            compact
           >
             {getTipoIcon(doc.tipo)} {getTipoLabel(doc.tipo)}
           </Chip>
           <Text
             variant="bodySmall"
-            style={{ color: theme.colors.onSurfaceVariant }}
+            style={{ color: theme.colors.onSurfaceVariant, flexShrink: 0 }}
           >
             {doc.dataPublicacao
               ? new Date(doc.dataPublicacao).toLocaleDateString("pt-BR")
-              : "Data não disponível"}
+              : "Data N/A"}
           </Text>
         </View>
 
@@ -227,7 +229,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   horizontalCard: {
-    width: 280,
+    width: 300,
     marginRight: 12,
     marginBottom: 8,
   },

@@ -5,7 +5,7 @@ import { BadgeService } from "@/services/badge/BadgeService";
 import { ImageCacheService } from "@/services/image/ImageCacheService";
 import { DecayService } from "@/services/shared/DecayService";
 import * as ImageManipulator from "expo-image-manipulator";
-import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Alert } from "react-native";
@@ -26,12 +26,18 @@ export const UserProvider = ({ children }: any) => {
       // Listener para atualizar automaticamente quando o documento mudar
       const unsubscribe = onSnapshot(
         doc(firestore, "usuarios", userAuth.user.uid),
-        (docSnap) => {
+        async (docSnap) => {
           if (docSnap.exists()) {
             let userData = docSnap.data();
             const authUser = userAuth.user;
             const lastSignInTime = authUser.metadata.lastSignInTime;
             const creationTime = authUser.metadata.creationTime;
+
+            // MIGRATION: Fix Course IDs (underscore -> dash)
+            // Migration logic moved to checkAndMigrateCourses function
+
+            // Verificar e registrar login diário
+            checkAndAddLoginDay(userAuth.user.uid, userData);
 
             // Calcula streak e coeficiente
             const { diasAtivos, coeficiente, diasInatividade } =
@@ -125,6 +131,68 @@ export const UserProvider = ({ children }: any) => {
     return { diasAtivos, coeficiente, diasInatividade };
   }
 
+  async function checkAndAddLoginDay(userId: string, userData: any) {
+    const hoje = new Date().toISOString().split("T")[0];
+    let diasLogin = userData.diasLogin || [];
+
+    // Adicionar hoje se não estiver na lista
+    if (!diasLogin.includes(hoje)) {
+      diasLogin = [...diasLogin, hoje].sort();
+      // Manter apenas os últimos 30 dias
+      const trintaDiasAtras = new Date();
+      trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+      diasLogin = diasLogin.filter(
+        (data: string) => new Date(data) >= trintaDiasAtras
+      );
+
+      // Salvar imediatamente no Firestore
+      try {
+        await setDoc(
+          doc(firestore, "usuarios", userId),
+          { diasLogin },
+          { merge: true }
+        );
+        console.log("Login diário registrado:", hoje);
+
+        // Agendar lembrete de ofensiva para 24h depois
+        const { NotificationService } = await import("@/services/shared/NotificationService");
+        await NotificationService.scheduleStreakReminder();
+        
+      } catch (error) {
+        console.error("Erro ao salvar dias de login:", error);
+      }
+    }
+  }
+
+  async function checkAndMigrateCourses(userId: string) {
+    try {
+      const usuariosCursosRef = collection(firestore, "usuariosCursos");
+      const qCursos = query(usuariosCursosRef, where("usuarioId", "==", userId));
+      const snapshotCursos = await getDocs(qCursos);
+      
+      snapshotCursos.forEach(async (docSnapCurso) => {
+        const dataCurso = docSnapCurso.data() as { cursoId: string; [key: string]: any };
+        if (dataCurso.cursoId && dataCurso.cursoId.includes("_")) {
+          const novoId = dataCurso.cursoId.replace(/_/g, "-");
+          console.log(`Migrando curso ${dataCurso.cursoId} para ${novoId}`);
+          
+          // Criar novo documento com ID corrigido
+          const novoDocId = `${userId}_${novoId}`;
+          await setDoc(doc(firestore, "usuariosCursos", novoDocId), {
+            ...dataCurso,
+            id: novoDocId,
+            cursoId: novoId
+          });
+          
+          // Deletar antigo
+          await deleteDoc(doc(firestore, "usuariosCursos", docSnapCurso.id));
+        }
+      });
+    } catch (error) {
+      console.error("Erro na migração de cursos:", error);
+    }
+  }
+
   //busca os detalhes do usuário
   async function getUser(): Promise<void> {
     try {
@@ -135,6 +203,13 @@ export const UserProvider = ({ children }: any) => {
 
       // Aplicar decay antes de buscar dados
       await DecayService.aplicarDecayCoeficiente(userAuth.user.uid);
+      
+      // Executar migração de IDs de curso
+      checkAndMigrateCourses(userAuth.user.uid);
+
+      // Registrar para notificações push
+      const { NotificationService } = await import("@/services/shared/NotificationService");
+      await NotificationService.registerForPushNotificationsAsync(userAuth.user.uid);
 
       const docSnap = await getDoc(
         doc(firestore, "usuarios", userAuth.user.uid)
@@ -142,6 +217,17 @@ export const UserProvider = ({ children }: any) => {
 
       if (docSnap.exists()) {
         let userData = docSnap.data();
+
+        // MIGRATION: Admin -> Moderador
+        if (userData.perfil === "Admin") {
+          console.log("Migrando usuário de Admin para Moderador...");
+          userData.perfil = "Moderador";
+          await setDoc(
+            doc(firestore, "usuarios", userAuth.user.uid),
+            { perfil: "Moderador" },
+            { merge: true }
+          );
+        }
 
         // Usa dados nativos do Firebase Auth
         const authUser = userAuth.user;
@@ -152,29 +238,8 @@ export const UserProvider = ({ children }: any) => {
         const { diasAtivos, coeficiente, diasInatividade } =
           calculateStreakAndCoefficient(lastSignInTime, userData);
 
-        // Atualizar array de dias de login
-        const hoje = new Date().toISOString().split("T")[0];
-        let diasLogin = userData.diasLogin || [];
-
-        // Adicionar hoje se não estiver na lista
-        if (!diasLogin.includes(hoje)) {
-          diasLogin = [...diasLogin, hoje].sort();
-          // Manter apenas os últimos 30 dias
-          const trintaDiasAtras = new Date();
-          trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-          diasLogin = diasLogin.filter(
-            (data: string) => new Date(data) >= trintaDiasAtras
-          );
-
-          // Salvar imediatamente no Firestore (sem await para não bloquear)
-          setDoc(
-            doc(firestore, "usuarios", userAuth.user.uid),
-            { diasLogin },
-            { merge: true }
-          ).catch((error) =>
-            console.error("Erro ao salvar dias de login:", error)
-          );
-        }
+        // Verificar e registrar login diário (agora tratado no onSnapshot também, mas mantido aqui para garantia inicial)
+        // checkAndAddLoginDay(userAuth.user.uid, userData); // Removido para evitar duplicidade, o onSnapshot cuidará disso assim que o getUser atualizar o documento ou o listener disparar
 
         const usuario: Usuario = {
           uid: docSnap.id,
@@ -188,7 +253,7 @@ export const UserProvider = ({ children }: any) => {
           dataUltimoAcesso: lastSignInTime,
           createdAt: creationTime,
           diasAtivos,
-          diasLogin,
+          diasLogin: userData.diasLogin || [],
         };
 
         // Atualiza dados calculados no Firestore
@@ -199,7 +264,7 @@ export const UserProvider = ({ children }: any) => {
             coeficienteConhecimento: coeficiente,
             diasInatividade,
             dataUltimoAcesso: lastSignInTime,
-            diasLogin: usuario.diasLogin,
+            diasLogin: userData.diasLogin || [],
           },
           { merge: true }
         );

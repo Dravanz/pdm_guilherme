@@ -8,7 +8,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Card, Chip, Text, useTheme } from "react-native-paper";
+import { Card, Icon, Text, useTheme } from "react-native-paper";
 
 interface FeaturedCoursesProps {
   showHeader?: boolean;
@@ -44,7 +44,7 @@ export function FeaturedCourses({
   const navegarParaCurso = (cursoId: string) => {
     router.push({
       pathname: "/curso/[id]",
-      params: { id: cursoId },
+      params: { id: cursoId, modo: 'preview' },
     });
   };
 
@@ -121,27 +121,19 @@ export function FeaturedCourses({
                 </Text>
 
                 <View style={styles.statsContainer}>
-                  <Chip
-                    icon="account-group"
-                    style={[
-                      styles.chip,
-                      { backgroundColor: theme.colors.primaryContainer },
-                    ]}
-                    textStyle={{ fontSize: 12 }}
-                  >
-                    {course.totalUsuarios} usuários
-                  </Chip>
+                  <View style={styles.statRow}>
+                    <Icon source="account-group" size={16} color={theme.colors.primary} />
+                    <Text variant="bodySmall" style={{ marginLeft: 6, color: theme.colors.onSurface }}>
+                      {course.totalUsuarios} alunos
+                    </Text>
+                  </View>
 
-                  <Chip
-                    icon="check-circle"
-                    style={[
-                      styles.chip,
-                      { backgroundColor: theme.colors.secondaryContainer },
-                    ]}
-                    textStyle={{ fontSize: 12 }}
-                  >
-                    {course.usuariosConcluidos} concluídos
-                  </Chip>
+                  <View style={styles.statRow}>
+                    <Icon source="check-circle" size={16} color={theme.colors.secondary} />
+                    <Text variant="bodySmall" style={{ marginLeft: 6, color: theme.colors.onSurface }}>
+                      {course.usuariosConcluidos} concluídos
+                    </Text>
+                  </View>
                 </View>
 
                 {course.usuariosAtivos > 0 && (
@@ -178,7 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   card: {
-    width: 200,
+    width: 250,
     marginRight: 12,
     marginBottom: 8,
     borderRadius: 12,
@@ -200,13 +192,13 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   statsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
+    flexDirection: "column",
+    gap: 6,
     marginBottom: 8,
   },
-  chip: {
-    height: 28,
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   activeUsers: {
     fontWeight: "600",

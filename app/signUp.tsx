@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { containerPadding, spacing } from "@/constants/Layout";
 import { AuthContext } from "@/context/AuthProvider";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
@@ -10,22 +11,21 @@ import { router } from "expo-router";
 import { useContext, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
-import { spacing, containerPadding } from "@/constants/Layout";
 import {
-  Button,
-  Dialog,
-  Divider,
-  Text,
-  TextInput,
-  useTheme,
+    Button,
+    Dialog,
+    Divider,
+    Text,
+    TextInput,
+    useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as yup from "yup";
@@ -138,6 +138,10 @@ export default function SignUp() {
           console.error("Erro ao fazer upload da foto:", error);
         }
       }
+
+      // Agendar notificação de boas-vindas
+      const { NotificationService } = await import("@/services/shared/NotificationService");
+      await NotificationService.scheduleWelcomeNotification(data.nome);
 
       setMensagem({
         tipo: "ok",

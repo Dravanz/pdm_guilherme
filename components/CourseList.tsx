@@ -151,39 +151,73 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
               {item.descricao || "Sem descrição"}
             </Text>
           </Card.Content>
-          <Card.Actions>
+          <View style={{ padding: 16, paddingTop: 8 }}>
             {cursosStatus[item.id] ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                }}
-              >
-                <Text
-                  style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}
-                >
-                  ✅ Curso concluído
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={() => revisarCurso(item)}
-                  icon="refresh"
-                >
-                  Revisar
-                </Button>
+              <View style={{ gap: 12 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>
+                      ✅ Concluído
+                    </Text>
+                 </View>
+                
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "revisao" } })}
+                      icon="chart-bar"
+                      style={{ borderColor: theme.colors.outline, minWidth: 40 }}
+                      contentStyle={{ height: 40, paddingHorizontal: 0 }}
+                      compact
+                    >
+                      {""}
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={() => revisarCurso(item)}
+                      icon="refresh"
+                      style={{ flex: 1, borderColor: theme.colors.outline }}
+                      contentStyle={{ height: 40 }}
+                    >
+                      Revisar
+                    </Button>
+                </View>
               </View>
             ) : (
-              <Button
-                mode="contained"
-                onPress={() => iniciarCurso(item)}
-                style={{ backgroundColor: "#22c55e" }}
-              >
-                Iniciar Curso
-              </Button>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Button
+                    mode="contained"
+                    onPress={() => iniciarCurso(item)}
+                    style={{ backgroundColor: "#22c55e", flex: 1 }}
+                    contentStyle={{ height: 40 }}
+                    labelStyle={{ fontSize: 12 }}
+                    compact
+                  >
+                    Iniciar
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "preview" } })}
+                    style={{ flex: 1, borderColor: theme.colors.outline }}
+                    contentStyle={{ height: 40 }}
+                    labelStyle={{ fontSize: 12 }}
+                    icon="magnify"
+                    compact
+                  >
+                    Visualizar
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "revisao" } })} // Using revisao/performance route
+                    style={{ borderColor: theme.colors.outline, minWidth: 40, justifyContent: 'center' }}
+                    contentStyle={{ height: 40 }}
+                    icon="chart-bar"
+                    compact
+                  >
+                    {""}
+                  </Button>
+              </View>
             )}
-          </Card.Actions>
+          </View>
         </Card>
       )}
       ItemSeparatorComponent={() => (

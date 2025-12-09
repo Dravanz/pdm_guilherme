@@ -11,36 +11,40 @@ import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams } from "expo-router";
 import { collection, onSnapshot } from "firebase/firestore";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  View,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Chip,
-  Dialog,
-  IconButton,
-  Modal,
-  Portal,
-  SegmentedButtons,
-  Text,
-  TextInput,
-  useTheme
+    Button,
+    Card,
+    Chip,
+    Dialog,
+    Divider,
+    IconButton,
+    Menu,
+    Modal,
+    Portal,
+    SegmentedButtons,
+    Text,
+    TextInput,
+    useTheme
 } from "react-native-paper";
 
 export default function Colaboracao() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase } = useContext<any>(UserContext);
+  const params = useLocalSearchParams();
 
   // Estados principais
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -50,6 +54,11 @@ export default function Colaboracao() {
   const [etapaCriacao, setEtapaCriacao] = useState<
     "info" | "paginas" | "revisao"
   >("info");
+  
+  // Documentação
+  const [documentacoesDisponiveis, setDocumentacoesDisponiveis] = useState<Documentacao[]>([]);
+  const [documentacaoSelecionada, setDocumentacaoSelecionada] = useState<string | undefined>(undefined);
+  const [menuDocVisivel, setMenuDocVisivel] = useState(false);
 
   // Dialogs
   const [dialogCriarVisivel, setDialogCriarVisivel] = useState(false);
@@ -127,6 +136,13 @@ export default function Colaboracao() {
     }, [userFirebase?.uid])
   );
 
+  // Handle params for deep linking
+  useEffect(() => {
+    if (params.aba) {
+      setAbaAtiva(params.aba as "cursos" | "documentacao");
+    }
+  }, [params]);
+
   // Listener em tempo real para mudanças nos cursos
   useEffect(() => {
     if (!userFirebase) return;
@@ -157,7 +173,7 @@ export default function Colaboracao() {
     try {
       setCarregando(true);
       // Buscar TODOS os cursos do sistema (XML + Firestore)
-      const isAdmin = userFirebase?.perfil === Perfil.Admin;
+      const isAdmin = userFirebase?.perfil === Perfil.Moderador;
       const todosCursos = await ColaboradorCursoService.buscarTodosCursos(
         userFirebase.uid,
         isAdmin
@@ -171,11 +187,22 @@ export default function Colaboracao() {
     }
   }
 
+  // Carregar documentações aprovadas quando o dialog abrir
+  useEffect(() => {
+    if (dialogCriarVisivel) {
+      const unsubscribe = DocumentacaoService.observarDocumentacoesAprovadas((docs) => {
+        setDocumentacoesDisponiveis(docs);
+      });
+      return () => unsubscribe();
+    }
+  }, [dialogCriarVisivel]);
+
   function abrirCriacaoCurso() {
     limparFormularioCurso();
     setModoEdicao(false);
     setCursoEditando(null);
     setEtapaCriacao("info");
+    setDocumentacaoSelecionada(undefined);
     setDialogCriarVisivel(true);
   }
 
@@ -201,6 +228,7 @@ export default function Colaboracao() {
 
       setModoEdicao(true);
       setCursoEditando(curso);
+      setDocumentacaoSelecionada(curso.documentacaoId);
       setEtapaCriacao("info");
       setDialogCriarVisivel(true);
     } catch (error) {
@@ -555,19 +583,22 @@ export default function Colaboracao() {
       const xmlContent = gerarXMLCurso();
 
       // Preparar dados do curso
-      const dadosCurso: Curso = {
+      const dadosCurso: any = {
         id: cursoId,
         titulo,
         descricao,
         categoria,
         nivel,
-        versaoLinguagem: versaoLinguagem || undefined,
         paginas: [], // Não será salvo no Firestore
         coeficienteMaximo: 100,
-        imageUrl: imagemCapaUploadUrl, // URL da imagem de capa
         createdAt: null, // Será gerado pelo servidor
         updatedAt: null, // Será gerado pelo servidor
       };
+
+      // Adicionar campos opcionais apenas se tiverem valor
+      if (versaoLinguagem) dadosCurso.versaoLinguagem = versaoLinguagem;
+      if (imagemCapaUploadUrl) dadosCurso.imageUrl = imagemCapaUploadUrl;
+      if (documentacaoSelecionada) dadosCurso.documentacaoId = documentacaoSelecionada;
 
       // Salvar questões no Firestore primeiro
       for (const pagina of paginas) {
@@ -665,7 +696,14 @@ export default function Colaboracao() {
     if (!userFirebase) return;
     try {
       setCarregando(true);
-      const docs = await DocumentacaoService.buscarDocumentacoesPorAutor(userFirebase.uid);
+      const isAdmin = userFirebase.perfil === Perfil.Moderador;
+      
+      let docs: Documentacao[] = [];
+      if (isAdmin) {
+        docs = await DocumentacaoService.buscarTodasDocumentacoes();
+      } else {
+        docs = await DocumentacaoService.buscarDocumentacoesPorAutor(userFirebase.uid);
+      }
       setDocumentacoes(docs);
     } catch (error) {
       console.error("Erro ao carregar documentações:", error);
@@ -692,6 +730,17 @@ export default function Colaboracao() {
     setDialogDocVisivel(true);
   }
 
+  function abrirEdicaoDocumentacao(doc: Documentacao) {
+    setDocEditando(doc);
+    setDocTitulo(doc.titulo);
+    setDocConteudo(doc.conteudo);
+    setDocLink(doc.link || "");
+    setDocVersao(doc.versao || "");
+    setDocDataRef(doc.dataReferencia || "");
+    setDocTipo(doc.tipo);
+    setDialogDocVisivel(true);
+  }
+
   async function salvarDocumentacao() {
     if (!docTitulo.trim() || !docConteudo.trim()) {
       mostrarMensagem("erro", "Preencha os campos obrigatórios");
@@ -700,47 +749,76 @@ export default function Colaboracao() {
 
     try {
       setCarregando(true);
-      const isAdmin = userFirebase.perfil === Perfil.Admin;
+      const isAdmin = userFirebase.perfil === Perfil.Moderador;
 
-      if (isAdmin) {
-        // Admin cria diretamente
-        await DocumentacaoService.criarDocumentacao(
-          docTitulo,
-          docConteudo,
-          docLink,
-          docVersao,
-          docDataRef,
-          docTipo,
-          userFirebase.uid,
-          userFirebase.nome,
-          true
-        );
-        mostrarMensagem("sucesso", "Documentação publicada com sucesso!");
+      if (docEditando) {
+        // Atualizar documentação existente
+        const dadosAtualizados: Partial<Documentacao> = {
+          titulo: docTitulo,
+          conteudo: docConteudo,
+          link: docLink,
+          versao: docVersao,
+          dataReferencia: docDataRef,
+          tipo: docTipo,
+        };
+
+        if (isAdmin) {
+            // Admin/Moderador atualiza diretamente
+            await DocumentacaoService.atualizarDocumentacao(docEditando.id, dadosAtualizados);
+            mostrarMensagem("sucesso", "Documentação atualizada com sucesso!");
+        } else {
+            // Colaborador só pode atualizar se for o autor (verificação já feita na UI, mas bom garantir)
+            if (docEditando.autorId === userFirebase.uid) {
+                 await DocumentacaoService.atualizarDocumentacao(docEditando.id, dadosAtualizados);
+                 mostrarMensagem("sucesso", "Documentação atualizada com sucesso!");
+            } else {
+                mostrarMensagem("erro", "Você não tem permissão para editar esta documentação.");
+                return;
+            }
+        }
+
       } else {
-        // Colaborador cria solicitação
-        // Primeiro cria a documentação como pendente
-        const docId = await DocumentacaoService.criarDocumentacao(
-          docTitulo,
-          docConteudo,
-          docLink,
-          docVersao,
-          docDataRef,
-          docTipo,
-          userFirebase.uid,
-          userFirebase.nome,
-          false
-        );
+        // Criar nova documentação
+        if (isAdmin) {
+            // Moderador cria diretamente
+            await DocumentacaoService.criarDocumentacao(
+            docTitulo,
+            docConteudo,
+            docLink,
+            docVersao,
+            docDataRef,
+            docTipo,
+            userFirebase.uid,
+            userFirebase.nome,
+            true
+            );
+            mostrarMensagem("sucesso", "Documentação publicada com sucesso!");
+        } else {
+            // Colaborador cria solicitação
+            // Primeiro cria a documentação como pendente
+            const docId = await DocumentacaoService.criarDocumentacao(
+            docTitulo,
+            docConteudo,
+            docLink,
+            docVersao,
+            docDataRef,
+            docTipo,
+            userFirebase.uid,
+            userFirebase.nome,
+            false
+            );
 
-        // Depois cria a solicitação
-        await SolicitacaoService.criarSolicitacaoDocumentacao(
-          docId,
-          docTitulo,
-          docLink,
-          docConteudo,
-          userFirebase.uid,
-          userFirebase.nome
-        );
-        mostrarMensagem("sucesso", "Solicitação enviada para aprovação!");
+            // Depois cria a solicitação
+            await SolicitacaoService.criarSolicitacaoDocumentacao(
+            docId,
+            docTitulo,
+            docLink,
+            docConteudo,
+            userFirebase.uid,
+            userFirebase.nome
+            );
+            mostrarMensagem("sucesso", "Solicitação enviada para aprovação!");
+        }
       }
 
       setDialogDocVisivel(false);
@@ -986,7 +1064,17 @@ export default function Colaboracao() {
                         {item.dataReferencia && <Chip compact icon="calendar">{item.dataReferencia}</Chip>}
                       </View>
                     </Card.Content>
-
+                    <Card.Actions>
+                        {(item.autorId === userFirebase.uid || userFirebase.perfil === Perfil.Moderador) && (
+                            <Button
+                                icon="pencil"
+                                onPress={() => abrirEdicaoDocumentacao(item)}
+                                disabled={carregando}
+                            >
+                                Editar
+                            </Button>
+                        )}
+                    </Card.Actions>
                   </Card>
                 )}
               />
@@ -1004,13 +1092,11 @@ export default function Colaboracao() {
               setCursoEditando(null);
             }}
             contentContainerStyle={{
-              backgroundColor: theme.colors.surface,
               margin: 20,
-              borderRadius: 12,
               height: "90%",
             }}
           >
-            <View style={{ flex: 1, padding: 20 }}>
+            <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
               <Text
                 variant="headlineSmall"
                 style={{ marginBottom: 16, fontWeight: "bold" }}
@@ -1141,6 +1227,46 @@ export default function Colaboracao() {
                         { value: "avancado", label: "Avançado" },
                       ]}
                     />
+
+                    {/* Documentação Vinculada */}
+                    <Text variant="bodySmall" style={{ marginTop: 16, marginBottom: 4 }}>
+                      Documentação Vinculada (Opcional):
+                    </Text>
+                    <Menu
+                      visible={menuDocVisivel}
+                      onDismiss={() => setMenuDocVisivel(false)}
+                      anchor={
+                        <Button
+                          mode="outlined"
+                          onPress={() => setMenuDocVisivel(true)}
+                          style={styles.input}
+                          icon="file-document"
+                        >
+                          {documentacaoSelecionada
+                            ? documentacoesDisponiveis.find(d => d.id === documentacaoSelecionada)?.titulo || "Documentação Selecionada"
+                            : "Selecionar Documentação"}
+                        </Button>
+                      }
+                    >
+                      <Menu.Item 
+                        onPress={() => {
+                          setDocumentacaoSelecionada(undefined);
+                          setMenuDocVisivel(false);
+                        }} 
+                        title="Nenhuma" 
+                      />
+                      <Divider />
+                      {documentacoesDisponiveis.map((doc) => (
+                        <Menu.Item
+                          key={doc.id}
+                          onPress={() => {
+                            setDocumentacaoSelecionada(doc.id);
+                            setMenuDocVisivel(false);
+                          }}
+                          title={doc.titulo}
+                        />
+                      ))}
+                    </Menu>
                   </KeyboardAvoidingView>
                 )}
 
@@ -1616,13 +1742,11 @@ export default function Colaboracao() {
             visible={dialogDocVisivel}
             onDismiss={() => setDialogDocVisivel(false)}
             contentContainerStyle={{
-              backgroundColor: theme.colors.surface,
               margin: 20,
-              borderRadius: 12,
               height: "90%",
             }}
           >
-            <View style={{ flex: 1, padding: 20 }}>
+            <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
               <Text
                 variant="headlineSmall"
                 style={{ marginBottom: 16, fontWeight: "bold" }}

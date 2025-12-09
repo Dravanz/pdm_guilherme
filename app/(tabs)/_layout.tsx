@@ -1,5 +1,4 @@
 import { UserContext } from "@/context/UserProvider";
-import { Perfil } from "@/model/Perfil";
 import { Tabs } from "expo-router";
 import { useContext } from "react";
 import { Platform } from "react-native";
@@ -89,7 +88,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Tab apenas para Admins */}
+      {/* Tab apenas para Moderadores */}
       <Tabs.Screen
         name="solicitacoes"
         options={{
@@ -103,7 +102,7 @@ export default function TabLayout() {
               size={20}
             />
           ),
-          href: userFirebase?.perfil === Perfil.Admin ? undefined : null,
+          href: null,
         }}
       />
 
@@ -121,7 +120,7 @@ export default function TabLayout() {
               size={20}
             />
           ),
-          href: userFirebase?.perfil === Perfil.Colaborador || userFirebase?.perfil === Perfil.Admin ? undefined : null,
+          href: null,
         }}
       />
 

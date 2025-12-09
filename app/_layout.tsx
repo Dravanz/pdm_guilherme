@@ -7,8 +7,17 @@ import { AuthProvider } from "@/context/AuthProvider";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { UserProvider } from "@/context/UserProvider";
 import { DashboardService } from "@/services/shared/DashboardService";
+import * as Notifications from 'expo-notifications';
 import React from "react";
 import { useColorScheme } from "react-native";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function RootLayout() {
   const [loaded] = useFonts({

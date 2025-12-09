@@ -6,15 +6,15 @@ import React, { useEffect, useState } from "react";
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import {
-    ActivityIndicator,
-    Button,
-    Card,
-    Divider,
-    List,
-    Modal,
-    Portal,
-    Text,
-    useTheme,
+  ActivityIndicator,
+  Button,
+  Card,
+  Divider,
+  List,
+  Modal,
+  Portal,
+  Text,
+  useTheme,
 } from "react-native-paper";
 
 interface PerformanceModalProps {
@@ -81,11 +81,9 @@ export function PerformanceModal({
       <Modal
         visible={visible}
         onDismiss={onDismiss}
-        contentContainerStyle={[
-          styles.modalContainer,
-          { backgroundColor: theme.colors.background },
-        ]}
+        contentContainerStyle={styles.modalContainer}
       >
+        <View style={[styles.contentWrapper, { backgroundColor: theme.colors.background }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text variant="headlineSmall" style={styles.title}>
             Desempenho: {cursoTitulo}
@@ -167,17 +165,20 @@ export function PerformanceModal({
                       labels: stats.evolucao.map((e: any) => e.index.toString()),
                       datasets: [
                         {
-                          data: stats.evolucao.map((e: any) => e.correta),
+                          data: stats.evolucao.map((e: any) => e.taxaAcerto),
+                          color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                          strokeWidth: 2
                         },
                       ],
+                      legend: ["Precisão Acumulada (%)"]
                     }}
                     width={screenWidth - 60}
                     height={220}
                     yAxisLabel=""
-                    yAxisSuffix=""
+                    yAxisSuffix="%"
                     chartConfig={{
                       ...chartConfig,
-                      formatYLabel: (y) => (y === "1" ? "Acerto" : "Erro"),
+                      formatYLabel: (y) => y,
                     }}
                     bezier
                     style={styles.chart}
@@ -242,6 +243,7 @@ export function PerformanceModal({
             Fechar
           </Button>
         </ScrollView>
+        </View>
       </Modal>
     </Portal>
   );
@@ -250,8 +252,12 @@ export function PerformanceModal({
 const styles = StyleSheet.create({
   modalContainer: {
     margin: 20,
-    borderRadius: 8,
     maxHeight: "90%",
+  },
+  contentWrapper: {
+    borderRadius: 8,
+    flexShrink: 1,
+    overflow: "hidden",
   },
   scrollContent: {
     padding: containerPadding.horizontal,

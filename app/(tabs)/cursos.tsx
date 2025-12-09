@@ -10,7 +10,7 @@ import { router } from "expo-router";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
-import { Button, Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
+import { Button, Card, Searchbar, Text, useTheme } from "react-native-paper";
 
 export default function Cursos() {
   const theme = useTheme();
@@ -143,6 +143,7 @@ export default function Cursos() {
       </View>
       <FlatList
         data={cursosFiltrados}
+        extraData={cursosStatus}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Card
@@ -179,49 +180,72 @@ export default function Cursos() {
                 {item.descricao}
               </Text>
             </Card.Content>
-            <Card.Actions>
-              {cursosStatus[item.id] ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flex: 1,
-                  }}
-                >
-                  <Chip
-                    icon="check-circle"
-                    style={{ backgroundColor: "transparent" }}
-                    textStyle={{ color: "#22c55e", fontWeight: "bold" }}
-                  >
-                    Concluído
-                  </Chip>
-                  <Button
-                    mode="outlined"
-                    onPress={() => revisarCurso(item)}
-                    icon="refresh"
-                    compact
-                  >
-                    Revisar
-                  </Button>
-                </View>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={() => iniciarCurso(item)}
-                  style={{ backgroundColor: "#22c55e" }}
-                >
-                  Iniciar Curso
-                </Button>
-              )}
-              <Button 
-                mode="text" 
-                onPress={() => abrirDesempenho(item.id, item.titulo)}
-                style={{ marginLeft: 8 }}
-              >
-                Desempenho
-              </Button>
-            </Card.Actions>
+            <View style={{ padding: 16, paddingTop: 8 }}>
+                {cursosStatus[item.id] ? (
+                  <View style={{ gap: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>
+                        ✅ Concluído
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 12 }}>
+                      <Button
+                        mode="outlined"
+                        onPress={() => abrirDesempenho(item.id, item.titulo)}
+                        icon="chart-bar"
+                        style={{ borderColor: theme.colors.outline, minWidth: 40, justifyContent: 'center' }}
+                        contentStyle={{ height: 40 }}
+                        compact
+                      >
+                        {""}
+                      </Button>
+                      <Button
+                        mode="outlined"
+                        onPress={() => revisarCurso(item)}
+                        icon="refresh"
+                        style={{ flex: 1, borderColor: theme.colors.outline }}
+                        contentStyle={{ height: 40 }}
+                      >
+                        Revisar
+                      </Button>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", gap: 4 }}>
+                    <Button
+                      mode="contained"
+                      onPress={() => iniciarCurso(item)}
+                      style={{ backgroundColor: "#22c55e", flex: 1 }}
+                      contentStyle={{ height: 40 }}
+                      labelStyle={{ fontSize: 12 }}
+                      compact
+                    >
+                      Iniciar
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "preview" } })}
+                      style={{ flex: 1, borderColor: theme.colors.outline }}
+                      contentStyle={{ height: 40 }}
+                      labelStyle={{ fontSize: 12 }}
+                      icon="magnify"
+                      compact
+                    >
+                      Visualizar
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={() => abrirDesempenho(item.id, item.titulo)}
+                      style={{ borderColor: theme.colors.outline, minWidth: 40, justifyContent: 'center' }}
+                      contentStyle={{ height: 40 }}
+                      icon="chart-bar"
+                      compact
+                    >
+                      {""}
+                    </Button>
+                  </View>
+                )}
+            </View>
           </Card>
         )}
         ItemSeparatorComponent={() => (

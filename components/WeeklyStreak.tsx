@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { Icon, Text, useTheme } from 'react-native-paper';
 
 interface WeeklyStreakProps {
   loginDays: string[]; // Array de datas no formato 'YYYY-MM-DD'
@@ -56,9 +56,11 @@ export function WeeklyStreak({ loginDays }: WeeklyStreakProps) {
                   borderWidth: day.isToday ? 2 : 0,
                 }
               ]}>
-                <Text style={styles.emoji}>
-                  {hasLogin ? '✅' : '❌'}
-                </Text>
+                <Icon
+                  source={hasLogin ? 'fire' : 'close'}
+                  size={20}
+                  color={hasLogin ? '#FF5722' : theme.colors.onSurfaceVariant}
+                />
               </View>
             </View>
           );
@@ -97,8 +99,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  emoji: {
-    fontSize: 16,
   },
 });

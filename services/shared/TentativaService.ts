@@ -115,10 +115,26 @@ export class TentativaService {
       porQuestao[t.questaoId].ultimaCorreta = t.correta;
     });
     
-    const evolucao = tentativasOrdenadas.slice(-10).map((t, index) => ({
-      index: index + 1,
-      correta: t.correta ? 1 : 0,
-    }));
+    let acertosAcumulados = 0;
+    let pontuacaoAcumulada = 0;
+
+    const evolucaoCompleta = tentativasOrdenadas.map((t, index) => {
+      if (t.correta) {
+        acertosAcumulados++;
+        pontuacaoAcumulada += 10; // Pontuação base por acerto
+      }
+      
+      const taxa = Math.round((acertosAcumulados / (index + 1)) * 100);
+      
+      return {
+        index: index + 1,
+        taxaAcerto: taxa,
+        pontuacao: pontuacaoAcumulada,
+        correta: t.correta // Mantendo para referência se necessário
+      };
+    });
+
+    const evolucao = evolucaoCompleta.slice(-10);
 
     return {
       totalTentativas,

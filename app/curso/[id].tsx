@@ -2,16 +2,22 @@ import { CursoViewer } from "@/components/CursoViewer";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Curso, UsuarioCurso } from "@/model/Curso";
+import { Documentacao } from "@/model/Documentacao";
 import { CursoService } from "@/services/curso/CursoService";
+import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
-import { Alert, SafeAreaView, StyleSheet, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
 import {
     ActivityIndicator,
+    Button,
     IconButton,
+    Modal,
+    Portal,
     Text,
-    useTheme,
+    useTheme
 } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CursoDetalhes() {
   const { id, modo } = useLocalSearchParams<{ id: string; modo?: string }>();
@@ -27,10 +33,25 @@ export default function CursoDetalhes() {
   const [carregando, setCarregando] = useState(true);
   const [modoRevisao, setModoRevisao] = useState(false);
   const [respostasRevisao, setRespostasRevisao] = useState<string[]>([]);
+  
+  // Documentação vinculada
+  const [documentacao, setDocumentacao] = useState<Documentacao | null>(null);
+  const [modalDocVisivel, setModalDocVisivel] = useState(false);
 
   useEffect(() => {
     carregarCurso();
   }, [id]);
+
+  // Agendar notificação ao sair do curso
+  useEffect(() => {
+    return () => {
+      if (curso && !modoRevisao && modo !== "preview") {
+        import("@/services/shared/NotificationService").then(({ NotificationService }) => {
+            NotificationService.scheduleCourseReminder(curso.titulo);
+        });
+      }
+    };
+  }, [curso, modoRevisao, modo]);
 
   const carregarCurso = async () => {
     if (!id) {
@@ -52,8 +73,45 @@ export default function CursoDetalhes() {
       );
       setCurso(cursoCarregado);
 
+      // Carregar documentação vinculada se houver
+      if (cursoCarregado.documentacaoId) {
+        try {
+          const doc = await DocumentacaoService.obterDocumentacaoPorId(cursoCarregado.documentacaoId);
+          setDocumentacao(doc);
+        } catch (error) {
+          console.error("Erro ao carregar documentação vinculada:", error);
+        }
+      }
+
       const isRevisao = modo === "revisao";
+      const isPreview = modo === "preview";
       setModoRevisao(isRevisao);
+
+      // Filtrar páginas se for preview
+      if (isPreview) {
+        cursoCarregado.paginas = cursoCarregado.paginas.filter(p => p.tipo === 'conteudo');
+        setCurso(cursoCarregado); // Atualizar com páginas filtradas
+      }
+
+      // Se for preview, não carrega nem cria progresso
+      if (isPreview) {
+        setProgressoCurso({
+          id: "preview",
+          usuarioId: user.uid,
+          cursoId: id,
+          coeficiente: 0,
+          paginaAtual: 1,
+          questoesRespondidas: [],
+          questoesCorretas: [],
+          questoesErradas: [],
+          dataInicio: new Date(),
+          dataUltimaAtualizacao: new Date(),
+          concluido: false,
+        });
+        setPaginaAtual(0);
+        setCarregando(false);
+        return;
+      }
 
       let progresso = await CursoService.obterProgressoCurso(user.uid, id);
 
@@ -77,7 +135,14 @@ export default function CursoDetalhes() {
       }
 
       setProgressoCurso(progresso);
-      setPaginaAtual(0);
+      
+      // Restaurar página salva (progresso é 1-based, state é 0-based)
+      if (progresso && progresso.paginaAtual > 0 && !isRevisao) {
+        setPaginaAtual(progresso.paginaAtual - 1);
+      } else {
+        setPaginaAtual(0);
+      }
+      
       setRespostasRevisao([]);
     } catch (error) {
       console.error("Erro detalhado:", error);
@@ -143,8 +208,25 @@ export default function CursoDetalhes() {
     if (!curso || !progressoCurso) return;
 
     if (paginaAtual < curso.paginas.length - 1) {
-      setPaginaAtual(paginaAtual + 1);
+      const novaPagina = paginaAtual + 1;
+      setPaginaAtual(novaPagina);
+      
+      // Atualizar progresso localmente para garantir que salvará o correto ao sair
+      if (progressoCurso && !modoRevisao && modo !== "preview") {
+          const novoProgresso = {
+              ...progressoCurso,
+              paginaAtual: novaPagina + 1 // 1-based
+          };
+          setProgressoCurso(novoProgresso);
+          // Opcional: Salvar a cada página para garantir
+          // await CursoService.salvarProgresso(novoProgresso);
+      }
     } else {
+      if (modo === 'preview') {
+        router.back();
+        return;
+      }
+
       if (modoRevisao) {
         Alert.alert(
           "Revisão Concluída!",
@@ -230,7 +312,7 @@ export default function CursoDetalhes() {
   }
 
   const voltarParaDashboard = async () => {
-    if (!modoRevisao && progressoCurso) {
+    if (!modoRevisao && modo !== "preview" && progressoCurso) {
       await CursoService.salvarProgresso(progressoCurso);
     }
     router.push("/(tabs)");
@@ -254,7 +336,19 @@ export default function CursoDetalhes() {
           {curso.titulo} {modoRevisao ? "(Revisão)" : ""} - Página{" "}
           {paginaAtual + 1}/{curso.paginas.length}
         </Text>
-        <View style={{ width: 48 }} />
+        {documentacao ? (
+          <Button
+            mode="text"
+            compact
+            onPress={() => setModalDocVisivel(true)}
+            textColor={theme.colors.primary}
+            icon="book-open-variant"
+          >
+            Ver Doc
+          </Button>
+        ) : (
+          <View style={{ width: 48 }} />
+        )}
       </View>
 
       <CursoViewer
@@ -264,7 +358,27 @@ export default function CursoDetalhes() {
           modoRevisao ? respostasRevisao : progressoCurso.questoesRespondidas
         }
         onResponderQuestao={responderQuestao}
+        isLastPage={paginaAtual === curso.paginas.length - 1}
+        modo={modo}
       />
+      <Portal>
+        <Modal
+          visible={modalDocVisivel}
+          onDismiss={() => setModalDocVisivel(false)}
+          contentContainerStyle={{ backgroundColor: theme.colors.surface, margin: 20, padding: 20, borderRadius: 8, maxHeight: '80%' }}
+        >
+          <ScrollView>
+            <Text variant="headlineMedium" style={{ marginBottom: 16 }}>{documentacao?.titulo}</Text>
+            {documentacao?.link && (
+               <Button mode="contained" onPress={() => Linking.openURL(documentacao.link)} style={{ marginBottom: 16 }}>
+                 Abrir Link Externo
+               </Button>
+            )}
+            <Text variant="bodyMedium">{documentacao?.conteudo}</Text>
+          </ScrollView>
+          <Button onPress={() => setModalDocVisivel(false)} style={{ marginTop: 16 }}>Fechar</Button>
+        </Modal>
+      </Portal>
     </SafeAreaView>
   );
 }

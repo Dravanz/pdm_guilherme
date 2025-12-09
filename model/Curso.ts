@@ -29,6 +29,7 @@ export interface Curso {
   nivel: "iniciante" | "intermediario" | "avancado";
   versaoLinguagem?: string; // Versão da linguagem (ex: "ES6+", "Python 3.12", "React 18")
   imageUrl?: string;
+  documentacaoId?: string; // ID da documentação vinculada
   paginas: PaginaCurso[];
   coeficienteMaximo: number;
   createdAt: any;

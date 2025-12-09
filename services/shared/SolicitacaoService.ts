@@ -28,7 +28,11 @@ export class SolicitacaoService {
     usuarioNome: string,
     usuarioEmail: string,
     usuarioFoto: string,
-    conhecimentos: string
+    conhecimentos: string,
+    linkedin?: string,
+    github?: string,
+    portfolio?: string,
+    experiencia?: string
   ): Promise<string> {
     try {
       // Verificar se já existe uma solicitação pendente
@@ -49,6 +53,10 @@ export class SolicitacaoService {
         usuarioFoto,
         mensagem: conhecimentos,
         conhecimentos,
+        linkedin,
+        github,
+        portfolio,
+        experiencia,
         status: StatusSolicitacao.Pendente,
         dataSolicitacao: serverTimestamp(),
       };

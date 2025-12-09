@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import React, { useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import ImageViewing from "react-native-image-viewing";
 
 interface ResponsiveImageProps {
   source: { uri: string };
@@ -9,13 +10,24 @@ interface ResponsiveImageProps {
 }
 
 export function ResponsiveImage({ source, placeholder, style }: ResponsiveImageProps) {
+  const [visible, setVisible] = useState(false);
+
   return (
     <View style={[styles.container, style]}>
-      <Image
-        source={source}
-        style={styles.image}
-        contentFit="contain"
-        placeholder={placeholder}
+      <TouchableOpacity onPress={() => setVisible(true)} activeOpacity={0.9}>
+        <Image
+          source={source}
+          style={styles.image}
+          contentFit="contain"
+          placeholder={placeholder}
+        />
+      </TouchableOpacity>
+      
+      <ImageViewing
+        images={[{ uri: source.uri }]}
+        imageIndex={0}
+        visible={visible}
+        onRequestClose={() => setVisible(false)}
       />
     </View>
   );

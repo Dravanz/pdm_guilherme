@@ -3,30 +3,30 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import {
-  Solicitacao,
-  StatusSolicitacao,
-  TipoSolicitacao,
+    Solicitacao,
+    StatusSolicitacao,
+    TipoSolicitacao,
 } from "@/model/Solicitacao";
-import { SolicitacaoService } from "@/services/SolicitacaoService";
+import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import {
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  View,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import {
-  Avatar,
-  Button,
-  Card,
-  Chip,
-  Dialog,
-  Text,
-  TextInput,
-  useTheme,
+    Avatar,
+    Button,
+    Card,
+    Chip,
+    Dialog,
+    Text,
+    TextInput,
+    useTheme,
 } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Solicitacoes() {
   const theme = useTheme();
@@ -47,7 +47,7 @@ export default function Solicitacoes() {
   useEffect(() => {
     // Listener em tempo real para solicitações
     const solicitacoesRef = collection(firestore, "solicitacoes");
-    const q = query(solicitacoesRef, orderBy("dataEnvio", "desc"));
+    const q = query(solicitacoesRef, orderBy("dataSolicitacao", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
@@ -55,7 +55,7 @@ export default function Solicitacoes() {
         const solicitacoesAtualizadas = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          dataEnvio: doc.data().dataEnvio?.toDate?.() || doc.data().dataEnvio,
+          dataSolicitacao: doc.data().dataSolicitacao?.toDate?.() || doc.data().dataSolicitacao,
           dataProcessamento:
             doc.data().dataProcessamento?.toDate?.() ||
             doc.data().dataProcessamento,
@@ -180,8 +180,9 @@ export default function Solicitacoes() {
     <SafeAreaView
       style={[
         themeStyles.container,
-        { backgroundColor: theme.colors.background },
+        { backgroundColor: theme.colors.background, flex: 1 },
       ]}
+      edges={['top', 'left', 'right']}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}

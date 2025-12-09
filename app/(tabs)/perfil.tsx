@@ -13,19 +13,20 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Image,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Dialog,
-  Text,
-  TextInput,
-  useTheme,
+    Button,
+    Card,
+    Dialog,
+    Icon,
+    Text,
+    TextInput,
+    useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -72,6 +73,8 @@ export default function Perfil() {
       setBadges(badgesUsuario);
     }
   };
+
+
 
   async function salvarPerfil() {
     if (!userFirebase) return;
@@ -214,8 +217,10 @@ export default function Perfil() {
   return (
     <SafeAreaView
       style={[{ flex: 1, backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right']}
     >
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -332,15 +337,18 @@ export default function Perfil() {
                   >
                     <Card.Content style={styles.streakContent}>
                       <View style={styles.streakHeader}>
-                        <Text
-                          variant="titleMedium"
-                          style={[
-                            styles.streakTitle,
-                            { color: theme.colors.onSurface },
-                          ]}
-                        >
-                          🔥 Sequência de Login
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Icon source="fire" size={20} color={theme.colors.onSurface} />
+                          <Text
+                            variant="titleMedium"
+                            style={[
+                              styles.streakTitle,
+                              { color: theme.colors.onSurface, marginBottom: 0 },
+                            ]}
+                          >
+                            Sequência de Login
+                          </Text>
+                        </View>
                         <Text
                           variant="headlineSmall"
                           style={[
@@ -362,34 +370,40 @@ export default function Perfil() {
                     ]}
                   >
                     <Card.Content style={styles.infoContent}>
-                      <Text
-                        variant="bodyLarge"
-                        style={[
-                          styles.infoItem,
-                          { color: theme.colors.onSurface },
-                        ]}
-                      >
-                        📅 Membro desde:{" "}
-                        {userFirebase.createdAt
-                          ? new Date(userFirebase.createdAt).toLocaleDateString(
-                              "pt-BR"
-                            )
-                          : "N/A"}
-                      </Text>
-                      <Text
-                        variant="bodyLarge"
-                        style={[
-                          styles.infoItem,
-                          { color: theme.colors.onSurface },
-                        ]}
-                      >
-                        🕐 Último acesso:{" "}
-                        {userFirebase.dataUltimoAcesso
-                          ? new Date(
-                              userFirebase.dataUltimoAcesso
-                            ).toLocaleDateString("pt-BR")
-                          : "N/A"}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <Icon source="calendar" size={20} color={theme.colors.onSurface} />
+                        <Text
+                          variant="bodyLarge"
+                          style={[
+                            styles.infoItem,
+                            { color: theme.colors.onSurface, marginBottom: 0 },
+                          ]}
+                        >
+                          Membro desde:{" "}
+                          {userFirebase.createdAt
+                            ? new Date(userFirebase.createdAt).toLocaleDateString(
+                                "pt-BR"
+                              )
+                            : "N/A"}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Icon source="clock-outline" size={20} color={theme.colors.onSurface} />
+                        <Text
+                          variant="bodyLarge"
+                          style={[
+                            styles.infoItem,
+                            { color: theme.colors.onSurface, marginBottom: 0 },
+                          ]}
+                        >
+                          Último acesso:{" "}
+                          {userFirebase.dataUltimoAcesso
+                            ? new Date(
+                                userFirebase.dataUltimoAcesso
+                              ).toLocaleDateString("pt-BR")
+                            : "N/A"}
+                        </Text>
+                      </View>
                     </Card.Content>
                   </Card>
                 </View>
@@ -485,12 +499,9 @@ export default function Perfil() {
                       ]}
                     >
                       <Card.Content style={styles.noBadgesContent}>
-                        <Text
-                          variant="headlineMedium"
-                          style={styles.noBadgesIcon}
-                        >
-                          🏆
-                        </Text>
+                          <View style={styles.noBadgesIcon}>
+                            <Icon source="trophy-outline" size={48} color={theme.colors.onSurfaceVariant} />
+                          </View>
                         <Text
                           variant="titleMedium"
                           style={[

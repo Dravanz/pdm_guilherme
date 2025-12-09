@@ -1,26 +1,30 @@
 import { CachedImage } from "@/components/CachedImage";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { UserContext } from "@/context/UserProvider";
 import {
-  RankingData,
-  RankingService,
-  RankingUsuario,
+    RankingData,
+    RankingService,
+    RankingUsuario,
 } from "@/services/shared/RankingService";
 import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useCallback, useContext, useState } from "react";
 import {
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  View,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  ActivityIndicator,
-  Avatar,
-  Card,
-  Chip,
-  Text,
-  useTheme,
+    ActivityIndicator,
+    Avatar,
+    Card,
+    Chip,
+    Icon,
+    Text,
+    useTheme,
 } from "react-native-paper";
 
 export default function Ranking() {
@@ -30,6 +34,10 @@ export default function Ranking() {
   const [carregando, setCarregando] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const dadosCarregados = React.useRef(false);
+
+  // Estado para o modal de perfil público
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<RankingUsuario | null>(null);
 
   const carregarRanking = async (forcar = false) => {
     if (dadosCarregados.current && !forcar) {
@@ -60,6 +68,15 @@ export default function Ranking() {
       carregarRanking();
     }, [])
   );
+
+  const handleUserPress = (usuario: RankingUsuario) => {
+    if (userFirebase?.uid === usuario.uid) {
+      router.push("/(tabs)/perfil");
+      return;
+    }
+    setSelectedUser(usuario);
+    setModalVisible(true);
+  };
 
   const obterCorCard = (posicao: number) => {
     const isDark = theme.dark;
@@ -92,23 +109,30 @@ export default function Ranking() {
   };
 
   const obterIconePosicao = (posicao: number) => {
-    if (!posicao || isNaN(posicao)) return "-";
+    if (!posicao || isNaN(posicao)) return "minus";
     switch (posicao) {
       case 1:
-        return "🥇";
+        return "medal";
       case 2:
-        return "🥈";
+        return "medal";
       case 3:
-        return "🥉";
+        return "medal";
       default:
-        return `${posicao}º`;
+        return "numeric-" + posicao + "-circle"; // Fallback, though we might just use text for > 3
     }
   };
 
-  const obterTextoIcone = (posicao: number) => {
-    if (!posicao || isNaN(posicao)) return "-";
-    if (posicao <= 3) return obterIconePosicao(posicao);
-    return posicao.toString();
+  const obterCorIcone = (posicao: number) => {
+     switch (posicao) {
+      case 1:
+        return "#FFD700"; // Gold
+      case 2:
+        return "#C0C0C0"; // Silver
+      case 3:
+        return "#CD7F32"; // Bronze
+      default:
+        return theme.colors.onSurface;
+    }
   };
 
   const renderPodio = () => {
@@ -119,16 +143,20 @@ export default function Ranking() {
 
     return (
       <View style={styles.podioContainer}>
-        <Text
-          variant="headlineSmall"
-          style={[styles.podioTitle, { color: theme.colors.onBackground }]}
-        >
-          🏆 Pódio
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+          <Icon source="trophy" size={24} color={theme.colors.onBackground} />
+          <Text
+            variant="headlineSmall"
+            style={[styles.podioTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}
+          >
+            Pódio
+          </Text>
+        </View>
 
         <View style={styles.podioRow}>
           {/* Segundo Lugar */}
-          <View
+          <TouchableOpacity
+            onPress={() => handleUserPress(segundo)}
             style={[
               styles.podioItem,
               styles.segundoLugar,
@@ -162,9 +190,9 @@ export default function Ranking() {
                 style={{ backgroundColor: "transparent" }}
               />
             )}
-            <Text variant="headlineLarge" style={styles.podioIcon}>
-              🥈
-            </Text>
+            <View style={styles.podioIcon}>
+                <Icon source="medal" size={32} color="#C0C0C0" />
+            </View>
             <Text
               variant="titleMedium"
               style={[styles.podioNome, { color: theme.colors.onSurface }]}
@@ -181,10 +209,11 @@ export default function Ranking() {
             >
               {segundo.coeficienteConhecimento || 0}%
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Primeiro Lugar */}
-          <View
+          <TouchableOpacity
+            onPress={() => handleUserPress(primeiro)}
             style={[
               styles.podioItem,
               styles.primeiroLugar,
@@ -218,9 +247,9 @@ export default function Ranking() {
                 style={{ backgroundColor: "transparent" }}
               />
             )}
-            <Text variant="headlineLarge" style={styles.podioIcon}>
-              🥇
-            </Text>
+            <View style={styles.podioIcon}>
+                <Icon source="medal" size={40} color="#FFD700" />
+            </View>
             <Text
               variant="titleLarge"
               style={[styles.podioNome, { color: theme.colors.onSurface }]}
@@ -237,10 +266,11 @@ export default function Ranking() {
             >
               {primeiro.coeficienteConhecimento || 0}%
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Terceiro Lugar */}
-          <View
+          <TouchableOpacity
+            onPress={() => handleUserPress(terceiro)}
             style={[
               styles.podioItem,
               styles.terceiroLugar,
@@ -274,9 +304,9 @@ export default function Ranking() {
                 style={{ backgroundColor: "transparent" }}
               />
             )}
-            <Text variant="headlineLarge" style={styles.podioIcon}>
-              🥉
-            </Text>
+            <View style={styles.podioIcon}>
+                <Icon source="medal" size={32} color="#CD7F32" />
+            </View>
             <Text
               variant="titleMedium"
               style={[styles.podioNome, { color: theme.colors.onSurface }]}
@@ -293,7 +323,7 @@ export default function Ranking() {
             >
               {terceiro.coeficienteConhecimento || 0}%
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -315,6 +345,7 @@ export default function Ranking() {
             borderColor: isCurrentUser ? theme.colors.primary : "transparent",
           },
         ]}
+        onPress={() => handleUserPress(usuario)}
       >
         <Card.Content style={styles.rankingContent}>
           <View style={styles.posicaoContainer}>
@@ -329,9 +360,11 @@ export default function Ranking() {
                 },
               ]}
             >
-              {isPodio
-                ? obterIconePosicao(usuario.posicao)
-                : obterTextoIcone(usuario.posicao)}
+              {isPodio ? (
+                 <Icon source="medal" size={24} color={obterCorIcone(usuario.posicao)} />
+              ) : (
+                 <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{usuario.posicao}º</Text>
+              )}
             </Text>
           </View>
 
@@ -439,12 +472,15 @@ export default function Ranking() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Text
-          variant="headlineLarge"
-          style={[styles.title, { color: theme.colors.onBackground }]}
-        >
-          🏆 Ranking Geral
-        </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <Icon source="trophy" size={28} color={theme.colors.onBackground} />
+            <Text
+              variant="headlineLarge"
+              style={[styles.title, { color: theme.colors.onBackground, marginBottom: 0 }]}
+            >
+              Ranking Geral
+            </Text>
+          </View>
 
         {rankingData?.ultimaAtualizacao && (
           <Text
@@ -472,6 +508,12 @@ export default function Ranking() {
           {rankingData?.usuarios.map(renderUsuario)}
         </View>
       </ScrollView>
+
+      <PublicProfileModal
+        visible={modalVisible}
+        onDismiss={() => setModalVisible(false)}
+        user={selectedUser}
+      />
     </SafeAreaView>
   );
 }

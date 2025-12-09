@@ -17,6 +17,8 @@ interface CursoViewerProps {
     explicacao: string,
     linkDocumentacao?: string
   ) => Promise<any>;
+  isLastPage?: boolean;
+  modo?: string;
 }
 
 export function CursoViewer({
@@ -24,6 +26,8 @@ export function CursoViewer({
   onProximaPagina,
   questoesRespondidas,
   onResponderQuestao,
+  isLastPage,
+  modo,
 }: CursoViewerProps) {
   const [respostasQuestoes, setRespostasQuestoes] = useState<{
     [key: string]: string;
@@ -139,7 +143,7 @@ export function CursoViewer({
           </Card.Content>
           <Card.Actions>
             <Button mode="contained" onPress={onProximaPagina}>
-              Próxima
+              {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima"}
             </Button>
           </Card.Actions>
         </Card>
@@ -234,7 +238,7 @@ export function CursoViewer({
 
         <Card.Actions>
           <Button mode="outlined" onPress={onProximaPagina}>
-            Próxima Página
+            {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
           </Button>
         </Card.Actions>
       </Card>
