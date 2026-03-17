@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <curso id="javascript-basico" titulo="JavaScript Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
-    <titulo>📚 Introdução ao JavaScript</titulo>
+    <titulo>Introdução ao JavaScript</titulo>
     <imagem>js1-intro</imagem>
     <conteudo>
       JavaScript é uma linguagem de programação dinâmica e versátil, amplamente utilizada para desenvolvimento web.

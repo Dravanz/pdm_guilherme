@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <curso id="python-basico" titulo="Python Básico" categoria="programacao" nivel="iniciante" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
-    <titulo>🐍 Introdução ao Python</titulo>
+    <titulo>Introdução ao Python</titulo>
     <imagem>{{python-intro}}</imagem>
     <conteudo>
       Python é uma linguagem de programação de alto nível, interpretada e de propósito geral.

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <curso id="react-basico" titulo="React Básico" categoria="frontend" nivel="intermediario" coeficienteMaximo="100">
   <pagina id="1" tipo="conteudo">
-    <titulo>⚛️ Introdução ao React</titulo>
+    <titulo>Introdução ao React</titulo>
     <imagem>{{react-intro}}</imagem>
     <conteudo>
       React é uma biblioteca JavaScript para construir interfaces de usuário.
