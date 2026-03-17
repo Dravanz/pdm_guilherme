@@ -5,12 +5,13 @@ import { firestore } from "@/firebase/FirebaseInit";
 import {
     Solicitacao,
     StatusSolicitacao,
-    TipoSolicitacao,
+    TipoSolicitacao
 } from "@/model/Solicitacao";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import {
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -77,7 +78,8 @@ export default function Solicitacoes() {
   async function carregarSolicitacoes() {
     setCarregando(true);
     try {
-      const todas = await SolicitacaoService.buscarTodasSolicitacoes();
+      const isAdmin = userFirebase?.perfil === Perfil.Moderador;
+      const todas = await SolicitacaoService.buscarTodasSolicitacoes(userFirebase?.uid, isAdmin);
       setSolicitacoes(todas);
     } catch (error) {
       console.error("Erro ao carregar solicitações:", error);
@@ -97,17 +99,28 @@ export default function Solicitacoes() {
           userFirebase.uid,
           userFirebase.nome
         );
+      } else if (solicitacao.tipo === TipoSolicitacao.CriacaoCurso) {
+        await SolicitacaoService.aprovarCriacaoCurso(
+          solicitacao.id,
+          solicitacao.cursoId,
+          userFirebase.uid,
+          userFirebase.nome || userFirebase.email || "Moderador"
+        );
       } else if (solicitacao.tipo === TipoSolicitacao.ExclusaoCurso) {
         await SolicitacaoService.aprovarExclusaoCurso(
           solicitacao.id,
           solicitacao.cursoId,
           userFirebase.uid,
-          userFirebase.nome
+          userFirebase.nome || userFirebase.email || "Moderador"
         );
       }
       // Listener onSnapshot atualiza automaticamente
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao aprovar solicitação:", error);
+      Alert.alert(
+        "Erro ao aprovar",
+        error.message || "Não foi possível aprovar esta solicitação."
+      );
     }
     setProcessando(false);
   }
@@ -129,6 +142,14 @@ export default function Solicitacoes() {
       ) {
         await SolicitacaoService.rejeitarExclusaoCurso(
           solicitacaoSelecionada.id,
+          userFirebase.uid,
+          userFirebase.nome,
+          motivoRejeicao
+        );
+      } else if (solicitacaoSelecionada.tipo === TipoSolicitacao.CriacaoCurso) {
+        await SolicitacaoService.rejeitarCriacaoCurso(
+          solicitacaoSelecionada.id,
+          solicitacaoSelecionada.cursoId,
           userFirebase.uid,
           userFirebase.nome,
           motivoRejeicao
@@ -163,7 +184,7 @@ export default function Solicitacoes() {
       case StatusSolicitacao.Pendente:
         return theme.colors.secondary;
       case StatusSolicitacao.Aprovada:
-        return "#4caf50";
+        return theme.colors.primary;
       case StatusSolicitacao.Rejeitada:
         return theme.colors.error;
       default:
@@ -171,9 +192,12 @@ export default function Solicitacoes() {
     }
   }
 
-  function formatarData(timestamp: any) {
-    if (!timestamp || !timestamp.toDate) return "Data indisponível";
-    return timestamp.toDate().toLocaleDateString("pt-BR");
+  function formatarData(data: any) {
+    if (!data) return "Data indisponível";
+    if (data.toDate) return data.toDate().toLocaleDateString("pt-BR");
+    if (data instanceof Date) return data.toLocaleDateString("pt-BR");
+    if (typeof data === "string") return new Date(data).toLocaleDateString("pt-BR");
+    return "Data indisponível";
   }
 
   return (
@@ -278,7 +302,9 @@ export default function Solicitacoes() {
                     >
                       {solicitacao.tipo === TipoSolicitacao.Colaboracao
                         ? `${solicitacao.usuarioNome} - Colaboração`
-                        : `Exclusão: ${solicitacao.cursoTitulo}`}
+                        : solicitacao.tipo === TipoSolicitacao.ExclusaoCurso
+                        ? `Exclusão: ${solicitacao.cursoTitulo}`
+                        : `Novo Curso: ${solicitacao.cursoTitulo}`}
                     </Text>
                     <Text
                       variant="bodySmall"
@@ -291,13 +317,13 @@ export default function Solicitacoes() {
                     style={{
                       backgroundColor: getStatusColor(solicitacao.status),
                     }}
-                    textStyle={{ color: "#fff" }}
+                    textStyle={{ color: theme.colors.onPrimary }}
                   >
                     {solicitacao.status}
                   </Chip>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
 
                 {solicitacao.tipo === TipoSolicitacao.Colaboracao && (
                   <>
@@ -308,6 +334,26 @@ export default function Solicitacoes() {
                       <Text style={{ fontWeight: "bold" }}>Email:</Text>{" "}
                       {solicitacao.usuarioEmail}
                     </Text>
+                    {solicitacao.github && (
+                        <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
+                            <Text style={{ fontWeight: "bold" }}>GitHub:</Text> {solicitacao.github}
+                        </Text>
+                    )}
+                    {solicitacao.linkedin && (
+                        <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
+                            <Text style={{ fontWeight: "bold" }}>LinkedIn:</Text> {solicitacao.linkedin}
+                        </Text>
+                    )}
+                    {solicitacao.portfolio && (
+                        <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
+                            <Text style={{ fontWeight: "bold" }}>Portfólio:</Text> {solicitacao.portfolio}
+                        </Text>
+                    )}
+                    {solicitacao.experiencia && (
+                        <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
+                            <Text style={{ fontWeight: "bold" }}>Experiência:</Text> {solicitacao.experiencia}
+                        </Text>
+                    )}
                     <Text
                       variant="bodyMedium"
                       style={{ color: theme.colors.onSurface, marginBottom: 8 }}
@@ -347,9 +393,34 @@ export default function Solicitacoes() {
                   </>
                 )}
 
+                {solicitacao.tipo === TipoSolicitacao.CriacaoCurso && (
+                  <>
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: theme.colors.onSurface, marginBottom: 4 }}
+                    >
+                      <Text style={{ fontWeight: "bold" }}>Autor:</Text>{" "}
+                      {solicitacao.autorNome}
+                    </Text>
+                     <Text
+                      variant="bodyMedium"
+                      style={{ color: theme.colors.onSurface, marginBottom: 4 }}
+                    >
+                      <Text style={{ fontWeight: "bold" }}>Curso:</Text>{" "}
+                      {solicitacao.cursoTitulo}
+                    </Text>
+                    <Text
+                        variant="bodySmall"
+                        style={{ color: theme.colors.onSurfaceVariant, marginTop: 4, fontStyle: "italic" }}
+                    >
+                        Para visualizar o conteúdo, acesse a aba de Colaboração.
+                    </Text>
+                  </>
+                )}
+
                 {solicitacao.status !== StatusSolicitacao.Pendente && (
                   <>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
                     <Text
                       variant="bodySmall"
                       style={{ color: theme.colors.onSurfaceVariant }}
@@ -381,7 +452,7 @@ export default function Solicitacoes() {
                       onPress={() => aprovarSolicitacao(solicitacao)}
                       disabled={processando}
                       style={{ flex: 1, marginRight: 8 }}
-                      buttonColor="#4caf50"
+                      buttonColor={theme.colors.primary}
                     >
                       Aprovar
                     </Button>
@@ -419,6 +490,9 @@ export default function Solicitacoes() {
             multiline
             numberOfLines={3}
             style={{ marginTop: 12 }}
+            returnKeyType="send"
+            blurOnSubmit={true}
+            onSubmitEditing={rejeitarSolicitacao}
           />
         </Dialog.Content>
         <Dialog.Actions>
@@ -469,7 +543,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#e0e0e0",
+    backgroundColor: undefined, // Set dynamically via theme
     marginVertical: 12,
   },
   buttonRow: {

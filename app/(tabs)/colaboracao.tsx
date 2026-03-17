@@ -1,7 +1,7 @@
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
-import { Alternativa, Curso, PaginaCurso, Questao } from "@/model/Curso";
+import { Alternativa, CasoTeste, Curso, LinguagemCodigo, PaginaCurso, Questao, QuestaoEscrita } from "@/model/Curso";
 import { Documentacao, TipoDocumentacao } from "@/model/Documentacao";
 import { Perfil } from "@/model/Perfil";
 import { ColaboradorCursoService } from "@/services/curso/ColaboradorCursoService";
@@ -9,6 +9,8 @@ import { ImageUploadService } from "@/services/image/ImageUploadService";
 import { BancoQuestoesService } from "@/services/questao/BancoQuestoesService";
 import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
+import { JobeService } from "@/services/codigo/JobeService";
+import { QuestionAnalyticsPanel } from "@/components/QuestionAnalyticsPanel";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams } from "expo-router";
@@ -19,11 +21,11 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
     Button,
     Card,
@@ -86,7 +88,7 @@ export default function Colaboracao() {
     null
   );
   const [paginaTitulo, setPaginaTitulo] = useState("");
-  const [paginaTipo, setPaginaTipo] = useState<"conteudo" | "exercicio">(
+  const [paginaTipo, setPaginaTipo] = useState<"conteudo" | "exercicio" | "exercicio_codigo">(
     "conteudo"
   );
   const [paginaConteudo, setPaginaConteudo] = useState("");
@@ -108,6 +110,22 @@ export default function Colaboracao() {
   const [motivoExclusao, setMotivoExclusao] = useState("");
   const [cursoExcluir, setCursoExcluir] = useState<Curso | null>(null);
 
+  // EXERCÍCIO DE CÓDIGO STATE
+  const [dialogQuestaoEscritaVisivel, setDialogQuestaoEscritaVisivel] = useState(false);
+  const [questoesEscritaPagina, setQuestoesEscritaPagina] = useState<QuestaoEscrita[]>([]);
+  const [questaoEscritaEditando, setQuestaoEscritaEditando] = useState<QuestaoEscrita | null>(null);
+  const [escritaEnunciado, setEscritaEnunciado] = useState("");
+  const [escritaLinguagem, setEscritaLinguagem] = useState<LinguagemCodigo>("python3");
+  const [escritaCodigoBase, setEscritaCodigoBase] = useState("");
+  const [escritaGabarito, setEscritaGabarito] = useState("");
+  const [escritaDica, setEscritaDica] = useState("");
+  const [escritaExplicacao, setEscritaExplicacao] = useState("");
+  const [escritaCasosTeste, setEscritaCasosTeste] = useState<CasoTeste[]>([
+    { id: "ct_1", entrada: "", saidaEsperada: "", descricao: "Teste 1" },
+  ]);
+  const [testandoGabarito, setTestandoGabarito] = useState(false);
+  const [resultadoTesteGabarito, setResultadoTesteGabarito] = useState<string | null>(null);
+
   // DOCUMENTAÇÃO STATE
   const [abaAtiva, setAbaAtiva] = useState<"cursos" | "documentacao">("cursos");
   const [documentacoes, setDocumentacoes] = useState<Documentacao[]>([]);
@@ -120,11 +138,22 @@ export default function Colaboracao() {
   const [docDataRef, setDocDataRef] = useState("");
   const [docTipo, setDocTipo] = useState<TipoDocumentacao>(TipoDocumentacao.Documentacao);
 
+  // ANALYTICS STATE
+  const [analyticsCursoId, setAnalyticsCursoId] = useState("");
+  const [analyticsCursoTitulo, setAnalyticsCursoTitulo] = useState("");
+  const [analyticsVisivel, setAnalyticsVisivel] = useState(false);
+
   // Refs para inputs
   const siglaRef = React.useRef<any>(null);
   const descricaoRef = React.useRef<any>(null);
   const categoriaRef = React.useRef<any>(null);
   const versaoRef = React.useRef<any>(null);
+  const alternativaRefs = React.useRef<Array<any>>([]);
+  const explicacaoRef = React.useRef<any>(null);
+  const docConteudoRef = React.useRef<any>(null);
+  const docLinkRef = React.useRef<any>(null);
+  const docVersaoRef = React.useRef<any>(null);
+  const docDataRefRef = React.useRef<any>(null);
 
   // Recarregar cursos quando a tab receber foco
   useFocusEffect(
@@ -156,7 +185,20 @@ export default function Colaboracao() {
           id: doc.id,
         })) as Curso[];
 
-        setCursos(cursosAtualizados);
+        const cursosFiltrados = cursosAtualizados.filter((curso) => {
+          // 1. Moderador vê tudo (check string literal to be safe)
+          if (userFirebase.perfil === "Moderador" || userFirebase.perfil === Perfil.Moderador) return true;
+          
+          // 2. Criador vê seu curso (check if IDs exist)
+          if (curso.criadoPor && userFirebase.uid && curso.criadoPor === userFirebase.uid) return true;
+          
+          // 3. Aprovados: Visível para todos
+          if (curso.status === "Aprovado") return true;
+          
+          return false;
+        });
+
+        setCursos(cursosFiltrados);
       },
       (error) => {
         console.error("Erro ao escutar mudanças nos cursos:", error);
@@ -173,7 +215,7 @@ export default function Colaboracao() {
     try {
       setCarregando(true);
       // Buscar TODOS os cursos do sistema (XML + Firestore)
-      const isAdmin = userFirebase?.perfil === Perfil.Moderador;
+      const isAdmin = userFirebase?.perfil === "Moderador" || userFirebase?.perfil === Perfil.Moderador;
       const todosCursos = await ColaboradorCursoService.buscarTodosCursos(
         userFirebase.uid,
         isAdmin
@@ -186,6 +228,7 @@ export default function Colaboracao() {
       setCarregando(false);
     }
   }
+
 
   // Carregar documentações aprovadas quando o dialog abrir
   useEffect(() => {
@@ -353,6 +396,7 @@ export default function Colaboracao() {
       setPaginaConteudo(pagina.conteudo || "");
       setPaginaImagemUrl(pagina.imagem || "");
       setQuestoesPagina(pagina.questoes || []);
+      setQuestoesEscritaPagina(pagina.questoesEscrita || []);
     } else {
       setPaginaEditando(null);
       setPaginaTitulo("");
@@ -360,6 +404,7 @@ export default function Colaboracao() {
       setPaginaConteudo("");
       setPaginaImagemUrl("");
       setQuestoesPagina([]);
+      setQuestoesEscritaPagina([]);
     }
     setDialogPaginaVisivel(true);
   }
@@ -434,6 +479,11 @@ export default function Colaboracao() {
       return;
     }
 
+    if (paginaTipo === "exercicio_codigo" && questoesEscritaPagina.length === 0) {
+      mostrarMensagem("erro", "Adicione pelo menos um exercício de código");
+      return;
+    }
+
     const novaPagina: PaginaCurso = {
       id: paginaEditando?.id || `${paginas.length + 1}`,
       titulo: paginaTitulo,
@@ -441,6 +491,7 @@ export default function Colaboracao() {
       conteudo: paginaConteudo,
       imagem: paginaImagemUrl,
       questoes: paginaTipo === "exercicio" ? questoesPagina : undefined,
+      questoesEscrita: paginaTipo === "exercicio_codigo" ? questoesEscritaPagina : undefined,
     };
 
     if (paginaEditando) {
@@ -559,11 +610,177 @@ export default function Colaboracao() {
     setQuestoesPagina(questoesPagina.filter((q) => q.id !== questaoId));
   }
 
+  // ============ GERENCIAR QUESTÕES DE CÓDIGO ============
+  function abrirDialogQuestaoEscrita(questao?: QuestaoEscrita) {
+    if (questao) {
+      setQuestaoEscritaEditando(questao);
+      setEscritaEnunciado(questao.enunciado);
+      setEscritaLinguagem(questao.linguagem);
+      setEscritaCodigoBase(questao.codigoBase);
+      setEscritaGabarito(questao.gabarito || "");
+      setEscritaDica(questao.dica || "");
+      setEscritaExplicacao(questao.explicacao);
+      setEscritaCasosTeste(questao.casosTeste.length > 0 ? questao.casosTeste : [
+        { id: "ct_1", entrada: "", saidaEsperada: "", descricao: "Teste 1" },
+      ]);
+    } else {
+      setQuestaoEscritaEditando(null);
+      setEscritaEnunciado("");
+      setEscritaLinguagem("python3");
+      setEscritaCodigoBase(getCodigoBasePadrao("python3"));
+      setEscritaGabarito("");
+      setEscritaDica("");
+      setEscritaExplicacao("");
+      setEscritaCasosTeste([
+        { id: "ct_1", entrada: "", saidaEsperada: "", descricao: "Teste 1" },
+      ]);
+    }
+    setResultadoTesteGabarito(null);
+    setDialogQuestaoEscritaVisivel(true);
+  }
+
+  function getCodigoBasePadrao(lang: LinguagemCodigo): string {
+    switch (lang) {
+      case "python3":
+        return '# Complete o código abaixo\n# __EDITAR__ marca onde você deve escrever\n\ndef solucao():\n    # __EDITAR__\n    pass\n\nsolucao()';
+      case "nodejs":
+        return '// Complete o código abaixo\n// __EDITAR__ marca onde você deve escrever\n\nfunction solucao() {\n    // __EDITAR__\n}\n\nsolucao();';
+      case "c":
+        return '#include <stdio.h>\n\n// Complete o código abaixo\n// __EDITAR__ marca onde você deve escrever\n\nint main() {\n    // __EDITAR__\n    return 0;\n}';
+      default:
+        return "// __EDITAR__";
+    }
+  }
+
+  function adicionarCasoTeste() {
+    const novoId = `ct_${escritaCasosTeste.length + 1}`;
+    setEscritaCasosTeste([
+      ...escritaCasosTeste,
+      { id: novoId, entrada: "", saidaEsperada: "", descricao: `Teste ${escritaCasosTeste.length + 1}` },
+    ]);
+  }
+
+  function removerCasoTeste(id: string) {
+    if (escritaCasosTeste.length <= 1) {
+      mostrarMensagem("erro", "É necessário pelo menos um caso de teste");
+      return;
+    }
+    setEscritaCasosTeste(escritaCasosTeste.filter((ct) => ct.id !== id));
+  }
+
+  function atualizarCasoTeste(id: string, campo: keyof CasoTeste, valor: string) {
+    setEscritaCasosTeste(
+      escritaCasosTeste.map((ct) =>
+        ct.id === id ? { ...ct, [campo]: valor } : ct
+      )
+    );
+  }
+
+  async function testarGabarito() {
+    if (!escritaGabarito.trim()) {
+      mostrarMensagem("erro", "Informe o gabarito (solução) antes de testar");
+      return;
+    }
+    if (escritaCasosTeste.some((ct) => !ct.saidaEsperada.trim())) {
+      mostrarMensagem("erro", "Preencha a saída esperada de todos os casos de teste");
+      return;
+    }
+
+    setTestandoGabarito(true);
+    setResultadoTesteGabarito(null);
+
+    try {
+      const resultado = await JobeService.executarComTestes(
+        escritaLinguagem,
+        escritaGabarito,
+        escritaCasosTeste
+      );
+
+      if (resultado.sucesso) {
+        setResultadoTesteGabarito("[OK] Todos os testes passaram com o gabarito!");
+      } else {
+        const falhas = resultado.casosTeste.filter((c) => !c.passou);
+        setResultadoTesteGabarito(
+          `[FALHA] ${falhas.length} teste(s) falharam:\n${falhas
+            .map((f) => `• ${f.descricao || f.casoTesteId}: esperado "${f.saidaEsperada}", obtido "${f.saidaObtida}"`)
+            .join("\n")}`
+        );
+      }
+    } catch (error: any) {
+      setResultadoTesteGabarito(`[ERRO] Erro: ${error.message}`);
+    } finally {
+      setTestandoGabarito(false);
+    }
+  }
+
+  function salvarQuestaoEscrita() {
+    if (!escritaEnunciado.trim()) {
+      mostrarMensagem("erro", "Informe o enunciado do exercício");
+      return;
+    }
+    if (!escritaCodigoBase.trim()) {
+      mostrarMensagem("erro", "Informe o código base (template do aluno)");
+      return;
+    }
+    if (!escritaGabarito.trim()) {
+      mostrarMensagem("erro", "Informe o gabarito (solução completa)");
+      return;
+    }
+    if (escritaGabarito.includes("__EDITAR__")) {
+      mostrarMensagem("erro", "O gabarito não pode conter __EDITAR__. Substitua cada marcador pelo código da solução correta. O gabarito deve ser o programa completo e executável.");
+      return;
+    }
+    if (escritaCasosTeste.some((ct) => !ct.saidaEsperada.trim())) {
+      mostrarMensagem("erro", "Preencha a saída esperada de todos os casos de teste");
+      return;
+    }
+
+    const cursoAbrev = cursoId.includes("-")
+      ? cursoId.split("-")[0]
+      : cursoId.substring(0, 3);
+    const conteudoPart = paginaTitulo
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .join("_");
+    const numero = String(questoesEscritaPagina.length + 1).padStart(3, "0");
+
+    const novaQuestao: QuestaoEscrita = {
+      id: questaoEscritaEditando?.id || `${cursoAbrev}_code_${conteudoPart}_${numero}`,
+      enunciado: escritaEnunciado,
+      linguagem: escritaLinguagem,
+      codigoBase: escritaCodigoBase,
+      gabarito: escritaGabarito,
+      casosTeste: escritaCasosTeste,
+      dica: escritaDica || undefined,
+      explicacao: escritaExplicacao,
+    };
+
+    if (questaoEscritaEditando) {
+      setQuestoesEscritaPagina(
+        questoesEscritaPagina.map((q) =>
+          q.id === questaoEscritaEditando.id ? novaQuestao : q
+        )
+      );
+    } else {
+      setQuestoesEscritaPagina([...questoesEscritaPagina, novaQuestao]);
+    }
+
+    setDialogQuestaoEscritaVisivel(false);
+  }
+
+  function removerQuestaoEscrita(questaoId: string) {
+    setQuestoesEscritaPagina(questoesEscritaPagina.filter((q) => q.id !== questaoId));
+  }
+
   // SALVAR CURSO
   async function salvarCurso() {
     if (!userFirebase) return;
 
     try {
+      console.log(`[Colaboracao] Salvando curso. Paginas: ${paginas.length}`);
       setCarregando(true);
 
       // Upload da imagem de capa se houver
@@ -607,6 +824,12 @@ export default function Colaboracao() {
             await BancoQuestoesService.salvarQuestao(questao);
           }
         }
+        // Também salvar questões de código no banco
+        if (pagina.tipo === "exercicio_codigo" && pagina.questoesEscrita) {
+          for (const questao of pagina.questoesEscrita) {
+            await BancoQuestoesService.salvarQuestaoEscrita(questao);
+          }
+        }
       }
 
       if (modoEdicao && cursoEditando) {
@@ -622,7 +845,8 @@ export default function Colaboracao() {
         await ColaboradorCursoService.criarCurso(
           dadosCurso,
           xmlContent,
-          userFirebase.uid
+          userFirebase.uid,
+          userFirebase.nome
         );
         mostrarMensagem("sucesso", "Curso criado com sucesso!");
       }
@@ -661,11 +885,39 @@ export default function Colaboracao() {
         }
       }
 
+      if (pagina.tipo === "exercicio_codigo" && pagina.questoesEscrita) {
+        for (const qe of pagina.questoesEscrita) {
+          xml += `    <questao-escrita id="${qe.id}" linguagem="${qe.linguagem}">\n`;
+          xml += `      <enunciado>${escapeXML(qe.enunciado)}</enunciado>\n`;
+          xml += `      <codigo-base><![CDATA[${qe.codigoBase}]]></codigo-base>\n`;
+          xml += `      <gabarito><![CDATA[${qe.gabarito}]]></gabarito>\n`;
+          if (qe.dica) xml += `      <dica>${escapeXML(qe.dica)}</dica>\n`;
+          xml += `      <explicacao>${escapeXML(qe.explicacao)}</explicacao>\n`;
+          for (const ct of qe.casosTeste) {
+            xml += `      <caso-teste id="${ct.id}"`;
+            if (ct.descricao) xml += ` descricao="${escapeXMLAttr(ct.descricao)}"`;
+            xml += `>\n`;
+            xml += `        <entrada><![CDATA[${ct.entrada}]]></entrada>\n`;
+            xml += `        <saida-esperada><![CDATA[${ct.saidaEsperada}]]></saida-esperada>\n`;
+            xml += `      </caso-teste>\n`;
+          }
+          xml += `    </questao-escrita>\n`;
+        }
+      }
+
       xml += `  </pagina>\n\n`;
     }
 
     xml += `</curso>`;
     return xml;
+  }
+
+  function escapeXML(str: string): string {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function escapeXMLAttr(str: string): string {
+    return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   async function solicitarExclusao(curso: Curso) {
@@ -931,7 +1183,13 @@ export default function Colaboracao() {
                 <Card
                   style={[
                     themeStyles.card,
-                    { backgroundColor: theme.colors.surface },
+                    { 
+                      backgroundColor: theme.colors.surface,
+                      // Destaque para cursos pendentes
+                      opacity: item.status === "Pendente" ? 0.8 : 1,
+                      borderColor: item.status === "Pendente" ? theme.colors.warning || "orange" : "transparent",
+                      borderWidth: item.status === "Pendente" ? 2 : 0,
+                    },
                   ]}
                 >
                   <Card.Content>
@@ -972,6 +1230,17 @@ export default function Colaboracao() {
                           {(item as any).fonte === "xml" ? "XML" : "Cloud"}
                         </Chip>
                       )}
+                      
+                      {item.status === "Pendente" && (
+                        <Chip
+                          compact
+                          style={{ marginLeft: 8, backgroundColor: theme.colors.errorContainer }}
+                          textStyle={{ color: theme.colors.onErrorContainer }}
+                          icon="clock-alert-outline"
+                        >
+                          Pendente
+                        </Chip>
+                      )}
                     </View>
                     <View
                       style={{
@@ -1006,15 +1275,29 @@ export default function Colaboracao() {
                         Editar
                       </Button>
                     )}
-                    <Button
-                      icon="delete"
-                      onPress={() => {
-                        setCursoExcluir(item);
-                        setDialogExcluirVisivel(true);
-                      }}
-                    >
-                      Solicitar Exclusão
-                    </Button>
+                    {item.status === "Aprovado" && (
+                      <Button
+                        icon="chart-bar"
+                        onPress={() => {
+                          setAnalyticsCursoId(item.id);
+                          setAnalyticsCursoTitulo(item.titulo);
+                          setAnalyticsVisivel(true);
+                        }}
+                      >
+                        Análise
+                      </Button>
+                    )}
+                    {item.status === "Aprovado" && (
+                      <Button
+                        icon="delete"
+                        onPress={() => {
+                          setCursoExcluir(item);
+                          setDialogExcluirVisivel(true);
+                        }}
+                      >
+                        Solicitar Exclusão
+                      </Button>
+                    )}
                   </Card.Actions>
                 </Card>
               )}
@@ -1051,7 +1334,7 @@ export default function Colaboracao() {
                           </Text>
                           {item.link && (
                             <Text variant="bodySmall" style={{ color: theme.colors.primary, marginTop: 4 }}>
-                              🔗 {item.link}
+                              {item.link}
                             </Text>
                           )}
                         </View>
@@ -1096,7 +1379,7 @@ export default function Colaboracao() {
               height: "90%",
             }}
           >
-            <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
               <Text
                 variant="headlineSmall"
                 style={{ marginBottom: 16, fontWeight: "bold" }}
@@ -1116,9 +1399,7 @@ export default function Colaboracao() {
               >
                 {/* ETAPA 1: INFORMAÇÕES */}
                 {etapaCriacao === "info" && (
-                  <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                  >
+                  <View>
                     <TextInput
                       label="Título do Curso *"
                       value={titulo}
@@ -1176,13 +1457,7 @@ export default function Colaboracao() {
                       style={styles.input}
                       returnKeyType="done"
                       onSubmitEditing={() => {
-                        if (
-                          titulo.trim() &&
-                          descricao.trim() &&
-                          categoria.trim()
-                        ) {
-                          avancarEtapa();
-                        }
+                        Keyboard.dismiss();
                       }}
                     />
 
@@ -1267,7 +1542,7 @@ export default function Colaboracao() {
                         />
                       ))}
                     </Menu>
-                  </KeyboardAvoidingView>
+                  </View>
                 )}
 
                 {/* ETAPA 2: PÁGINAS */}
@@ -1305,11 +1580,18 @@ export default function Colaboracao() {
                               <Text variant="bodySmall">
                                 {pagina.tipo === "conteudo"
                                   ? "📄 Conteúdo"
-                                  : "📝 Exercício"}
+                                  : pagina.tipo === "exercicio_codigo"
+                                  ? "Exercício de Código"
+                                  : "Exercício"}
                               </Text>
                               {pagina.tipo === "exercicio" && (
                                 <Text variant="bodySmall">
                                   {pagina.questoes?.length || 0} questões
+                                </Text>
+                              )}
+                              {pagina.tipo === "exercicio_codigo" && (
+                                <Text variant="bodySmall">
+                                  {pagina.questoesEscrita?.length || 0} exercício(s) de código
                                 </Text>
                               )}
                             </View>
@@ -1418,24 +1700,35 @@ export default function Colaboracao() {
                   </Button>
                 )}
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
         </Portal>
 
         {/* Dialog Página */}
         <Portal>
-          <Dialog
+          <Modal
             visible={dialogPaginaVisivel}
             onDismiss={() => setDialogPaginaVisivel(false)}
-            style={{ maxHeight: "90%" }}
+            contentContainerStyle={{
+              margin: 20,
+              height: "90%",
+            }}
           >
-            <Dialog.Title>
-              {paginaEditando ? "Editar Página" : "Nova Página"}
-            </Dialog.Title>
-            <Dialog.Content>
+            <KeyboardAvoidingView 
+              behavior="padding" 
+              keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 20}
+              style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}
+            >
+              <Text
+                variant="headlineSmall"
+                style={{ marginBottom: 16, fontWeight: "bold" }}
+              >
+                {paginaEditando ? "Editar Página" : "Nova Página"}
+              </Text>
+              
               <ScrollView
-                style={{ maxHeight: 500 }}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
               >
                 <TextInput
                   label="Título da Página *"
@@ -1464,8 +1757,13 @@ export default function Colaboracao() {
                     { value: "conteudo", label: "Conteúdo", icon: "text-box" },
                     {
                       value: "exercicio",
-                      label: "Exercício",
+                      label: "Quiz",
                       icon: "file-question",
+                    },
+                    {
+                      value: "exercicio_codigo",
+                      label: "Código",
+                      icon: "code-braces",
                     },
                   ]}
                   style={{ marginBottom: 16 }}
@@ -1543,31 +1841,108 @@ export default function Colaboracao() {
                     ))}
                   </View>
                 )}
+
+                {/* EXERCÍCIOS DE CÓDIGO */}
+                {paginaTipo === "exercicio_codigo" && (
+                  <View style={{ marginTop: 16 }}>
+                    <Button
+                      mode="contained"
+                      icon="plus"
+                      onPress={() => abrirDialogQuestaoEscrita()}
+                      style={{ marginBottom: 12 }}
+                      accessibilityLabel="Adicionar exercício de código"
+                    >
+                      Adicionar Exercício de Código
+                    </Button>
+
+                    {questoesEscritaPagina.map((questao, index) => (
+                      <Card
+                        key={questao.id}
+                        style={{
+                          marginBottom: 8,
+                          backgroundColor: theme.colors.surfaceVariant,
+                        }}
+                      >
+                        <Card.Content>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text variant="bodyMedium" numberOfLines={2}>
+                                {index + 1}. {questao.enunciado}
+                              </Text>
+                              <Chip compact style={{ marginTop: 4, alignSelf: "flex-start" }}>
+                                {questao.linguagem === "python3" ? "Python" : questao.linguagem === "nodejs" ? "JavaScript" : "C"} • {questao.casosTeste.length} teste(s)
+                              </Chip>
+                            </View>
+                            <View style={{ flexDirection: "row" }}>
+                              <IconButton
+                                icon="pencil"
+                                size={18}
+                                onPress={() => abrirDialogQuestaoEscrita(questao)}
+                              />
+                              <IconButton
+                                icon="delete"
+                                size={18}
+                                onPress={() => removerQuestaoEscrita(questao.id)}
+                              />
+                            </View>
+                          </View>
+                        </Card.Content>
+                      </Card>
+                    ))}
+                  </View>
+                )}
               </ScrollView>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setDialogPaginaVisivel(false)}>
-                Cancelar
-              </Button>
-              <Button onPress={salvarPagina}>Salvar Página</Button>
-            </Dialog.Actions>
-          </Dialog>
+              
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.outlineVariant,
+                }}
+              >
+                <Button onPress={() => setDialogPaginaVisivel(false)}>
+                  Cancelar
+                </Button>
+                <Button onPress={salvarPagina} mode="contained">Salvar Página</Button>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
         </Portal>
 
         {/* Dialog Questão */}
         <Portal>
-          <Dialog
+          <Modal
             visible={dialogQuestaoVisivel}
             onDismiss={() => setDialogQuestaoVisivel(false)}
-            style={{ maxHeight: "90%" }}
+            contentContainerStyle={{
+              margin: 20,
+              height: "90%",
+            }}
           >
-            <Dialog.Title>
-              {questaoEditando ? "Editar Questão" : "Nova Questão"}
-            </Dialog.Title>
-            <Dialog.Content>
+            <KeyboardAvoidingView 
+              behavior="padding" 
+              keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 20}
+              style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}
+            >
+              <Text
+                variant="headlineSmall"
+                style={{ marginBottom: 16, fontWeight: "bold" }}
+              >
+                {questaoEditando ? "Editar Questão" : "Nova Questão"}
+              </Text>
+
               <ScrollView
-                style={{ maxHeight: 500 }}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
               >
                 <TextInput
                   label="Pergunta *"
@@ -1613,12 +1988,23 @@ export default function Colaboracao() {
                         dense
                         style={{ flex: 1 }}
                         placeholder={`Alternativa ${alt.id.toUpperCase()}`}
+                        ref={(el) => (alternativaRefs.current[index] = el)}
+                        returnKeyType="next"
+                        onSubmitEditing={() => {
+                          if (index < alternativas.length - 1) {
+                            alternativaRefs.current[index + 1]?.focus();
+                          } else {
+                            explicacaoRef.current?.focus();
+                          }
+                        }}
+                        blurOnSubmit={false}
                       />
                     </View>
                   </View>
                 ))}
 
                 <TextInput
+                  ref={explicacaoRef}
                   label="Explicação (Opcional)"
                   value={questaoExplicacao}
                   onChangeText={setQuestaoExplicacao}
@@ -1627,16 +2013,300 @@ export default function Colaboracao() {
                   numberOfLines={3}
                   style={styles.input}
                   returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </ScrollView>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setDialogQuestaoVisivel(false)}>
-                Cancelar
-              </Button>
-              <Button onPress={salvarQuestao}>Salvar Questão</Button>
-            </Dialog.Actions>
-          </Dialog>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.outlineVariant,
+                }}
+              >
+                <Button onPress={() => setDialogQuestaoVisivel(false)}>
+                  Cancelar
+                </Button>
+                <Button onPress={salvarQuestao} mode="contained">Salvar Questão</Button>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+        </Portal>
+
+        {/* Dialog Questão de Código */}
+        <Portal>
+          <Modal
+            visible={dialogQuestaoEscritaVisivel}
+            onDismiss={() => setDialogQuestaoEscritaVisivel(false)}
+            contentContainerStyle={{
+              margin: 16,
+              height: "92%",
+            }}
+          >
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 20}
+              style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}
+            >
+              <Text
+                variant="headlineSmall"
+                style={{ marginBottom: 16, fontWeight: "bold", color: theme.colors.onSurface }}
+              >
+                {questaoEscritaEditando ? "Editar Exercício de Código" : "Novo Exercício de Código"}
+              </Text>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Linguagem */}
+                <Text variant="labelLarge" style={{ marginBottom: 8, color: theme.colors.onSurface }}>
+                  Linguagem *
+                </Text>
+                <SegmentedButtons
+                  value={escritaLinguagem}
+                  onValueChange={(value) => {
+                    setEscritaLinguagem(value as LinguagemCodigo);
+                    if (!questaoEscritaEditando) {
+                      setEscritaCodigoBase(getCodigoBasePadrao(value as LinguagemCodigo));
+                    }
+                  }}
+                  buttons={[
+                    { value: "python3", label: "Python", icon: "language-python" },
+                    { value: "nodejs", label: "JavaScript", icon: "language-javascript" },
+                    { value: "c", label: "C", icon: "language-c" },
+                  ]}
+                  style={{ marginBottom: 16 }}
+                />
+
+                {/* Enunciado */}
+                <TextInput
+                  label="Enunciado do Exercício *"
+                  value={escritaEnunciado}
+                  onChangeText={setEscritaEnunciado}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={4}
+                  style={styles.input}
+                  placeholder="Descreva o que o aluno deve fazer. Ex: Complete a função para retornar a soma de dois números."
+                  accessibilityLabel="Enunciado do exercício"
+                />
+
+                {/* Código Base */}
+                <Text variant="labelLarge" style={{ marginTop: 8, marginBottom: 4, color: theme.colors.onSurface }}>
+                  Código Base (Template) * — o que o aluno verá
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 4, color: theme.colors.onSurfaceVariant }}>
+                  Escreva o código completo e use __EDITAR__ para marcar as lacunas onde o aluno deve escrever. As partes sem __EDITAR__ ficam bloqueadas (somente leitura).
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 8, color: theme.colors.tertiary, fontStyle: 'italic' }}>
+                  Exemplo: def soma(a, b):{"\n"}    # __EDITAR__{"\n"}    pass{"\n"}{"\n"}print(soma(2, 3))
+                </Text>
+                <TextInput
+                  value={escritaCodigoBase}
+                  onChangeText={setEscritaCodigoBase}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={10}
+                  style={[styles.input, {
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 13,
+                  }]}
+                  contentStyle={{
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 13,
+                    lineHeight: 20,
+                  }}
+                  accessibilityLabel="Código base do exercício"
+                />
+
+                {/* Gabarito / Solução */}
+                <Text variant="labelLarge" style={{ marginTop: 12, marginBottom: 4, color: theme.colors.onSurface }}>
+                  Gabarito / Solução * — código completo e executável
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 4, color: theme.colors.onSurfaceVariant }}>
+                  O gabarito deve ser o programa COMPLETO, idêntico ao Código Base mas com os __EDITAR__ substituídos pela solução correta. Ele é executado no servidor para validar os casos de teste — por isso precisa ser um programa inteiro (não apenas a função).
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 4, color: theme.colors.error, fontWeight: 'bold' }}>
+                  {"Não pode conter __EDITAR__. Use \"Copiar Base\" abaixo e substitua os marcadores pela solução."}
+                </Text>
+                <Button
+                  mode="contained-tonal"
+                  icon="content-copy"
+                  compact
+                  onPress={() => setEscritaGabarito(escritaCodigoBase.replace(/__EDITAR__/g, ''))}
+                  style={{ alignSelf: "flex-start", marginBottom: 4 }}
+                  accessibilityLabel="Copiar código base para o gabarito, removendo marcadores __EDITAR__"
+                >
+                  Copiar Base (sem __EDITAR__) para Gabarito
+                </Button>
+                <TextInput
+                  value={escritaGabarito}
+                  onChangeText={setEscritaGabarito}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={10}
+                  style={[styles.input, {
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 13,
+                  }]}
+                  contentStyle={{
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 13,
+                    lineHeight: 20,
+                  }}
+                  placeholder="Cole aqui o programa completo com a solução (sem __EDITAR__). Ex: o Código Base com as lacunas preenchidas."
+                  accessibilityLabel="Gabarito do exercício"
+                />
+
+                {/* Casos de Teste */}
+                <Text variant="labelLarge" style={{ marginTop: 12, marginBottom: 4, color: theme.colors.onSurface }}>
+                  Casos de Teste * (min. 1)
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
+                  Defina entradas (stdin) e saídas esperadas (stdout) para validar o código do aluno.
+                </Text>
+
+                {escritaCasosTeste.map((ct, index) => (
+                  <Card
+                    key={ct.id}
+                    style={{ marginBottom: 12, backgroundColor: theme.colors.surfaceVariant, borderRadius: 10 }}
+                  >
+                    <Card.Content>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                          {ct.descricao || `Teste ${index + 1}`}
+                        </Text>
+                        {escritaCasosTeste.length > 1 && (
+                          <IconButton
+                            icon="delete"
+                            size={18}
+                            onPress={() => removerCasoTeste(ct.id)}
+                            accessibilityLabel={`Remover teste ${index + 1}`}
+                          />
+                        )}
+                      </View>
+                      <TextInput
+                        label="Descrição (opcional)"
+                        value={ct.descricao || ""}
+                        onChangeText={(text) => atualizarCasoTeste(ct.id, "descricao", text)}
+                        mode="outlined"
+                        dense
+                        style={{ marginBottom: 8 }}
+                      />
+                      <TextInput
+                        label="Entrada (stdin)"
+                        value={ct.entrada}
+                        onChangeText={(text) => atualizarCasoTeste(ct.id, "entrada", text)}
+                        mode="outlined"
+                        multiline
+                        numberOfLines={2}
+                        dense
+                        placeholder="Dados de entrada que o programa receberá (pode ser vazio)"
+                        style={{ marginBottom: 8, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                        contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                      />
+                      <TextInput
+                        label="Saída Esperada (stdout) *"
+                        value={ct.saidaEsperada}
+                        onChangeText={(text) => atualizarCasoTeste(ct.id, "saidaEsperada", text)}
+                        mode="outlined"
+                        multiline
+                        numberOfLines={2}
+                        dense
+                        placeholder="O que o stdout deve exibir"
+                        style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                        contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                      />
+                    </Card.Content>
+                  </Card>
+                ))}
+
+                <Button
+                  mode="outlined"
+                  icon="plus"
+                  onPress={adicionarCasoTeste}
+                  style={{ marginBottom: 16 }}
+                  accessibilityLabel="Adicionar mais um caso de teste"
+                >
+                  Adicionar Caso de Teste
+                </Button>
+
+                {/* Dica */}
+                <TextInput
+                  label="Dica (opcional)"
+                  value={escritaDica}
+                  onChangeText={setEscritaDica}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={2}
+                  style={styles.input}
+                  placeholder="Uma dica que o aluno pode revelar se precisar de ajuda"
+                />
+
+                {/* Explicação */}
+                <TextInput
+                  label="Explicação (exibida após responder)"
+                  value={escritaExplicacao}
+                  onChangeText={setEscritaExplicacao}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                  placeholder="Explicação da solução correta"
+                />
+
+                {/* Teste do Gabarito */}
+                <Divider style={{ marginVertical: 12 }} />
+                <Button
+                  mode="contained-tonal"
+                  icon="play-circle"
+                  onPress={testarGabarito}
+                  loading={testandoGabarito}
+                  disabled={testandoGabarito}
+                  style={{ marginBottom: 8 }}
+                  accessibilityLabel="Testar gabarito contra os casos de teste"
+                >
+                  Testar Gabarito no Jobe
+                </Button>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                  Executa o gabarito no Jobe para verificar se os casos de teste estão corretos.
+                </Text>
+                {resultadoTesteGabarito && (
+                  <Card style={{ marginBottom: 12, backgroundColor: resultadoTesteGabarito.startsWith("[OK]") ? theme.colors.primaryContainer : theme.colors.errorContainer, borderRadius: 8 }}>
+                    <Card.Content>
+                      <Text variant="bodyMedium" style={{ color: resultadoTesteGabarito.startsWith("[OK]") ? theme.colors.onPrimaryContainer : theme.colors.onErrorContainer }}>
+                        {resultadoTesteGabarito}
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                )}
+              </ScrollView>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.outlineVariant,
+                }}
+              >
+                <Button onPress={() => setDialogQuestaoEscritaVisivel(false)}>
+                  Cancelar
+                </Button>
+                <Button onPress={salvarQuestaoEscrita} mode="contained">
+                  Salvar Exercício
+                </Button>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
         </Portal>
 
         {/* Dialog Excluir */}
@@ -1663,8 +2333,8 @@ export default function Colaboracao() {
                     variant="bodySmall"
                   >
                     {(cursoExcluir as any).fonte === "xml"
-                      ? "⚠️ Este é um curso XML estático do sistema"
-                      : "📝 Curso criado por colaborador"}
+                      ? "Este é um curso XML estático do sistema"
+                      : "Curso criado por colaborador"}
                   </Text>
                 </>
               )}
@@ -1746,7 +2416,7 @@ export default function Colaboracao() {
               height: "90%",
             }}
           >
-            <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
               <Text
                 variant="headlineSmall"
                 style={{ marginBottom: 16, fontWeight: "bold" }}
@@ -1766,8 +2436,11 @@ export default function Colaboracao() {
                     onChangeText={setDocTitulo}
                     mode="outlined"
                     style={styles.input}
+                    returnKeyType="next"
+                    onSubmitEditing={() => docConteudoRef.current?.focus()}
                   />
                   <TextInput
+                    ref={docConteudoRef}
                     label="Conteúdo *"
                     value={docConteudo}
                     onChangeText={setDocConteudo}
@@ -1777,13 +2450,17 @@ export default function Colaboracao() {
                     style={styles.input}
                   />
                   <TextInput
+                    ref={docLinkRef}
                     label="Link (Opcional)"
                     value={docLink}
                     onChangeText={setDocLink}
                     mode="outlined"
                     placeholder="https://..."
                     style={styles.input}
+                    returnKeyType="next"
+                    onSubmitEditing={() => docVersaoRef.current?.focus()}
                   />
+
                   <View style={{ flexDirection: "row", gap: 12 }}>
                     <TextInput
                       label="Versão"
@@ -1824,9 +2501,17 @@ export default function Colaboracao() {
                   {docEditando ? "Salvar" : "Criar"}
                 </Button>
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
         </Portal>
+
+        {/* Painel de Análise de Questões (IRT) */}
+        <QuestionAnalyticsPanel
+          visible={analyticsVisivel}
+          onDismiss={() => setAnalyticsVisivel(false)}
+          cursoId={analyticsCursoId}
+          cursoTitulo={analyticsCursoTitulo}
+        />
       </SafeAreaView>
     </View>
   );

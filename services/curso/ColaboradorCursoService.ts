@@ -1,24 +1,25 @@
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from "firebase/firestore";
 import {
-  deleteObject,
-  getDownloadURL,
-  ref,
-  uploadBytes,
+    deleteObject,
+    getDownloadURL,
+    ref,
+    uploadBytes,
 } from "firebase/storage";
 import { firestore, storage } from "../../firebase/FirebaseInit";
 
 import { Curso } from "../../model/Curso";
+import { StatusSolicitacao } from "../../model/Solicitacao";
 import { SolicitacaoService } from "../shared/SolicitacaoService";
 
 export class ColaboradorCursoService {
@@ -28,7 +29,8 @@ export class ColaboradorCursoService {
   static async criarCurso(
     curso: Curso,
     xmlContent: string,
-    colaboradorId: string
+    colaboradorId: string,
+    colaboradorNome: string
   ): Promise<string> {
     try {
       const cursoRef = doc(collection(firestore, "cursos"));
@@ -50,6 +52,7 @@ export class ColaboradorCursoService {
         coeficienteMaximo: curso.coeficienteMaximo || 100,
         numeroPaginas: numeroPaginas,
         criadoPor: colaboradorId,
+        status: "Pendente",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -58,8 +61,20 @@ export class ColaboradorCursoService {
       if (curso.imageUrl) {
         cursoData.imageUrl = curso.imageUrl;
       }
+      if (curso.documentacaoId) {
+        cursoData.documentacaoId = curso.documentacaoId;
+      }
 
       await setDoc(cursoRef, cursoData);
+
+      // Criar solicitação de aprovação do curso
+      await SolicitacaoService.criarSolicitacaoCriacaoCurso(
+        cursoId,
+        curso.titulo || "",
+        colaboradorId,
+        colaboradorNome
+      );
+
       return cursoId;
     } catch (error) {
       console.error("Erro ao criar curso:", error);
@@ -128,10 +143,10 @@ export class ColaboradorCursoService {
    */
   static async excluirCurso(cursoId: string): Promise<string> {
     try {
-      // Excluir XML do Storage
+      // 1. Excluir XML do Storage
       await this.deleteXMLCurso(cursoId);
 
-      // Excluir imagem do curso se existir
+      // 2. Excluir imagem do curso se existir
       try {
         const imageRef = ref(storage, `imagens/cursos/${cursoId}.jpg`);
         await deleteObject(imageRef);
@@ -139,7 +154,55 @@ export class ColaboradorCursoService {
         console.error("Imagem não encontrada ou já excluída");
       }
 
-      // Excluir documento do Firestore
+      // 3. Limpar progresso dos usuários neste curso e recalcular coeficientes
+      // Isso garante que os pontos do curso excluído sejam removidos dos perfis
+      try {
+         const usuariosCursosRef = collection(firestore, "usuariosCursos");
+         const q = query(usuariosCursosRef, where("cursoId", "==", cursoId));
+         const snapshot = await getDocs(q);
+         
+         const usuariosAfetados = new Set<string>();
+
+         // Batch delete para eficiência
+         // (Firestore batch limit é 500, se houver mais precisaria de chunks, 
+         // mas para este escopo simples vamos assumir que cabe ou fazer loop)
+         for (const docSnap of snapshot.docs) {
+             const data = docSnap.data();
+             if (data.usuarioId) usuariosAfetados.add(data.usuarioId);
+             await deleteDoc(docSnap.ref); // Deletar progresso individual
+         }
+
+         // Recalcular coeficiente de cada usuário afetado
+         const { CursoService } = require("./CursoService"); // Lazy import circular fix
+         
+         for (const usuarioId of usuariosAfetados) {
+             await CursoService.atualizarCoeficienteTotalUsuario(usuarioId);
+         }
+
+      } catch (e) {
+          console.error("Erro ao limpar progressos do curso excluído:", e);
+      }
+      
+      // 4. Limpar solicitações pendentes associadas a este curso
+      try {
+        const solicitacoesRef = collection(firestore, "solicitacoes");
+        const qSol = query(
+          solicitacoesRef,
+          where("cursoId", "==", cursoId),
+          where("status", "==", StatusSolicitacao.Pendente)
+        );
+        const solSnapshot = await getDocs(qSol);
+        for (const solDoc of solSnapshot.docs) {
+          await updateDoc(solDoc.ref, {
+            status: StatusSolicitacao.Rejeitada,
+            motivoRejeicao: "Curso excluído pelo sistema",
+          });
+        }
+      } catch (e) {
+        console.error("Erro ao limpar solicitações órfãs:", e);
+      }
+
+      // 5. Excluir documento do Firestore
       const cursoRef = doc(firestore, "cursos", cursoId);
       await deleteDoc(cursoRef);
 
@@ -266,10 +329,19 @@ export class ColaboradorCursoService {
             isAdmin ||
             (colaboradorId && data.criadoPor === colaboradorId) ||
             !data.migradoDeLocal,
-        };
+        } as any;
       }) as Curso[];
 
-      return cursosFirestore;
+      return cursosFirestore.filter((curso) => {
+        // Moderador vê tudo
+        if (isAdmin) return true;
+        // Quem criou vê seu próprio curso
+        if (colaboradorId && curso.criadoPor === colaboradorId) return true;
+        // Cursos aprovados são visíveis para todos
+        if (curso.status === "Aprovado") return true;
+        
+        return false;
+      });
     } catch (error) {
       console.error("Erro ao buscar todos os cursos:", error);
       return [];
