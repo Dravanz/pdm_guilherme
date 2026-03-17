@@ -4,11 +4,12 @@ import { UserContext } from "@/context/UserProvider";
 import { Curso } from "@/model/Curso";
 import { CursoService } from "@/services/curso/CursoService";
 import { ImageService } from "@/services/image/ImageService";
+import { CourseDetailModal } from "@/components/CourseDetailModal";
+import { PerformanceModal } from "@/components/PerformanceModal";
 import { Image } from "expo-image";
-import { router } from "expo-router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
-import { Button, Card, Text, useTheme } from "react-native-paper";
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Card, Icon, Text, useTheme } from "react-native-paper";
 
 interface CourseListProps {
   showHeader?: boolean;
@@ -23,6 +24,12 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
     {}
   );
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
+  
+  // Modal state
+  const [selectedCurso, setSelectedCurso] = useState<Curso | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [perfModalVisible, setPerfModalVisible] = useState(false);
+  const [perfCurso, setPerfCurso] = useState<{id: string, titulo: string} | null>(null);
 
   const carregarCursos = useCallback(async () => {
     try {
@@ -40,7 +47,7 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
               categoria: curso.categoria,
               nivel: curso.nivel,
               questionsCount: 0, // Será calculado do XML
-              icon: "📚",
+              icon: "book-open-variant",
               color: "#6366f1",
               description: curso.descricao,
               imageUrl: curso.imageUrl,
@@ -99,150 +106,119 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
     }
   }, [user, cursosDisponiveis, verificarStatusCursos]);
 
-  const iniciarCurso = (curso: Curso) => {
-    router.push({
-      pathname: "/curso/[id]",
-      params: { id: curso.id },
-    });
+  const abrirDetalhes = (curso: Curso) => {
+    setSelectedCurso(curso);
+    setModalVisible(true);
   };
 
-  const revisarCurso = (curso: Curso) => {
-    router.push({
-      pathname: "/curso/[id]",
-      params: { id: curso.id, modo: "revisao" },
-    });
+  const abrirDesempenho = (courseId: string, title: string) => {
+    setPerfCurso({ id: courseId, titulo: title });
+    setPerfModalVisible(true);
   };
 
   return (
-    <FlatList
-      data={cursosDisponiveis}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <Card
-          style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          {item.imageUrl && (
-            <Image
-              source={{
-                uri: item.imageUrl.startsWith("http")
-                  ? item.imageUrl
-                  : ImageService.getImageUrl(item.imageUrl),
-              }}
-              style={styles.courseImage}
-              contentFit="contain"
-              placeholder="https://via.placeholder.com/300x120/cccccc/666666?text=Curso"
-            />
-          )}
-          <Card.Title
-            title={item.titulo}
-            subtitle={`Nível: ${
-              item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)
-            } • ${
-              item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)
-            }${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content>
+    <View>
+      <FlatList
+        data={cursosDisponiveis}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity activeOpacity={0.7} onPress={() => abrirDetalhes(item)}>
+            <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+              <View style={styles.imageContainer}>
+                {item.imageUrl ? (
+                  <Image
+                    source={{
+                      uri: item.imageUrl.startsWith("http")
+                        ? item.imageUrl
+                        : ImageService.getImageUrl(item.imageUrl),
+                    }}
+                    style={styles.courseImage}
+                    contentFit="cover"
+                    placeholder="https://via.placeholder.com/300x140/cccccc/666666?text=Curso"
+                  />
+                ) : (
+                  <View style={[styles.courseImage, { backgroundColor: theme.colors.surfaceVariant, justifyContent: "center", alignItems: "center" }]}>
+                    <Icon source="book-open-variant" size={48} color={theme.colors.onSurfaceVariant} />
+                  </View>
+                )}
+                {cursosStatus[item.id] && (
+                  <View style={[styles.completedBadge, { backgroundColor: theme.colors.primary }]}>
+                    <Icon source="check" size={16} color="#fff" />
+                  </View>
+                )}
+              </View>
+              <Card.Content style={{ paddingTop: 12, paddingBottom: 14 }}>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: "bold" }}>
+                  {item.titulo}
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                  {`${item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)} • ${item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)}${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
+                </Text>
+                {item.descricao ? (
+                  <Text variant="bodySmall" numberOfLines={2} style={{ color: theme.colors.onSurfaceVariant, marginTop: 6 }}>
+                    {item.descricao}
+                  </Text>
+                ) : null}
+              </Card.Content>
+            </Card>
+          </TouchableOpacity>
+        )}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: themeStyles.spacing.sm }} />
+        )}
+        ListHeaderComponent={
+          showHeader ? (
             <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface }}
+              variant="headlineMedium"
+              style={[themeStyles.header, { color: theme.colors.onBackground }]}
             >
-              {item.descricao || "Sem descrição"}
+              Cursos Disponíveis
             </Text>
-          </Card.Content>
-          <View style={{ padding: 16, paddingTop: 8 }}>
-            {cursosStatus[item.id] ? (
-              <View style={{ gap: 12 }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>
-                      ✅ Concluído
-                    </Text>
-                 </View>
-                
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "revisao" } })}
-                      icon="chart-bar"
-                      style={{ borderColor: theme.colors.outline, minWidth: 40 }}
-                      contentStyle={{ height: 40, paddingHorizontal: 0 }}
-                      compact
-                    >
-                      {""}
-                    </Button>
-                    <Button
-                      mode="outlined"
-                      onPress={() => revisarCurso(item)}
-                      icon="refresh"
-                      style={{ flex: 1, borderColor: theme.colors.outline }}
-                      contentStyle={{ height: 40 }}
-                    >
-                      Revisar
-                    </Button>
-                </View>
-              </View>
-            ) : (
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Button
-                    mode="contained"
-                    onPress={() => iniciarCurso(item)}
-                    style={{ backgroundColor: "#22c55e", flex: 1 }}
-                    contentStyle={{ height: 40 }}
-                    labelStyle={{ fontSize: 12 }}
-                    compact
-                  >
-                    Iniciar
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "preview" } })}
-                    style={{ flex: 1, borderColor: theme.colors.outline }}
-                    contentStyle={{ height: 40 }}
-                    labelStyle={{ fontSize: 12 }}
-                    icon="magnify"
-                    compact
-                  >
-                    Visualizar
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => router.push({ pathname: "/curso/[id]", params: { id: item.id, modo: "revisao" } })} // Using revisao/performance route
-                    style={{ borderColor: theme.colors.outline, minWidth: 40, justifyContent: 'center' }}
-                    contentStyle={{ height: 40 }}
-                    icon="chart-bar"
-                    compact
-                  >
-                    {""}
-                  </Button>
-              </View>
-            )}
-          </View>
-        </Card>
+          ) : null
+        }
+        scrollEnabled={false}
+      />
+
+      <CourseDetailModal
+        visible={modalVisible}
+        onDismiss={() => { setModalVisible(false); setSelectedCurso(null); }}
+        curso={selectedCurso}
+        isCompleted={selectedCurso ? !!cursosStatus[selectedCurso.id] : false}
+        onOpenPerformance={abrirDesempenho}
+      />
+
+      {perfCurso && user?.uid && (
+        <PerformanceModal
+          visible={perfModalVisible}
+          onDismiss={() => { setPerfModalVisible(false); setPerfCurso(null); }}
+          usuarioId={user.uid}
+          cursoId={perfCurso.id}
+          cursoTitulo={perfCurso.titulo}
+        />
       )}
-      ItemSeparatorComponent={() => (
-        <View style={{ height: themeStyles.spacing.sm }} />
-      )}
-      ListHeaderComponent={
-        showHeader ? (
-          <Text
-            variant="headlineMedium"
-            style={[themeStyles.header, { color: theme.colors.onBackground }]}
-          >
-            Cursos Disponíveis
-          </Text>
-        ) : null
-      }
-      scrollEnabled={false}
-    />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  imageContainer: {
+    position: "relative",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
+  },
   courseImage: {
     width: "100%",
-    height: 60,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 140,
+  },
+  completedBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

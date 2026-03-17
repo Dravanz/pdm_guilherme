@@ -7,13 +7,15 @@ import { CursoService } from "@/services/curso/CursoService";
 import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
-import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, View } from "react-native";
 import {
     ActivityIndicator,
     Button,
+    Chip,
     IconButton,
     Modal,
     Portal,
+    ProgressBar as PaperProgressBar,
     Text,
     useTheme
 } from "react-native-paper";
@@ -32,6 +34,7 @@ export default function CursoDetalhes() {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [modoRevisao, setModoRevisao] = useState(false);
+  const [modoTreino, setModoTreino] = useState(false);
   const [respostasRevisao, setRespostasRevisao] = useState<string[]>([]);
   
   // Documentação vinculada
@@ -45,13 +48,13 @@ export default function CursoDetalhes() {
   // Agendar notificação ao sair do curso
   useEffect(() => {
     return () => {
-      if (curso && !modoRevisao && modo !== "preview") {
+      if (curso && !modoRevisao && !modoTreino && modo !== "preview") {
         import("@/services/shared/NotificationService").then(({ NotificationService }) => {
             NotificationService.scheduleCourseReminder(curso.titulo);
         });
       }
     };
-  }, [curso, modoRevisao, modo]);
+  }, [curso, modoRevisao, modoTreino, modo]);
 
   const carregarCurso = async () => {
     if (!id) {
@@ -73,24 +76,36 @@ export default function CursoDetalhes() {
       );
       setCurso(cursoCarregado);
 
+      console.log("Curso carregado:", cursoCarregado.titulo, "DocID:", cursoCarregado.documentacaoId);
+
       // Carregar documentação vinculada se houver
       if (cursoCarregado.documentacaoId) {
         try {
+          console.log("Buscando documentação:", cursoCarregado.documentacaoId);
           const doc = await DocumentacaoService.obterDocumentacaoPorId(cursoCarregado.documentacaoId);
+          console.log("Documentação encontrada:", doc ? doc.titulo : "null");
           setDocumentacao(doc);
         } catch (error) {
           console.error("Erro ao carregar documentação vinculada:", error);
         }
+      } else {
+        console.log("Nenhuma documentação vinculada a este curso.");
       }
 
       const isRevisao = modo === "revisao";
       const isPreview = modo === "preview";
+      const isTreino = modo === "treino";
       setModoRevisao(isRevisao);
+      setModoTreino(isTreino);
 
       // Filtrar páginas se for preview
       if (isPreview) {
+        console.log(`[CursoDetalhes] Preview Mode: Filtering content pages only. Total before: ${cursoCarregado.paginas.length}`);
         cursoCarregado.paginas = cursoCarregado.paginas.filter(p => p.tipo === 'conteudo');
+        console.log(`[CursoDetalhes] Preview Mode: Total after: ${cursoCarregado.paginas.length}`);
         setCurso(cursoCarregado); // Atualizar com páginas filtradas
+      } else {
+         console.log(`[CursoDetalhes] Normal/Review Mode: Total pages: ${cursoCarregado.paginas.length}`);
       }
 
       // Se for preview, não carrega nem cria progresso
@@ -115,10 +130,10 @@ export default function CursoDetalhes() {
 
       let progresso = await CursoService.obterProgressoCurso(user.uid, id);
 
-      if (!progresso && !isRevisao) {
+      if (!progresso && !isRevisao && !isTreino) {
         progresso = await CursoService.iniciarCurso(user.uid, id);
-      } else if (isRevisao && !progresso) {
-        // Criar progresso temporário para revisão
+      } else if ((isRevisao || isTreino) && !progresso) {
+        // Criar progresso temporário para revisão/treino
         progresso = {
           id: `${user.uid}_${id}_revisao`,
           usuarioId: user.uid,
@@ -137,7 +152,7 @@ export default function CursoDetalhes() {
       setProgressoCurso(progresso);
       
       // Restaurar página salva (progresso é 1-based, state é 0-based)
-      if (progresso && progresso.paginaAtual > 0 && !isRevisao) {
+      if (progresso && progresso.paginaAtual > 0 && !isRevisao && !isTreino) {
         setPaginaAtual(progresso.paginaAtual - 1);
       } else {
         setPaginaAtual(0);
@@ -162,17 +177,17 @@ export default function CursoDetalhes() {
   ) => {
     if (!progressoCurso) return;
 
-    if (modoRevisao) {
-      // Modo revisão: não salvar dados, apenas dar feedback
+    if (modoRevisao || modoTreino) {
+      // Modo revisão/treino: não salvar dados, apenas dar feedback
       if (respostasRevisao.includes(questaoId)) {
-        throw new Error("Questão já foi respondida nesta sessão de revisão");
+        throw new Error("Questão já foi respondida nesta sessão");
       }
 
       setRespostasRevisao((prev) => [...prev, questaoId]);
 
       return {
         sucesso: correta,
-        explicacao: `${explicacao}\n\n(Modo Revisão - Dados não salvos)`,
+        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Treino' : 'Modo Revisão'} - Dados não salvos)`,
         novoCoeficiente: 0,
       };
     }
@@ -204,6 +219,45 @@ export default function CursoDetalhes() {
     };
   };
 
+  const responderQuestaoEscrita = async (
+    questaoId: string,
+    correta: boolean,
+    explicacao: string
+  ) => {
+    if (!progressoCurso) return;
+
+    if (modoRevisao || modoTreino) {
+      if (respostasRevisao.includes(questaoId)) {
+        throw new Error("Questão já foi respondida nesta sessão");
+      }
+      setRespostasRevisao((prev) => [...prev, questaoId]);
+      return {
+        sucesso: correta,
+        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Treino' : 'Modo Revisão'} - Dados não salvos)`,
+        novoCoeficiente: 0,
+      };
+    }
+
+    if (progressoCurso.questoesCorretas.includes(questaoId)) {
+      throw new Error("Você já acertou esta questão!");
+    }
+
+    const { novoCoeficiente, usuarioCursoAtualizado } = await CursoService.registrarResposta(
+      progressoCurso,
+      questaoId,
+      correta,
+      curso?.categoria ? [curso.categoria] : []
+    );
+
+    setProgressoCurso(usuarioCursoAtualizado);
+
+    return {
+      sucesso: correta,
+      explicacao,
+      novoCoeficiente,
+    };
+  };
+
   const proximaPagina = async () => {
     if (!curso || !progressoCurso) return;
 
@@ -212,7 +266,7 @@ export default function CursoDetalhes() {
       setPaginaAtual(novaPagina);
       
       // Atualizar progresso localmente para garantir que salvará o correto ao sair
-      if (progressoCurso && !modoRevisao && modo !== "preview") {
+      if (progressoCurso && !modoRevisao && !modoTreino && modo !== "preview") {
           const novoProgresso = {
               ...progressoCurso,
               paginaAtual: novaPagina + 1 // 1-based
@@ -299,6 +353,25 @@ export default function CursoDetalhes() {
     );
   }
 
+  const voltarParaDashboard = async () => {
+    // Só salvar progresso se o curso for válido e tiver páginas
+    const cursoValido = curso && curso.paginas && curso.paginas.length > 0;
+    
+    if (!modoRevisao && !modoTreino && modo !== "preview" && progressoCurso && cursoValido) {
+      try {
+        await CursoService.salvarProgresso(progressoCurso);
+      } catch (e) {
+        console.error("Erro ao salvar progresso ao sair:", e);
+      }
+    }
+    
+    if (router.canGoBack()) {
+        router.back();
+    } else {
+        router.replace("/(tabs)");
+    }
+  };
+
   if (!curso || !progressoCurso) {
     return (
       <SafeAreaView
@@ -311,12 +384,55 @@ export default function CursoDetalhes() {
     );
   }
 
-  const voltarParaDashboard = async () => {
-    if (!modoRevisao && modo !== "preview" && progressoCurso) {
-      await CursoService.salvarProgresso(progressoCurso);
-    }
-    router.push("/(tabs)");
-  };
+  if (!curso.paginas || curso.paginas.length === 0) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        <View style={styles.header}>
+            <IconButton
+            icon="arrow-left"
+            size={24}
+            onPress={voltarParaDashboard}
+            iconColor={theme.colors.onBackground}
+            />
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: 'center', padding: 20 }}>
+            <Text style={{ textAlign: "center", color: theme.colors.onBackground, marginBottom: 10 }} variant="titleMedium">
+            Este curso não possui páginas disponíveis para visualização.
+            </Text>
+            {modo === 'preview' && (
+                <Text style={{ textAlign: "center", color: theme.colors.onSurfaceVariant }} variant="bodySmall">
+                    (Modo Preview exibe apenas páginas de conteúdo)
+                </Text>
+            )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const pagina = curso.paginas[paginaAtual];
+  console.log(`[CursoDetalhes] Render: id=${id}, pag=${paginaAtual}, total=${curso.paginas.length}, pagina defined=${!!pagina}`);
+
+  if (!pagina) {
+     return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+         <View style={styles.header}>
+            <IconButton
+            icon="arrow-left"
+            size={24}
+            onPress={voltarParaDashboard}
+            iconColor={theme.colors.onBackground}
+            />
+        </View>
+        <Text style={{ textAlign: "center", color: theme.colors.onBackground, marginTop: 20 }}>
+          Página {paginaAtual + 1} não encontrada. (Index inválido)
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -333,7 +449,7 @@ export default function CursoDetalhes() {
           variant="titleLarge"
           style={[styles.titulo, { color: theme.colors.onBackground }]}
         >
-          {curso.titulo} {modoRevisao ? "(Revisão)" : ""} - Página{" "}
+          {curso.titulo} {modoRevisao ? "(Revisão)" : modoTreino ? "(Treino)" : ""} - Página{" "}
           {paginaAtual + 1}/{curso.paginas.length}
         </Text>
         {documentacao ? (
@@ -351,16 +467,56 @@ export default function CursoDetalhes() {
         )}
       </View>
 
-      <CursoViewer
-        pagina={curso.paginas[paginaAtual]}
-        onProximaPagina={proximaPagina}
-        questoesRespondidas={
-          modoRevisao ? respostasRevisao : progressoCurso.questoesRespondidas
-        }
-        onResponderQuestao={responderQuestao}
-        isLastPage={paginaAtual === curso.paginas.length - 1}
-        modo={modo}
+      {/* Progress bar */}
+      <PaperProgressBar
+        progress={(paginaAtual + 1) / curso.paginas.length}
+        color={modo === 'treino' ? theme.colors.tertiary : modo === 'revisao' ? theme.colors.secondary : theme.colors.primary}
+        style={{ height: 6, marginHorizontal: 16, borderRadius: 3 }}
       />
+
+      {/* Mode banner */}
+      {(modo === 'treino' || modo === 'revisao' || modoRevisao) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 16, marginHorizontal: 16, marginTop: 8, borderRadius: 8, backgroundColor: (modo === 'treino') ? theme.colors.tertiaryContainer : theme.colors.secondaryContainer }}>
+          <Chip
+            icon={(modo === 'treino') ? 'school-outline' : 'eye-outline'}
+            style={{ backgroundColor: 'transparent' }}
+            textStyle={{ color: (modo === 'treino') ? theme.colors.tertiary : theme.colors.secondary, fontWeight: 'bold' }}
+          >
+            {(modo === 'treino') ? 'Modo Treino — sem pontuação' : 'Modo Revisão — dados não salvos'}
+          </Chip>
+        </View>
+      )}
+
+      {!modo && !modoRevisao && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 16, marginHorizontal: 16, marginTop: 8, borderRadius: 8, backgroundColor: theme.colors.primaryContainer }}>
+          <Chip
+            icon='clipboard-check-outline'
+            style={{ backgroundColor: 'transparent' }}
+            textStyle={{ color: theme.colors.primary, fontWeight: 'bold' }}
+          >
+            {'Modo Avaliação — vale pontos de coeficiente'}
+          </Chip>
+        </View>
+      )}
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      >
+        <CursoViewer
+          pagina={pagina}
+          onProximaPagina={proximaPagina}
+          questoesRespondidas={
+            (modoRevisao || modoTreino) ? respostasRevisao : progressoCurso.questoesRespondidas
+          }
+          onResponderQuestao={responderQuestao}
+          onResponderQuestaoEscrita={responderQuestaoEscrita}
+          isLastPage={paginaAtual === curso.paginas.length - 1}
+          modo={modo}
+          onVerDocumentacao={documentacao ? () => setModalDocVisivel(true) : undefined}
+        />
+      </KeyboardAvoidingView>
       <Portal>
         <Modal
           visible={modalDocVisivel}

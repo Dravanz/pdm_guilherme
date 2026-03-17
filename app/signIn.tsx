@@ -6,7 +6,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { router } from "expo-router";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Dimensions, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { spacing, containerPadding } from "@/constants/Layout";
 import {
   Button,
@@ -289,7 +290,8 @@ const styles = StyleSheet.create({
   button: {
     marginTop: spacing.xxl,
     marginBottom: spacing.lg,
-    backgroundColor: "#22c55e",
+    backgroundColor: undefined, // Set via theme
+    borderRadius: 24,
   },
   themeRow: {
     marginTop: spacing.sm,

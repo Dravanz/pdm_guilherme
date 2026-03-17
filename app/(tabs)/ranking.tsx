@@ -11,12 +11,12 @@ import { router } from "expo-router";
 import React, { useCallback, useContext, useState } from "react";
 import {
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
     ActivityIndicator,
     Avatar,
@@ -79,30 +79,26 @@ export default function Ranking() {
   };
 
   const obterCorCard = (posicao: number) => {
-    const isDark = theme.dark;
     switch (posicao) {
       case 1:
-        return isDark ? "rgba(255, 215, 0, 0.15)" : "rgba(255, 215, 0, 0.1)";
+        return theme.colors.rankGold + '1A';
       case 2:
-        return isDark
-          ? "rgba(192, 192, 192, 0.15)"
-          : "rgba(192, 192, 192, 0.1)";
+        return theme.colors.rankSilver + '1A';
       case 3:
-        return isDark ? "rgba(205, 127, 50, 0.15)" : "rgba(205, 127, 50, 0.1)";
+        return theme.colors.rankBronze + '1A';
       default:
         return theme.colors.surface;
     }
   };
 
   const obterCorTexto = (posicao: number) => {
-    const isDark = theme.dark;
     switch (posicao) {
       case 1:
-        return isDark ? "#FFD700" : "#996B00";
+        return theme.colors.rankGold;
       case 2:
-        return isDark ? "#E5E5E5" : "#5A5A5A";
+        return theme.colors.rankSilver;
       case 3:
-        return isDark ? "#DEB887" : "#654321";
+        return theme.colors.rankBronze;
       default:
         return theme.colors.onSurface;
     }
@@ -125,11 +121,11 @@ export default function Ranking() {
   const obterCorIcone = (posicao: number) => {
      switch (posicao) {
       case 1:
-        return "#FFD700"; // Gold
+        return theme.colors.rankGold; // Gold
       case 2:
-        return "#C0C0C0"; // Silver
+        return theme.colors.rankSilver; // Silver
       case 3:
-        return "#CD7F32"; // Bronze
+        return theme.colors.rankBronze; // Bronze
       default:
         return theme.colors.onSurface;
     }
@@ -191,7 +187,7 @@ export default function Ranking() {
               />
             )}
             <View style={styles.podioIcon}>
-                <Icon source="medal" size={32} color="#C0C0C0" />
+                <Icon source="medal" size={32} color={theme.colors.rankSilver} />
             </View>
             <Text
               variant="titleMedium"
@@ -204,7 +200,7 @@ export default function Ranking() {
               variant="bodyLarge"
               style={[
                 styles.podioScore,
-                { color: theme.dark ? "#E5E5E5" : "#5A5A5A" },
+                { color: theme.colors.rankSilver },
               ]}
             >
               {segundo.coeficienteConhecimento || 0}%
@@ -218,12 +214,8 @@ export default function Ranking() {
               styles.podioItem,
               styles.primeiroLugar,
               {
-                backgroundColor: theme.dark
-                  ? "rgba(255, 215, 0, 0.15)"
-                  : "rgba(255, 215, 0, 0.1)",
-                borderColor: theme.dark
-                  ? "rgba(255, 215, 0, 0.6)"
-                  : "rgba(255, 215, 0, 0.8)",
+                backgroundColor: theme.colors.rankGold + '1A',
+                borderColor: theme.colors.rankGold + 'CC',
               },
             ]}
           >
@@ -248,7 +240,7 @@ export default function Ranking() {
               />
             )}
             <View style={styles.podioIcon}>
-                <Icon source="medal" size={40} color="#FFD700" />
+                <Icon source="medal" size={40} color={theme.colors.rankGold} />
             </View>
             <Text
               variant="titleLarge"
@@ -261,7 +253,7 @@ export default function Ranking() {
               variant="headlineSmall"
               style={[
                 styles.podioScore,
-                { color: theme.dark ? "#FFD700" : "#996B00" },
+                { color: theme.colors.rankGold },
               ]}
             >
               {primeiro.coeficienteConhecimento || 0}%
@@ -275,12 +267,8 @@ export default function Ranking() {
               styles.podioItem,
               styles.terceiroLugar,
               {
-                backgroundColor: theme.dark
-                  ? "rgba(205, 127, 50, 0.15)"
-                  : "rgba(205, 127, 50, 0.1)",
-                borderColor: theme.dark
-                  ? "rgba(205, 127, 50, 0.6)"
-                  : "rgba(205, 127, 50, 0.8)",
+                backgroundColor: theme.colors.rankBronze + '1A',
+                borderColor: theme.colors.rankBronze + 'CC',
               },
             ]}
           >
@@ -305,7 +293,7 @@ export default function Ranking() {
               />
             )}
             <View style={styles.podioIcon}>
-                <Icon source="medal" size={32} color="#CD7F32" />
+                <Icon source="medal" size={32} color={theme.colors.rankBronze} />
             </View>
             <Text
               variant="titleMedium"
@@ -318,7 +306,7 @@ export default function Ranking() {
               variant="bodyLarge"
               style={[
                 styles.podioScore,
-                { color: theme.dark ? "#DEB887" : "#654321" },
+                { color: theme.colors.rankBronze },
               ]}
             >
               {terceiro.coeficienteConhecimento || 0}%
@@ -498,12 +486,15 @@ export default function Ranking() {
         {renderPodio()}
 
         <View style={styles.listContainer}>
-          <Text
-            variant="titleLarge"
-            style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
-          >
-            📊 Classificação Completa
-          </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Icon source="chart-bar" size={24} color={theme.colors.secondary} />
+              <Text
+                variant="titleLarge"
+                style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}
+              >
+                Classificação Completa
+              </Text>
+            </View>
 
           {rankingData?.usuarios.map(renderUsuario)}
         </View>

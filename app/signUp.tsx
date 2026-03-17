@@ -536,7 +536,8 @@ const styles = StyleSheet.create({
   button: {
     marginTop: spacing.xxl,
     marginBottom: spacing.lg,
-    backgroundColor: "#22c55e",
+    backgroundColor: undefined, // Set via theme
+    borderRadius: 24,
   },
   divButtonsImage: {
     flexDirection: "row",

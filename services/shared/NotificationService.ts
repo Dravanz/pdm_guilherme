@@ -128,7 +128,7 @@ export class NotificationService {
    */
   static async scheduleWelcomeNotification(userName: string) {
     await this.scheduleLocalNotification(
-      'Bem-vindo(a)! 🚀',
+      'Bem-vindo(a)!',
       `Olá ${userName}, estamos felizes em ter você aqui! Comece a aprender agora mesmo.`,
       null // Imediato
     );
@@ -139,10 +139,10 @@ export class NotificationService {
    */
   static async scheduleStreakReminder() {
     // Cancelar lembretes anteriores para não acumular
-    await this.cancelNotificationByTitle('Não perca sua sequência! 🔥');
+    await this.cancelNotificationByTitle('Não perca sua sequência!');
 
     await this.scheduleLocalNotification(
-      'Não perca sua sequência! 🔥',
+      'Não perca sua sequência!',
       'Você já estudou hoje? Mantenha sua ofensiva ativa e continue aprendendo!',
       {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -157,10 +157,10 @@ export class NotificationService {
    */
   static async scheduleCourseReminder(courseTitle: string) {
      // Cancelar lembretes anteriores deste curso
-    await this.cancelNotificationByTitle(`Continue estudando ${courseTitle} 📚`);
+    await this.cancelNotificationByTitle(`Continue estudando ${courseTitle}`);
 
     await this.scheduleLocalNotification(
-      `Continue estudando ${courseTitle} 📚`,
+      `Continue estudando ${courseTitle}`,
       'Faz um tempo que você não estuda. Que tal retomar de onde parou?',
       {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -193,7 +193,7 @@ export class NotificationService {
        await Notifications.cancelAllScheduledNotificationsAsync();
        // Reagendar streak para daqui 24h
        await this.scheduleLocalNotification(
-        'Não perca sua sequência! 🔥',
+        'Não perca sua sequência!',
         'Volte para manter sua ofensiva!',
         { 
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

@@ -41,4 +41,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Markdown de contexto/documentação interna (exceto README.md)
+*.md
+!README.md
+
 app-example

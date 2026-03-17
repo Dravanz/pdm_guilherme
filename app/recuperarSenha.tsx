@@ -2,14 +2,15 @@
 import { AuthContext } from "@/context/AuthProvider";
 import { router } from "expo-router";
 import React, { useContext, useState } from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Button,
-  Dialog,
-  Divider,
-  Text,
-  TextInput,
-  useTheme,
+    Button,
+    Dialog,
+    Divider,
+    Text,
+    TextInput,
+    useTheme,
 } from "react-native-paper";
 
 export default function RecuperarSenha() {
@@ -53,6 +54,8 @@ export default function RecuperarSenha() {
         mode="outlined"
         autoCapitalize="none"
         keyboardType="email-address"
+        returnKeyType="send"
+        onSubmitEditing={enviar}
         value={email}
         onChangeText={setEmail}
         right={<TextInput.Icon icon="email" />}
@@ -109,6 +112,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: "transparent",
   },
-  button: { marginTop: 24, backgroundColor: "#22c55e" },
+  button: { marginTop: 24, backgroundColor: undefined, borderRadius: 24 },
   textDialog: { textAlign: "center" },
 });

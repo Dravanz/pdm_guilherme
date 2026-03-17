@@ -2,7 +2,8 @@
 import { AuthContext } from "@/context/AuthProvider";
 import { router } from "expo-router";
 import { useContext, useEffect, useState } from "react";
-import { SafeAreaView, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, useTheme } from "react-native-paper";
 import { Rect, Svg, Text as SvgText } from "react-native-svg";
 import * as Notifications from 'expo-notifications';

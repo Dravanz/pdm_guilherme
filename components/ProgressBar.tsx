@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, Card, useTheme } from 'react-native-paper';
+import { Text, Card, Icon, useTheme } from 'react-native-paper';
 
 interface ProgressBarProps {
   percentage: number;
@@ -11,9 +11,9 @@ export function ProgressBar({ percentage }: ProgressBarProps) {
   const theme = useTheme();
   
   const getColor = (percent: number) => {
-    if (percent < 35) return '#f44336'; // Vermelho
-    if (percent < 65) return '#ff9800'; // Amarelo
-    return '#4caf50'; // Verde
+    if (percent < 35) return theme.colors.error;
+    if (percent < 65) return theme.colors.warning;
+    return theme.colors.primary;
   };
 
   const getStatusText = (percent: number) => {
@@ -30,9 +30,12 @@ export function ProgressBar({ percentage }: ProgressBarProps) {
     <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       <Card.Content style={styles.content}>
         <View style={styles.header}>
-          <Text variant="titleMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
-            📈 Progresso Geral
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon source="trending-up" size={20} color={theme.colors.onSurface} />
+            <Text variant="titleMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
+              Progresso Geral
+            </Text>
+          </View>
           <View style={[styles.statusBadge, { backgroundColor: color + '20' }]}>
             <Text variant="bodySmall" style={[styles.statusText, { color: color }]}>
               {statusText}

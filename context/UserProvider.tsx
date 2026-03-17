@@ -271,7 +271,9 @@ export const UserProvider = ({ children }: any) => {
 
         // Verificar e conceder badge de primeiro login (Execlogger)
         const primeiroLogin = userData.primeiroLoginFeito !== true;
-        if (primeiroLogin) {
+        // Só executar lógica de primeiro login se o email estiver verificado
+        // Isso evita que o modal apareça durante o cadastro (quando o email ainda não foi verificado)
+        if (primeiroLogin && authUser.emailVerified) {
           // Conceder badge Execlogger (retorna true se foi concedida)
           const badgeConcedida = await BadgeService.concederBadgePrimeiroLogin(
             usuario.uid
@@ -288,9 +290,9 @@ export const UserProvider = ({ children }: any) => {
           if (badgeConcedida) {
             setTimeout(() => {
               Alert.alert(
-                "🎉 Bem-vindo ao Execlog!",
-                "🎖️ Parabéns! Você recebeu a conquista Execlogger por iniciar sua jornada de aprendizado conosco!\n\n" +
-                  "Continue firme nos estudos e pratique bastante para conquistar mais badges e conhecimento. Boa sorte! 📚✨",
+                "Bem-vindo ao Execlog!",
+                "Parabéns! Você recebeu a conquista Execlogger por iniciar sua jornada de aprendizado conosco!\n\n" +
+                  "Continue firme nos estudos e pratique bastante para conquistar mais badges e conhecimento. Boa sorte!",
                 [{ text: "Vamos lá!", style: "default" }]
               );
             }, 500);

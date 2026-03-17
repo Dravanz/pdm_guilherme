@@ -59,7 +59,7 @@ export function WeeklyStreak({ loginDays }: WeeklyStreakProps) {
                 <Icon
                   source={hasLogin ? 'fire' : 'close'}
                   size={20}
-                  color={hasLogin ? '#FF5722' : theme.colors.onSurfaceVariant}
+                  color={hasLogin ? theme.colors.streak : theme.colors.onSurfaceVariant}
                 />
               </View>
             </View>

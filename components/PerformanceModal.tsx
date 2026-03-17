@@ -105,19 +105,19 @@ export function PerformanceModal({
               {/* Resumo Geral */}
               <View style={styles.summaryContainer}>
                 <View style={styles.summaryItem}>
-                  <Text variant="displaySmall" style={{ color: "#4CAF50" }}>
+                  <Text variant="displaySmall" style={{ color: theme.colors.primary }}>
                     {stats.acertos}
                   </Text>
                   <Text variant="bodySmall">Acertos</Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text variant="displaySmall" style={{ color: "#F44336" }}>
+                  <Text variant="displaySmall" style={{ color: theme.colors.error }}>
                     {stats.erros}
                   </Text>
                   <Text variant="bodySmall">Erros</Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text variant="displaySmall" style={{ color: "#2196F3" }}>
+                  <Text variant="displaySmall" style={{ color: theme.colors.info }}>
                     {stats.taxaAcerto}%
                   </Text>
                   <Text variant="bodySmall">Precisão</Text>
@@ -133,14 +133,14 @@ export function PerformanceModal({
                   {
                     name: "Acertos",
                     population: stats.acertos,
-                    color: "#4CAF50",
+                    color: theme.colors.primary,
                     legendFontColor: theme.colors.onSurface,
                     legendFontSize: 12,
                   },
                   {
                     name: "Erros",
                     population: stats.erros,
-                    color: "#F44336",
+                    color: theme.colors.error,
                     legendFontColor: theme.colors.onSurface,
                     legendFontSize: 12,
                   },
@@ -208,9 +208,9 @@ export function PerformanceModal({
                                 {index + 1}. {questao.pergunta}
                               </Text>
                               {stat.ultimaCorreta ? (
-                                <List.Icon icon="check-circle" color="#4CAF50" />
+                                <List.Icon icon="check-circle" color={theme.colors.primary} />
                               ) : (
-                                <List.Icon icon="close-circle" color="#F44336" />
+                                <List.Icon icon="close-circle" color={theme.colors.error} />
                               )}
                             </View>
                             

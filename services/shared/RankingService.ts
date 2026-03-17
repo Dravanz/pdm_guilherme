@@ -218,11 +218,11 @@ export class RankingService {
   static obterIconePosicao(posicao: number): string {
     switch (posicao) {
       case 1:
-        return "🥇";
+        return "1º";
       case 2:
-        return "🥈";
+        return "2º";
       case 3:
-        return "🥉";
+        return "3º";
       default:
         return `${posicao}º`;
     }

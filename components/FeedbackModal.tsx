@@ -3,7 +3,7 @@ import { FeedbackData, FeedbackService } from '@/services/shared/FeedbackService
 import Constants from 'expo-constants';
 import React, { useContext, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Modal, Portal, RadioButton, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, HelperText, Icon, Modal, Portal, RadioButton, Text, TextInput, useTheme } from 'react-native-paper';
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -70,7 +70,10 @@ export function FeedbackModal({ visible, onDismiss, courseId, courseTitle, pageI
       <Modal visible={visible} onDismiss={handleDismiss} contentContainerStyle={[styles.container, { backgroundColor: theme.colors.surface }]}>
         {success ? (
           <View style={styles.successContainer}>
-            <Text variant="headlineMedium" style={{ color: theme.colors.primary, marginBottom: 8 }}>✅ Enviado!</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Icon source="check-circle" size={28} color={theme.colors.primary} />
+              <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>Enviado!</Text>
+            </View>
             <Text style={{ textAlign: 'center' }}>Obrigado pelo seu feedback.</Text>
           </View>
         ) : (

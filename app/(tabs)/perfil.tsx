@@ -234,19 +234,19 @@ export default function Perfil() {
               >
                 {urlFoto && urlFoto !== "" && urlFoto.startsWith("https://") ? (
                   <CachedImage
-                    style={styles.image}
+                    style={[styles.image, { borderColor: theme.colors.primary }]}
                     userId={userFirebase.uid}
                     firebaseUrl={urlFoto}
                     placeholder={
                       <Image
-                        style={styles.image}
+                        style={[styles.image, { borderColor: theme.colors.primary }]}
                         source={require("../../assets/images/person.png")}
                       />
                     }
                   />
                 ) : (
                   <Image
-                    style={styles.image}
+                    style={[styles.image, { borderColor: theme.colors.primary }]}
                     source={require("../../assets/images/person.png")}
                   />
                 )}
@@ -269,6 +269,8 @@ export default function Perfil() {
                     value={nome}
                     onChangeText={setNome}
                     right={<TextInput.Icon icon="smart-card" />}
+                    returnKeyType="done"
+                    onSubmitEditing={salvarPerfil}
                   />
                   <Button
                     style={[
@@ -546,7 +548,7 @@ export default function Perfil() {
               setDialogVisivel(false);
               setConfirmDelete(true);
             }}
-            textColor="#ff0000"
+            textColor={theme.colors.error}
           >
             Excluir
           </Button>
@@ -569,7 +571,7 @@ export default function Perfil() {
             }}
             loading={requisitando}
             disabled={requisitando}
-            textColor="#ff0000"
+            textColor={theme.colors.error}
           >
             {!requisitando ? "Sim, excluir" : "Excluindo..."}
           </Button>
@@ -654,7 +656,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: "#22c55e",
+    borderColor: undefined, // Set dynamically via theme
   },
   imageOverlay: {
     position: "absolute",

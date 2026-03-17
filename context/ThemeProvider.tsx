@@ -8,27 +8,47 @@ const themeLight = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
+    // Primary: Green (mantido)
     primary: "#16a34a",
     onPrimary: "#ffffff",
-    secondary: "#0ea5a4",
+    primaryContainer: "#dcfce7",
+    onPrimaryContainer: "#14532d",
+    // Secondary: Slate (neutro, suporte discreto)
+    secondary: "#64748b",
     onSecondary: "#ffffff",
-    tertiary: "#65a30d",
+    secondaryContainer: "#f1f5f9",
+    onSecondaryContainer: "#1e293b",
+    // Tertiary: Teal (verde-azulado, harmônico com primary)
+    tertiary: "#0d9488",
     onTertiary: "#ffffff",
+    tertiaryContainer: "#ccfbf1",
+    onTertiaryContainer: "#134e4a",
+    // Superfícies
     background: "#ffffff",
     onBackground: "#1f2937",
     surface: "#f9fafb",
     onSurface: "#1f2937",
     surfaceVariant: "#f3f4f6",
-    onSurfaceVariant: "#6b7280",
-    outline: "#d1d5db",
+    onSurfaceVariant: "#4b5563", // Corrigido: era #6b7280 (~4.2:1), agora #4b5563 (~7:1)
+    outline: "#9ca3af",          // Corrigido: era #d1d5db (~1.8:1), agora #9ca3af (~3:1 AA para non-text)
+    outlineVariant: "#d1d5db",
+    // Semânticas
     error: "#dc2626",
     onError: "#ffffff",
+    errorContainer: "#fee2e2",
+    onErrorContainer: "#7f1d1d",
     success: "#16a34a",
     onSuccess: "#ffffff",
-    warning: "#f59e0b",
+    warning: "#d97706",
     onWarning: "#ffffff",
+    info: "#2563eb",
+    onInfo: "#ffffff",
     streak: "#ea580c",
     onStreak: "#ffffff",
+    // Ranking
+    rankGold: "#d97706",
+    rankSilver: "#6b7280",
+    rankBronze: "#b45309",
   },
 };
 
@@ -36,27 +56,47 @@ const themeDark = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
+    // Primary: Green
     primary: "#22c55e",
     onPrimary: "#0f172a",
-    secondary: "#14b8a6",
+    primaryContainer: "#14532d",
+    onPrimaryContainer: "#bbf7d0",
+    // Secondary: Slate (neutro, suporte discreto)
+    secondary: "#94a3b8",
     onSecondary: "#0f172a",
-    tertiary: "#84cc16",
+    secondaryContainer: "#334155",
+    onSecondaryContainer: "#e2e8f0",
+    // Tertiary: Teal (verde-azulado, harmônico com primary)
+    tertiary: "#2dd4bf",
     onTertiary: "#0f172a",
+    tertiaryContainer: "#134e4a",
+    onTertiaryContainer: "#99f6e4",
+    // Superfícies
     background: "#0f172a",
     onBackground: "#f1f5f9",
     surface: "#1e293b",
     onSurface: "#f1f5f9",
     surfaceVariant: "#334155",
-    onSurfaceVariant: "#94a3b8",
-    outline: "#475569",
+    onSurfaceVariant: "#cbd5e1", // Corrigido: era #94a3b8 (~4.6:1), agora #cbd5e1 (~8.5:1)
+    outline: "#64748b",          // Corrigido: era #475569 (~2.6:1), agora #64748b (~3.5:1)
+    outlineVariant: "#475569",
+    // Semânticas
     error: "#ef4444",
     onError: "#ffffff",
+    errorContainer: "#7f1d1d",
+    onErrorContainer: "#fecaca",
     success: "#22c55e",
     onSuccess: "#0f172a",
     warning: "#fbbf24",
     onWarning: "#0f172a",
+    info: "#60a5fa",
+    onInfo: "#0f172a",
     streak: "#fb923c",
     onStreak: "#0f172a",
+    // Ranking
+    rankGold: "#fbbf24",
+    rankSilver: "#94a3b8",
+    rankBronze: "#d97706",
   },
 };
 
@@ -79,12 +119,12 @@ export const globalStyles = {
   card: {
     marginBottom: 12,
     marginHorizontal: 4,
-    borderRadius: 16,
-    elevation: 3,
+    borderRadius: 20,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   cardRow: {
     flexDirection: 'row' as const,
@@ -95,25 +135,25 @@ export const globalStyles = {
   // Botões
   button: {
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     marginVertical: 8,
     marginHorizontal: 4,
   },
   buttonPrimary: {
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     marginVertical: 8,
     marginHorizontal: 4,
   },
   buttonSecondary: {
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     marginVertical: 8,
     marginHorizontal: 4,
   },
   buttonOutlined: {
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     marginVertical: 8,
     marginHorizontal: 4,
     borderWidth: 1,

@@ -1,7 +1,9 @@
+import { BadgeManager } from "@/components/BadgeManager";
 import { CourseListModal } from "@/components/CourseListModal";
 import { DocumentationList } from "@/components/DocumentationList";
 import { FeaturedCourses } from "@/components/FeaturedCourses";
 import { PerformanceModal } from "@/components/PerformanceModal";
+import { WeeklyStreak } from "@/components/WeeklyStreak";
 import { CourseConfig } from "@/config/CourseConfig";
 import { containerPadding, spacing } from "@/constants/Layout";
 import { UserContext } from "@/context/UserProvider";
@@ -19,12 +21,12 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
     Dimensions,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { PieChart } from "react-native-chart-kit";
 import {
     ActivityIndicator,
@@ -48,6 +50,8 @@ export default function Dashboard() {
   const [carregando, setCarregando] = useState(true);
   const dadosCarregados = useRef(false);
   const [solicitacoesPendentes, setSolicitacoesPendentes] = useState(0);
+  const [badgeManagerVisible, setBadgeManagerVisible] = useState(false); // State for Badge Manager
+  const [loginDays, setLoginDays] = useState<string[]>([]);
 
   useEffect(() => {
     if (userFirebase?.perfil === Perfil.Moderador) {
@@ -91,6 +95,18 @@ export default function Dashboard() {
       if (userFirebase?.perfil === Perfil.Moderador) {
         await fetchSolicitacoesPendentes();
       }
+      // Gerar dias de login dos últimos 7 dias (baseado em dados existentes)
+      const today = new Date();
+      const days: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        // Simula login nos dias com atividade (cursos ativos ou completos > 0 indica atividade)
+        if (dados.estatisticas.cursosAtivos > 0 || dados.estatisticas.cursosCompletos > 0 || i === 0) {
+          days.push(d.toISOString().split('T')[0]);
+        }
+      }
+      setLoginDays(days);
       dadosCarregados.current = true;
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
@@ -112,6 +128,7 @@ export default function Dashboard() {
     setModalType(type);
     setModalTitle(type === "completed" ? "Cursos Concluídos" : "Cursos em Progresso");
     setModalCourses([]); // Limpar lista anterior
+
     setModalVisible(true);
 
     try {
@@ -202,14 +219,14 @@ export default function Dashboard() {
           {
             name: "Corretas",
             population: dashboardData?.estatisticas?.questoesCorretas || 0,
-            color: "#22c55e",
+            color: theme.colors.primary,
             legendFontColor: theme.colors.onBackground,
             legendFontSize: 12,
           },
           {
             name: "Incorretas",
             population: dashboardData?.estatisticas?.questoesErradas || 0,
-            color: "#ef4444",
+            color: theme.colors.error,
             legendFontColor: theme.colors.onBackground,
             legendFontSize: 12,
           },
@@ -233,7 +250,7 @@ export default function Dashboard() {
             >
               Olá, {userFirebase?.nome || "Usuário"}!
             </Text>
-            <Icon source="hand-wave" size={24} color="#FFC107" />
+            <Icon source="hand-wave" size={24} color={theme.colors.primary} />
           </View>
           <Text
             variant="bodyLarge"
@@ -246,28 +263,36 @@ export default function Dashboard() {
           </Text>
         </View>
 
+        {/* Sequência Semanal */}
+        <View style={[styles.section, { marginBottom: spacing.md }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card.Content>
+              <WeeklyStreak loginDays={loginDays} />
+            </Card.Content>
+          </Card>
+        </View>
+
+        {/* Card de Moderação */}
         {/* Card de Moderação */}
         {userFirebase?.perfil === Perfil.Moderador && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer, marginBottom: 16 }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.outlineVariant }]}>
             <Card.Content>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Icon source="shield-account" size={32} color={theme.colors.onErrorContainer} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="titleMedium" style={{ color: theme.colors.onErrorContainer, fontWeight: 'bold' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Icon source="shield-account" size={32} color={theme.colors.primary} />
+                <View style={{ flex: 1, minWidth: 200 }}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
                     Moderação
                   </Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onErrorContainer }}>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                     Você tem {solicitacoesPendentes} solicitações pendentes.
                   </Text>
                 </View>
                 <Button 
                   mode="contained" 
                   onPress={() => router.push("/(tabs)/solicitacoes")}
-                  textColor={theme.colors.errorContainer}
-                  buttonColor={theme.colors.onErrorContainer}
-                  compact
+                  style={{ flexGrow: 1 }}
                 >
-                  Ver
+                  Gerenciar Solicitações
                 </Button>
               </View>
             </Card.Content>
@@ -275,43 +300,53 @@ export default function Dashboard() {
         )}
 
         {/* Card de Colaboração */}
+        {/* Card de Colaboração */}
         {(userFirebase?.perfil === Perfil.Colaborador || userFirebase?.perfil === Perfil.Moderador) && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.secondaryContainer, marginBottom: 16 }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.outlineVariant }]}>
             <Card.Content>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <Icon source="handshake" size={32} color={theme.colors.onSecondaryContainer} />
+                <Icon source="handshake" size={32} color={theme.colors.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text variant="titleMedium" style={{ color: theme.colors.onSecondaryContainer, fontWeight: 'bold' }}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
                     Área do Colaborador
                   </Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSecondaryContainer }}>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                     Contribua com a comunidade!
                   </Text>
                 </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ gap: 8 }}>
                 <Button 
                   mode="contained" 
                   onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'cursos' } })}
-                  style={{ flex: 1 }}
-                  buttonColor={theme.colors.onSecondaryContainer}
-                  textColor={theme.colors.secondaryContainer}
-                  icon="plus"
-                  compact
+                  style={{ width: '100%' }}
+                  icon="school"
+                  
                 >
-                  Novo Curso
+                  Gerenciar Cursos
                 </Button>
                 <Button 
                   mode="contained" 
                   onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'documentacao' } })}
-                  style={{ flex: 1 }}
-                  buttonColor={theme.colors.onSecondaryContainer}
-                  textColor={theme.colors.secondaryContainer}
-                  icon="file-document-plus"
-                  compact
+                  style={{ width: '100%' }}
+                  icon="file-document"
+                  
                 >
-                  Nova Doc
+                  Gerenciar Docs
                 </Button>
+                
+                 {/* Botão de Badge - Só para Moderador */}
+                 {userFirebase?.perfil === Perfil.Moderador && (
+                    <Button 
+                    mode="contained" 
+                    onPress={() => setBadgeManagerVisible(true)}
+                    style={{ width: '100%' }}
+                    icon="medal"
+                    
+                    >
+                    Gerenciar Badges
+                    </Button>
+                 )}
               </View>
             </Card.Content>
           </Card>
@@ -332,7 +367,7 @@ export default function Dashboard() {
               >
                 <Card.Content style={styles.statContent}>
                   <View style={styles.statIconContainer}>
-                    <Icon source="book-check" size={32} color="#22c55e" />
+                    <Icon source="book-check" size={32} color={theme.colors.primary} />
                   </View>
                   <Text
                     variant="titleMedium"
@@ -365,7 +400,7 @@ export default function Dashboard() {
               >
                 <Card.Content style={styles.statContent}>
                   <View style={styles.statIconContainer}>
-                    <Icon source="target" size={32} color="#3b82f6" />
+                    <Icon source="target" size={32} color={theme.colors.primary} />
                   </View>
                   <Text
                     variant="titleMedium"
@@ -501,6 +536,11 @@ export default function Dashboard() {
           cursoTitulo={selectedPerfCourse.titulo}
         />
       )}
+
+      <BadgeManager 
+        visible={badgeManagerVisible} 
+        onDismiss={() => setBadgeManagerVisible(false)} 
+      />
     </SafeAreaView>
   );
 }

@@ -45,11 +45,11 @@ export function DocumentationList({
   const getTipoIcon = (tipo: TipoDocumentacao) => {
     switch (tipo) {
       case TipoDocumentacao.Documentacao:
-        return "📚";
+        return "book-open-variant";
       case TipoDocumentacao.Atualizacao:
-        return "🔄";
+        return "update";
       default:
-        return "📄";
+        return "file-document";
     }
   };
 
@@ -109,7 +109,7 @@ export function DocumentationList({
       <Card.Content style={horizontal ? styles.horizontalContent : undefined}>
         <View style={styles.cardHeader}>
           <Chip
-            icon="file-document"
+            icon={getTipoIcon(doc.tipo)}
             style={[
               styles.chip,
               { backgroundColor: theme.colors.primaryContainer, flexShrink: 1, marginRight: 8 },
@@ -117,7 +117,7 @@ export function DocumentationList({
             textStyle={{ fontSize: 12 }}
             compact
           >
-            {getTipoIcon(doc.tipo)} {getTipoLabel(doc.tipo)}
+            {getTipoLabel(doc.tipo)}
           </Chip>
           <Text
             variant="bodySmall"
@@ -180,7 +180,7 @@ export function DocumentationList({
             variant="headlineMedium"
             style={[styles.header, { color: theme.colors.onBackground }]}
           >
-            📚 Documentação Recente
+            Documentação Recente
           </Text>
         )}
         <ScrollView
@@ -201,7 +201,7 @@ export function DocumentationList({
           variant="headlineMedium"
           style={[styles.header, { color: theme.colors.onBackground }]}
         >
-          📚 Documentação Recente
+          Documentação Recente
         </Text>
       )}
       {documentacoes.map(renderCard)}

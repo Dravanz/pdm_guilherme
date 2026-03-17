@@ -54,12 +54,15 @@ export function FeaturedCourses({
     return (
       <View>
         {showHeader && (
-          <Text
-            variant="headlineMedium"
-            style={[styles.header, { color: theme.colors.onBackground }]}
-          >
-            🌟 Cursos em Destaque
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Icon source="star-circle" size={24} color={theme.colors.tertiary || '#d97706'} />
+            <Text
+              variant="headlineMedium"
+              style={[styles.header, { color: theme.colors.onBackground, marginVertical: 0 }]}
+            >
+              Cursos em Destaque
+            </Text>
+          </View>
         )}
         <Text
           style={{
@@ -81,7 +84,7 @@ export function FeaturedCourses({
           variant="headlineMedium"
           style={[styles.header, { color: theme.colors.onBackground }]}
         >
-          🌟 Cursos em Destaque
+          Cursos em Destaque
         </Text>
       )}
 
@@ -123,29 +126,25 @@ export function FeaturedCourses({
                 <View style={styles.statsContainer}>
                   <View style={styles.statRow}>
                     <Icon source="account-group" size={16} color={theme.colors.primary} />
-                    <Text variant="bodySmall" style={{ marginLeft: 6, color: theme.colors.onSurface }}>
+                    <Text variant="bodySmall" style={{ marginLeft: 6, color: theme.colors.onSurfaceVariant }}>
                       {course.totalUsuarios} alunos
-                    </Text>
-                  </View>
-
-                  <View style={styles.statRow}>
-                    <Icon source="check-circle" size={16} color={theme.colors.secondary} />
-                    <Text variant="bodySmall" style={{ marginLeft: 6, color: theme.colors.onSurface }}>
-                      {course.usuariosConcluidos} concluídos
                     </Text>
                   </View>
                 </View>
 
                 {course.usuariosAtivos > 0 && (
-                  <Text
-                    variant="bodySmall"
-                    style={[
-                      styles.activeUsers,
-                      { color: theme.colors.primary },
-                    ]}
-                  >
-                    🔥 {course.usuariosAtivos} estudando agora
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Icon source="fire" size={14} color={theme.colors.streak} />
+                    <Text
+                      variant="bodySmall"
+                      style={[
+                        styles.activeUsers,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      {course.usuariosAtivos} estudando agora
+                    </Text>
+                  </View>
                 )}
 
 
@@ -173,14 +172,14 @@ const styles = StyleSheet.create({
     width: 250,
     marginRight: 12,
     marginBottom: 8,
-    borderRadius: 12,
-    elevation: 3,
+    borderRadius: 20,
+    elevation: 2,
   },
   courseImage: {
     width: "100%",
-    height: 80,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 100,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     marginBottom: 4,
   },
   content: {

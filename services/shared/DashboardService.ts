@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { CourseConfig } from "../../config/CourseConfig";
 import { firestore } from "../../firebase/FirebaseInit";
 import { UsuarioCurso } from "../../model/Curso";
@@ -61,19 +61,51 @@ export class DashboardService {
       let questoesCorretas = 0;
       let questoesErradas = 0;
 
-      querySnapshot.forEach((doc) => {
-        const usuarioCurso = doc.data() as UsuarioCurso;
+      // Iterar e validar cada curso
+      for (const docSnapshot of querySnapshot.docs) {
+        const usuarioCurso = docSnapshot.data() as UsuarioCurso;
+        const cursoId = usuarioCurso.cursoId;
+        let isValid = false;
 
-        if (usuarioCurso.concluido) {
-          cursosCompletos++;
+        const isHardcoded = ["javascript-basico", "python-basico", "react-basico"].includes(cursoId);
+
+        if (isHardcoded) {
+            isValid = true;
         } else {
-          cursosAtivos++;
+             try {
+                const cursoRef = doc(firestore, "cursos", cursoId);
+                const cursoSnap = await getDoc(cursoRef);
+                if (cursoSnap.exists()) {
+                    // Opcional: filtrar apenas aprovados? O dashboard deve mostrar cursos em progresso mesmo que não aprovados?
+                    // Geralmente Dashboard pessoal mostra tudo que o usuário está fazendo.
+                    // MAS se o problema é "ghost records" de cursos deletados, o check de .exists() já resolve.
+                    // Se o usuário quer que cursos não aprovados não contem pro progresso GERAL, ok.
+                    // Mas listar "Em Progresso: 3" faz sentido se ele está fazendo 3.
+                    // Vou assumir que se o curso EXISTE, ele conta para o dashboard PESSOAL.
+                    isValid = true;
+                } else {
+                    // Curso deletado!
+                    // console.warn(`Found orphan progress for course ${cursoId}, ignoring.`);
+                    // Opcional: auto-delete
+                    // await deleteDoc(docSnapshot.ref); 
+                }
+             } catch (e) {
+                 console.warn("Error checking course existence", e);
+             }
         }
 
-        totalQuestoes += usuarioCurso.questoesRespondidas.length;
-        questoesCorretas += usuarioCurso.questoesCorretas.length;
-        questoesErradas += usuarioCurso.questoesErradas?.length || 0;
-      });
+        if (isValid) {
+            if (usuarioCurso.concluido) {
+                cursosCompletos++;
+            } else {
+                cursosAtivos++;
+            }
+
+            totalQuestoes += usuarioCurso.questoesRespondidas.length;
+            questoesCorretas += usuarioCurso.questoesCorretas.length;
+            questoesErradas += usuarioCurso.questoesErradas?.length || 0;
+        }
+      }
 
       const coeficienteGeral =
         totalQuestoes > 0
