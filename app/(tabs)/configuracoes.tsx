@@ -3,6 +3,7 @@ import { AuthContext } from "@/context/AuthProvider";
 import { globalStyles, ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { Badge } from "@/model/Badge";
+import { Curso } from "@/model/Curso";
 
 import { Perfil } from "@/model/Perfil";
 import { BadgeAdminService } from "@/services/badge/BadgeAdminService";
@@ -11,7 +12,7 @@ import { CursoService } from "@/services/curso/CursoService";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import {
     FlatList,
     SafeAreaView,
@@ -28,12 +29,10 @@ import {
     Icon,
     IconButton,
     Menu,
-    Modal,
-    Portal,
     Searchbar,
     Text,
     TextInput,
-    useTheme
+    useTheme,
 } from "react-native-paper";
 
 export default function Configuracoes() {
@@ -57,12 +56,7 @@ export default function Configuracoes() {
   const [mensagem, setMensagem] = useState({ tipo: "", mensagem: "" });
   const [dialogMensagemVisivel, setDialogMensagemVisivel] = useState(false);
   const [dialogColaborarVisivel, setDialogColaborarVisivel] = useState(false);
-  
   const [conhecimentos, setConhecimentos] = useState("");
-  const [linkedin, setLinkedin] = useState("");
-  const [github, setGithub] = useState("");
-  const [portfolio, setPortfolio] = useState("");
-  const [experiencia, setExperiencia] = useState("");
   const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
 
   // Estados para CRUD de Badges (Admin)
@@ -94,7 +88,7 @@ export default function Configuracoes() {
   const [badgeRequisitoValor, setBadgeRequisitoValor] = useState("");
   const [badgeRequisitoCursoId, setBadgeRequisitoCursoId] = useState("");
   const [badgeRequisitoPerfil, setBadgeRequisitoPerfil] = useState<
-    "Colaborador" | "Moderador" | ""
+    "Colaborador" | "Admin" | ""
   >("");
 
   // Estados para Menus
@@ -104,109 +98,25 @@ export default function Configuracoes() {
   const [menuPerfilVisivel, setMenuPerfilVisivel] = useState(false);
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
 
-  useEffect(() => {
+
+
+  React.useEffect(() => {
     if (userFirebase) {
       setNome(userFirebase.nome || "");
-      if (userFirebase.perfil === Perfil.Moderador) {
+      if (userFirebase.perfil === Perfil.Admin) {
         carregarCursos();
         carregarBadges();
       }
     }
   }, [userFirebase, carregarCursos, carregarBadges]);
 
+
+
   async function handleLogout() {
     const res = await sair();
     if (res === "ok") {
       router.replace("/signIn");
     }
-  }
-
-  async function enviarSolicitacaoColaboracao() {
-    if (!userFirebase || !conhecimentos.trim()) {
-      setMensagem({
-        tipo: "erro",
-        mensagem: "Por favor, informe seus conhecimentos e experiências.",
-      });
-      setDialogMensagemVisivel(true);
-      return;
-    }
-
-    setEnviandoSolicitacao(true);
-    try {
-      await SolicitacaoService.criarSolicitacaoColaboracao(
-        userFirebase.uid,
-        userFirebase.nome,
-        userFirebase.email,
-        userFirebase.urlFoto,
-        conhecimentos,
-        linkedin,
-        github,
-        portfolio,
-        experiencia
-      );
-
-      setDialogColaborarVisivel(false);
-      setConhecimentos("");
-      setLinkedin("");
-      setGithub("");
-      setPortfolio("");
-      setExperiencia("");
-      
-      setMensagem({
-        tipo: "sucesso",
-        mensagem:
-          "Solicitação enviada com sucesso! Aguarde a aprovação de um administrador.",
-      });
-      setDialogMensagemVisivel(true);
-    } catch (error: any) {
-      setMensagem({
-        tipo: "erro",
-        mensagem:
-          error.message || "Erro ao enviar solicitação. Tente novamente.",
-      });
-      setDialogMensagemVisivel(true);
-    }
-    setEnviandoSolicitacao(false);
-  }
-
-  async function tiraFoto() {
-    setAlterandoFoto(true);
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled) {
-        await sendImageToStorage(result.assets[0].uri);
-        setDialogFotoVisivel(false);
-      }
-    } catch (error) {
-      console.error("Erro ao tirar foto:", error);
-    }
-    setAlterandoFoto(false);
-  }
-
-  async function buscaNaGaleria() {
-    setAlterandoFoto(true);
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled) {
-        await sendImageToStorage(result.assets[0].uri);
-        setDialogFotoVisivel(false);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar na galeria:", error);
-    }
-    setAlterandoFoto(false);
   }
 
   async function salvarPerfil() {
@@ -241,6 +151,45 @@ export default function Configuracoes() {
     }
     setRequisitando(false);
     setConfirmDelete(false);
+  }
+
+  async function enviarSolicitacaoColaboracao() {
+    if (!userFirebase || !conhecimentos.trim()) {
+      setMensagem({
+        tipo: "erro",
+        mensagem: "Por favor, informe seus conhecimentos e experiências.",
+      });
+      setDialogMensagemVisivel(true);
+      return;
+    }
+
+    setEnviandoSolicitacao(true);
+    try {
+      await SolicitacaoService.criarSolicitacaoColaboracao(
+        userFirebase.uid,
+        userFirebase.nome,
+        userFirebase.email,
+        userFirebase.urlFoto,
+        conhecimentos
+      );
+
+      setDialogColaborarVisivel(false);
+      setConhecimentos("");
+      setMensagem({
+        tipo: "sucesso",
+        mensagem:
+          "Solicitação enviada com sucesso! Aguarde a aprovação de um administrador.",
+      });
+      setDialogMensagemVisivel(true);
+    } catch (error: any) {
+      setMensagem({
+        tipo: "erro",
+        mensagem:
+          error.message || "Erro ao enviar solicitação. Tente novamente.",
+      });
+      setDialogMensagemVisivel(true);
+    }
+    setEnviandoSolicitacao(false);
   }
 
   // ============= FUNÇÕES DE GERENCIAMENTO DE BADGES (ADMIN) =============
@@ -823,8 +772,8 @@ export default function Configuracoes() {
           </Card>
         )}
 
-        {/* CRUD de Badges - apenas para Moderador */}
-        {userFirebase?.perfil === Perfil.Moderador && (
+        {/* CRUD de Badges - apenas para Admin */}
+        {userFirebase?.perfil === Perfil.Admin && (
           <Card
             style={[
               themeStyles.card,
@@ -1071,211 +1020,185 @@ export default function Configuracoes() {
           </Card.Content>
         </Card>
 
-        <Portal>
-          <Dialog
-            visible={dialogVisivel}
-            onDismiss={() => setDialogVisivel(false)}
-          >
-            <Dialog.Icon icon="alert-circle-outline" size={60} />
-            <Dialog.Title style={styles.textDialog}>Excluir Conta</Dialog.Title>
-            <Dialog.Content>
-              <Text style={styles.textDialog} variant="bodyLarge">
-                Tem certeza que deseja excluir sua conta? Esta ação não pode ser
-                desfeita.
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setDialogVisivel(false)}>Cancelar</Button>
-              <Button
-                onPress={() => {
-                  setDialogVisivel(false);
-                  setConfirmDelete(true);
-                }}
-                textColor="#ff0000"
-              >
-                Excluir
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <Dialog
+          visible={dialogVisivel}
+          onDismiss={() => setDialogVisivel(false)}
+        >
+          <Dialog.Icon icon="alert-circle-outline" size={60} />
+          <Dialog.Title style={styles.textDialog}>Excluir Conta</Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyLarge">
+              Tem certeza que deseja excluir sua conta? Esta ação não pode ser
+              desfeita.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDialogVisivel(false)}>Cancelar</Button>
+            <Button
+              onPress={() => {
+                setDialogVisivel(false);
+                setConfirmDelete(true);
+              }}
+              textColor="#ff0000"
+            >
+              Excluir
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-        <Portal>
-          <Dialog
-            visible={confirmDelete}
-            onDismiss={() => setConfirmDelete(false)}
-          >
-            <Dialog.Icon icon="alert-octagon-outline" size={60} />
-            <Dialog.Title style={styles.textDialog}>
-              Você tem certeza?
-            </Dialog.Title>
-            <Dialog.Content>
-              <Text style={styles.textDialog} variant="bodyLarge">
-                Esta é sua última chance. Sua conta será permanentemente excluída.
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setConfirmDelete(false)}>Cancelar</Button>
-              <Button
-                onPress={() => {
-                  excluirConta();
-                }}
-                loading={requisitando}
-                disabled={requisitando}
-                textColor="#ff0000"
-              >
-                {!requisitando ? "Sim, excluir" : "Excluindo..."}
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <Dialog
+          visible={confirmDelete}
+          onDismiss={() => setConfirmDelete(false)}
+        >
+          <Dialog.Icon icon="alert-octagon-outline" size={60} />
+          <Dialog.Title style={styles.textDialog}>
+            Você tem certeza?
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyLarge">
+              Esta é sua última chance. Sua conta será permanentemente excluída.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setConfirmDelete(false)}>Cancelar</Button>
+            <Button
+              onPress={() => {
+                excluirConta();
+              }}
+              loading={requisitando}
+              disabled={requisitando}
+              textColor="#ff0000"
+            >
+              {!requisitando ? "Sim, excluir" : "Excluindo..."}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-        <Portal>
-          <Dialog
-            visible={dialogFotoVisivel}
-            onDismiss={() => setDialogFotoVisivel(false)}
-          >
-            <Dialog.Icon icon="camera" size={60} />
-            <Dialog.Title style={styles.textDialog}>Alterar Foto</Dialog.Title>
-            <Dialog.Content>
-              <Text style={styles.textDialog} variant="bodyLarge">
-                Escolha como deseja alterar sua foto de perfil
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={tiraFoto} icon="camera" disabled={alterandoFoto}>
-                Tirar Foto
-              </Button>
-              <Button
-                onPress={buscaNaGaleria}
-                icon="image"
-                disabled={alterandoFoto}
-              >
-                Galeria
-              </Button>
-              <Button onPress={() => setDialogFotoVisivel(false)}>
-                Cancelar
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <Dialog
+          visible={dialogFotoVisivel}
+          onDismiss={() => setDialogFotoVisivel(false)}
+        >
+          <Dialog.Icon icon="camera" size={60} />
+          <Dialog.Title style={styles.textDialog}>Alterar Foto</Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyLarge">
+              Escolha como deseja alterar sua foto de perfil
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={tiraFoto} icon="camera" disabled={alterandoFoto}>
+              Tirar Foto
+            </Button>
+            <Button
+              onPress={buscaNaGaleria}
+              icon="image"
+              disabled={alterandoFoto}
+            >
+              Galeria
+            </Button>
+            <Button onPress={() => setDialogFotoVisivel(false)}>
+              Cancelar
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-        <Portal>
-          <Dialog
-            visible={dialogColaborarVisivel}
-            onDismiss={() => {
-              setDialogColaborarVisivel(false);
-              setConhecimentos("");
-            }}
-          >
-            <Dialog.Icon icon="account-plus" size={60} />
-            <Dialog.Title style={styles.textDialog}>
-              Colaborar com o Projeto
-            </Dialog.Title>
-            <Dialog.Content style={{ maxHeight: 500 }}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={{ marginBottom: 16 }}>
-                  Para se tornar um colaborador, precisamos saber um pouco mais sobre você.
-                  Preencha os campos abaixo (alguns são opcionais).
-                </Text>
+        <Dialog
+          visible={dialogMensagemVisivel}
+          onDismiss={() => {
+            setDialogMensagemVisivel(false);
+            setMensagem({ tipo: "", mensagem: "" });
+          }}
+        >
+          <Dialog.Icon
+            icon={
+              mensagem.tipo === "erro"
+                ? "alert-circle-outline"
+                : "check-circle-outline"
+            }
+            size={60}
+          />
+          <Dialog.Title style={styles.textDialog}>
+            {mensagem.tipo === "erro"
+              ? "Erro"
+              : mensagem.tipo === "sucesso"
+              ? "Sucesso"
+              : "Informação"}
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyLarge">
+              {mensagem.mensagem}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                setDialogMensagemVisivel(false);
+                setMensagem({ tipo: "", mensagem: "" });
+              }}
+            >
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-                <TextInput
-                  label="Conhecimentos Técnicos *"
-                  placeholder="Ex: React Native, Firebase, TypeScript..."
-                  mode="outlined"
-                  value={conhecimentos}
-                  onChangeText={setConhecimentos}
-                  multiline
-                  numberOfLines={3}
-                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
-                />
-
-                <TextInput
-                  label="Experiência Profissional / Acadêmica"
-                  placeholder="Ex: Desenvolvedor Jr, Professor, Estudante..."
-                  mode="outlined"
-                  value={experiencia}
-                  onChangeText={setExperiencia}
-                  multiline
-                  numberOfLines={2}
-                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
-                />
-
-                <TextInput
-                  label="LinkedIn (Opcional)"
-                  placeholder="https://linkedin.com/in/..."
-                  mode="outlined"
-                  value={linkedin}
-                  onChangeText={setLinkedin}
-                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-
-                <TextInput
-                  label="GitHub (Opcional)"
-                  placeholder="https://github.com/..."
-                  mode="outlined"
-                  value={github}
-                  onChangeText={setGithub}
-                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-
-                <TextInput
-                  label="Portfólio / Lattes (Opcional)"
-                  placeholder="Link para seu portfólio ou currículo"
-                  mode="outlined"
-                  value={portfolio}
-                  onChangeText={setPortfolio}
-                  style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-              </ScrollView>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button
-                onPress={() => {
-                  setDialogColaborarVisivel(false);
-                  setConhecimentos("");
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onPress={enviarSolicitacaoColaboracao}
-                loading={enviandoSolicitacao}
-                disabled={enviandoSolicitacao || !conhecimentos.trim()}
-              >
-                Enviar
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <Dialog
+          visible={dialogColaborarVisivel}
+          onDismiss={() => {
+            setDialogColaborarVisivel(false);
+            setConhecimentos("");
+          }}
+        >
+          <Dialog.Icon icon="account-plus" size={60} />
+          <Dialog.Title style={styles.textDialog}>
+            Colaborar com o Projeto
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.textDialog} variant="bodyMedium">
+              Como você deseja colaborar? Informe seus conhecimentos e
+              experiências:
+            </Text>
+            <TextInput
+              mode="outlined"
+              placeholder="Ex: Tenho experiência em JavaScript, Python e criação de cursos..."
+              value={conhecimentos}
+              onChangeText={setConhecimentos}
+              multiline
+              numberOfLines={4}
+              style={{ marginTop: 12 }}
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                setDialogColaborarVisivel(false);
+                setConhecimentos("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onPress={enviarSolicitacaoColaboracao}
+              loading={enviandoSolicitacao}
+              disabled={enviandoSolicitacao || !conhecimentos.trim()}
+            >
+              Enviar
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
       </ScrollView>
 
       {/* Dialog de Criar Badge */}
-      <Portal>
-        <Modal
-          visible={dialogBadgeVisivel}
-          onDismiss={() => setDialogBadgeVisivel(false)}
-          contentContainerStyle={{
-            margin: 20,
-            height: "90%",
-          }}
-        >
-          <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: 'hidden' }}>
-            <Text
-              variant="headlineSmall"
-              style={{ marginBottom: 16, fontWeight: "bold" }}
-            >
-              🏅 {badgeEditando ? "Editar Badge" : "Nova Badge"}
-            </Text>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20 }}
-            >
+      <Dialog
+        visible={dialogBadgeVisivel}
+        onDismiss={() => setDialogBadgeVisivel(false)}
+        style={{ maxHeight: "90%" }}
+      >
+        <Dialog.Title>
+          🏅 {badgeEditando ? "Editar Badge" : "Nova Badge"}
+        </Dialog.Title>
+        <Dialog.ScrollArea>
+          <ScrollView>
+            <Dialog.Content>
               <TextInput
                 label="ID da Badge"
                 value={badgeId}
@@ -1515,10 +1438,10 @@ export default function Configuracoes() {
                     />
                     <Menu.Item
                       onPress={() => {
-                        setBadgeRequisitoPerfil("Moderador");
+                        setBadgeRequisitoPerfil("Admin");
                         setMenuPerfilVisivel(false);
                       }}
-                      title="👨‍💼 Moderador"
+                      title="👨‍💼 Admin"
                     />
                   </Menu>
                 </>
@@ -1548,55 +1471,16 @@ export default function Configuracoes() {
                   style={styles.textInput}
                 />
               )}
-            </ScrollView>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                gap: 8,
-                paddingTop: 16,
-                borderTopWidth: 1,
-                borderTopColor: theme.colors.outlineVariant,
-              }}
-            >
-              <Button onPress={() => setDialogBadgeVisivel(false)}>
-                Cancelar
-              </Button>
-              <Button onPress={salvarBadge} mode="contained">
-                {badgeEditando ? "💾 Salvar" : "➕ Criar"}
-              </Button>
-            </View>
-          </View>
-        </Modal>
-      </Portal>
-
-      {/* Dialog Mensagem */}
-      <Portal>
-        <Dialog
-          visible={dialogMensagemVisivel}
-          onDismiss={() => setDialogMensagemVisivel(false)}
-        >
-          <Dialog.Icon
-            icon={
-              mensagem.tipo === "erro"
-                ? "alert-circle-outline"
-                : "check-circle-outline"
-            }
-            size={60}
-          />
-          <Dialog.Title style={styles.textDialog}>
-            {mensagem.tipo === "erro" ? "Erro" : "Sucesso"}
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.textDialog} variant="bodyLarge">
-              {mensagem.mensagem}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogMensagemVisivel(false)}>OK</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+            </Dialog.Content>
+          </ScrollView>
+        </Dialog.ScrollArea>
+        <Dialog.Actions>
+          <Button onPress={() => setDialogBadgeVisivel(false)}>Cancelar</Button>
+          <Button onPress={salvarBadge} mode="contained">
+            {badgeEditando ? "💾 Salvar" : "➕ Criar"}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
 
 
     </SafeAreaView>
