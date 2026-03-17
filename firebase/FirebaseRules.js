@@ -90,7 +90,8 @@ service cloud.firestore {
       // Colaboradores podem criar solicitações de exclusão de cursos
       allow create: if request.auth != null && 
         (request.resource.data.usuarioId == request.auth.uid ||
-         (isColaboradorOrModerador() && request.resource.data.colaboradorId == request.auth.uid));
+         (isColaboradorOrModerador() && request.resource.data.colaboradorId == request.auth.uid) ||
+         (isColaboradorOrModerador() && request.resource.data.autorId == request.auth.uid));
       
       // Apenas moderadores podem ler e atualizar solicitações
       allow read, update: if request.auth != null && isModerador();
@@ -105,6 +106,18 @@ service cloud.firestore {
     match /questoes/{questaoId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && isColaboradorOrModerador();
+    }
+    
+    // Regras para banco de questões de código (escrita)
+    match /questoes_escrita/{questaoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isColaboradorOrModerador();
+    }
+    
+    // Regras para analytics de questões (IRT)
+    match /questionAnalytics/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
     
     // Regras para badges (catálogo de badges do sistema)

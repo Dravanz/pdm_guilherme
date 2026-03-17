@@ -2,6 +2,7 @@ export enum TipoSolicitacao {
   Colaboracao = "Colaboracao",
   ExclusaoCurso = "ExclusaoCurso",
   Documentacao = "Documentacao",
+  CriacaoCurso = "CriacaoCurso",
 }
 
 export enum StatusSolicitacao {
@@ -19,6 +20,25 @@ export interface SolicitacaoColaboracao {
   usuarioFoto: string;
   mensagem: string;
   conhecimentos: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  experiencia?: string;
+  status: StatusSolicitacao;
+  dataSolicitacao: any;
+  dataResposta?: any;
+  aprovadoPorId?: string;
+  aprovadoPorNome?: string;
+  motivoRejeicao?: string;
+}
+
+export interface SolicitacaoCriacaoCurso {
+  id: string;
+  tipo: TipoSolicitacao.CriacaoCurso;
+  cursoId: string;
+  cursoTitulo: string;
+  autorId: string;
+  autorNome: string;
   status: StatusSolicitacao;
   dataSolicitacao: any;
   dataResposta?: any;
@@ -63,4 +83,5 @@ export interface SolicitacaoDocumentacao {
 export type Solicitacao =
   | SolicitacaoColaboracao
   | SolicitacaoExclusaoCurso
-  | SolicitacaoDocumentacao;
+  | SolicitacaoDocumentacao
+  | SolicitacaoCriacaoCurso;

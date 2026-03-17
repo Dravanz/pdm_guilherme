@@ -12,13 +12,37 @@ export interface Alternativa {
   correta: boolean;
 }
 
+// Linguagens suportadas pelo Jobe API
+export type LinguagemCodigo = "python3" | "nodejs" | "c";
+
+// Caso de teste para exercícios de código
+export interface CasoTeste {
+  id: string;
+  entrada: string;      // stdin enviado ao programa
+  saidaEsperada: string; // stdout esperado
+  descricao?: string;    // descrição opcional do caso de teste
+}
+
+// Exercício de escrita de código
+export interface QuestaoEscrita {
+  id: string;
+  enunciado: string;           // descrição do problema
+  linguagem: LinguagemCodigo;  // linguagem de programação  
+  codigoBase: string;          // código template com __EDITAR__ (o que o aluno vê)
+  gabarito: string;            // código solução completo (para validar os testes)
+  casosTeste: CasoTeste[];     // casos de teste para validação
+  dica?: string;               // dica opcional
+  explicacao: string;          // explicação pós-resposta
+}
+
 export interface PaginaCurso {
   id: string;
   titulo: string;
-  tipo: "conteudo" | "exercicio";
+  tipo: "conteudo" | "exercicio" | "exercicio_codigo";
   conteudo?: string;
   imagem?: string;
   questoes?: Questao[];
+  questoesEscrita?: QuestaoEscrita[];
 }
 
 export interface Curso {
@@ -32,6 +56,8 @@ export interface Curso {
   documentacaoId?: string; // ID da documentação vinculada
   paginas: PaginaCurso[];
   coeficienteMaximo: number;
+  status?: "Pendente" | "Aprovado" | "Rejeitado";
+  criadoPor?: string;
   createdAt: any;
   updatedAt: any;
 }

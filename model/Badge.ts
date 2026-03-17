@@ -92,7 +92,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_1",
-    nome: "Campeão 🥇",
+    nome: "Campeão",
     icone: "🥇",
     descricao: "Primeiro lugar no ranking geral",
     tipo: "ranking",
@@ -100,7 +100,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_2",
-    nome: "Vice-Campeão 🥈",
+    nome: "Vice-Campeão",
     icone: "🥈",
     descricao: "Segundo lugar no ranking geral",
     tipo: "ranking",
@@ -108,7 +108,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_3",
-    nome: "Terceiro Lugar 🥉",
+    nome: "Terceiro Lugar",
     icone: "🥉",
     descricao: "Terceiro lugar no ranking geral",
     tipo: "ranking",
@@ -116,7 +116,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_top5",
-    nome: "Top 5 🏆",
+    nome: "Top 5",
     icone: "🏆",
     descricao: "Entre os 5 melhores do ranking",
     tipo: "ranking",
@@ -124,7 +124,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_top10",
-    nome: "Top 10 🏅",
+    nome: "Top 10",
     icone: "🏅",
     descricao: "Entre os 10 melhores do ranking",
     tipo: "ranking",
@@ -132,7 +132,7 @@ export const BADGES_DISPONIVEIS: Badge[] = [
   },
   {
     id: "ranking_top20",
-    nome: "Top 20 🏵️",
+    nome: "Top 20",
     icone: "🏵️",
     descricao: "Entre os 20 melhores do ranking",
     tipo: "ranking",
