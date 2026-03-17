@@ -1,7 +1,7 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { firestore } from "../../firebase/FirebaseInit";
-import { QuestaoFirestore } from "../../model/BancoQuestoes";
-import { Questao } from "../../model/Curso";
+import { QuestaoEscritaFirestore, QuestaoFirestore } from "../../model/BancoQuestoes";
+import { Questao, QuestaoEscrita } from "../../model/Curso";
 
 export class BancoQuestoesService {
   static async obterQuestao(questaoId: string): Promise<Questao | null> {
@@ -63,6 +63,68 @@ export class BancoQuestoesService {
       console.error(`Erro ao salvar questão ${questao.id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Salva uma questão de código (escrita) no Firestore
+   */
+  static async salvarQuestaoEscrita(questao: QuestaoEscrita): Promise<void> {
+    try {
+      const questaoRef = doc(firestore, "questoes_escrita", questao.id);
+      const questaoData: QuestaoEscritaFirestore = {
+        id: questao.id,
+        enunciado: questao.enunciado,
+        linguagem: questao.linguagem,
+        codigoBase: questao.codigoBase || "",
+        gabarito: questao.gabarito || "",
+        casosTeste: questao.casosTeste.map(ct => ({
+          id: ct.id,
+          entrada: ct.entrada,
+          saidaEsperada: ct.saidaEsperada,
+          ...(ct.descricao ? { descricao: ct.descricao } : {}),
+        })),
+        ...(questao.dica ? { dica: questao.dica } : {}),
+        explicacao: questao.explicacao || "",
+        categoria: "geral",
+        nivel: "iniciante",
+        tags: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(questaoRef, questaoData);
+    } catch (error) {
+      console.error(`Erro ao salvar questão escrita ${questao.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca uma questão de código (escrita) do Firestore
+   */
+  static async obterQuestaoEscrita(questaoId: string): Promise<QuestaoEscrita | null> {
+    try {
+      const questaoRef = doc(firestore, "questoes_escrita", questaoId);
+      const questaoSnap = await getDoc(questaoRef);
+
+      if (questaoSnap.exists()) {
+        const data = questaoSnap.data() as QuestaoEscritaFirestore;
+        return {
+          id: data.id,
+          enunciado: data.enunciado,
+          linguagem: data.linguagem as any,
+          codigoBase: data.codigoBase,
+          gabarito: data.gabarito || "",
+          casosTeste: data.casosTeste,
+          dica: data.dica,
+          explicacao: data.explicacao,
+        };
+      }
+    } catch (error) {
+      console.log("Erro ao buscar questão escrita no Firebase:", error);
+    }
+
+    return null;
   }
 
   static async criarQuestoesIniciais(): Promise<void> {

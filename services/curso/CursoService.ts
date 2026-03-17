@@ -13,12 +13,27 @@ import {
 import { getDownloadURL, ref } from "firebase/storage";
 import { CourseConfig } from "../../config/CourseConfig";
 import { firestore, storage } from "../../firebase/FirebaseInit";
-import { Curso, PaginaCurso, UsuarioCurso } from "../../model/Curso";
+import { CasoTeste, Curso, LinguagemCodigo, PaginaCurso, QuestaoEscrita, UsuarioCurso } from "../../model/Curso";
 import { BadgeService } from "../badge/BadgeService";
 import { ImageUploadService } from "../image/ImageUploadService";
 import { QuestaoService } from "../questao/QuestaoService";
 import { DecayService } from "../shared/DecayService";
 import { TentativaService } from "../shared/TentativaService";
+import { QuestionAnalyticsService } from "../questao/QuestionAnalyticsService";
+
+// Helpers para decodificar entidades XML
+function unescapeXML(str: string): string {
+    return str
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+}
+
+function unescapeXMLAttr(str: string): string {
+    return unescapeXML(str);
+}
 
 export class CursoService {
   /**
@@ -33,11 +48,14 @@ export class CursoService {
         const data = doc.data();
         return {
           ...data,
+          ...data,
           fonte: data.migradoDeLocal ? "xml" : ("firestore" as const),
-        };
+        } as any;
       }) as Curso[];
 
-      return cursosFirestore;
+      // Filtrar cursos: Aprovados ou sem status (legado)
+      return cursosFirestore.filter(c => !c.status || c.status === "Aprovado");
+
     } catch (error) {
       console.error("Erro ao listar cursos:", error);
       return [];
@@ -83,9 +101,13 @@ export class CursoService {
       try {
         const cursoFirestore = await this.buscarCursoFirestore(cursoId);
         if (cursoFirestore) {
+          console.log(`[CursoService] Merging Firestore data. Firestore has pages? ${!!cursoFirestore.paginas}`);
           return {
             ...curso,
-            imageUrl: cursoFirestore.imageUrl || curso.imageUrl,
+            ...cursoFirestore, // Merge all Firestore fields
+            // GARANTIR QUE PAGINAS DO XML PREVALECEM
+            paginas: curso.paginas && curso.paginas.length > 0 ? curso.paginas : (cursoFirestore.paginas || []),
+            imageUrl: cursoFirestore.imageUrl || curso.imageUrl || "",
             createdAt: cursoFirestore.createdAt,
             updatedAt: cursoFirestore.updatedAt,
           };
@@ -246,105 +268,142 @@ export class CursoService {
   }
 
   static async parseXMLCurso(xmlContent: string): Promise<Curso> {
-    const lines = xmlContent.split("\n");
+    console.log(`[CursoService] Parsing XML (Regex). Length: ${xmlContent.length}`);
+    
+    // 1. Extrair metadados do curso
+    const cursoMatch = xmlContent.match(/<curso\s+id="([^"]*)"\s+titulo="([^"]*)"\s+categoria="([^"]*)"\s+nivel="([^"]*)"(?:\s+coeficienteMaximo="([^"]*)")?/i);
+    
     let curso: any = {};
-    let paginas: PaginaCurso[] = [];
-    let paginaAtual: any = {};
-    let questaoRefs: string[] = [];
-    let conteudoBuffer = "";
-    let dentroConteudo = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (trimmed.includes("<curso")) {
-        const idMatch = trimmed.match(/id="([^"]+)"/);
-        const tituloMatch = trimmed.match(/titulo="([^"]+)"/);
-        const categoriaMatch = trimmed.match(/categoria="([^"]+)"/);
-        const nivelMatch = trimmed.match(/nivel="([^"]+)"/);
-        const coefMatch = trimmed.match(/coeficienteMaximo="([^"]+)"/);
-
+    if (cursoMatch) {
         curso = {
-          id: idMatch?.[1] || "",
-          titulo: tituloMatch?.[1] || "",
-          categoria: categoriaMatch?.[1] || "",
-          nivel: nivelMatch?.[1] || "iniciante",
-          coeficienteMaximo: parseInt(coefMatch?.[1] || "100"),
-          descricao: "",
-          createdAt: new Date(),
-          updatedAt: new Date(),
+            id: cursoMatch[1] || "",
+            titulo: cursoMatch[2] || "",
+            categoria: cursoMatch[3] || "",
+            nivel: cursoMatch[4] || "iniciante",
+            coeficienteMaximo: parseInt(cursoMatch[5] || "100"),
+            descricao: "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
         };
-      }
-
-      if (trimmed.includes("<pagina")) {
-        const idMatch = trimmed.match(/id="([^"]+)"/);
-        const tipoMatch = trimmed.match(/tipo="([^"]+)"/);
-
-        paginaAtual = {
-          id: idMatch?.[1] || "",
-          tipo: tipoMatch?.[1] || "conteudo",
+    } else {
+        console.warn("[CursoService] Failed to match <curso> tag metadata");
+        // Fallback or empty init
+         curso = {
+            id: "",
+            titulo: "Curso Desconhecido",
+            categoria: "Geral",
+            nivel: "iniciante",
+            coeficienteMaximo: 100,
+            descricao: "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
         };
-        questaoRefs = [];
-        conteudoBuffer = "";
-      }
-
-      if (trimmed.includes("<titulo>") && trimmed.includes("</titulo>")) {
-        paginaAtual.titulo = trimmed.replace(/<\/?titulo>/g, "");
-      }
-
-      if (trimmed.includes("<conteudo>")) {
-        dentroConteudo = true;
-        conteudoBuffer = trimmed.replace("<conteudo>", "");
-        if (trimmed.includes("</conteudo>")) {
-          // Conteúdo em uma linha só
-          paginaAtual.conteudo = conteudoBuffer
-            .replace("</conteudo>", "")
-            .trim();
-          dentroConteudo = false;
-          conteudoBuffer = "";
-        }
-      } else if (trimmed.includes("</conteudo>")) {
-        conteudoBuffer +=
-          (conteudoBuffer ? "\n" : "") + trimmed.replace("</conteudo>", "");
-        paginaAtual.conteudo = conteudoBuffer.trim();
-        dentroConteudo = false;
-        conteudoBuffer = "";
-      } else if (dentroConteudo && trimmed !== "") {
-        conteudoBuffer += (conteudoBuffer ? "\n" : "") + trimmed;
-      }
-
-      if (trimmed.includes("<imagem>") && trimmed.includes("</imagem>")) {
-        paginaAtual.imagem = trimmed.replace(/<\/?imagem>/g, "");
-      }
-
-      if (trimmed.includes("<questao-ref")) {
-        const idMatch = trimmed.match(/id="([^"]+)"/);
-        const linkMatch = trimmed.match(/linkDocumentacao="([^"]+)"/);
-        if (idMatch) {
-          questaoRefs.push(idMatch[1]);
-          // TODO: Armazenar linkDocumentacao se necessário associar à questão aqui
-          // Mas como QuestaoService carrega a questão, talvez seja melhor atualizar a questão lá
-          // Ou podemos injetar o link na questão carregada abaixo
-        }
-      }
-
-      if (trimmed.includes("</pagina>")) {
-        if (paginaAtual.tipo === "exercicio" && questaoRefs.length > 0) {
-          const questoes = await QuestaoService.obterMultiplasQuestoes(
-            questaoRefs
-          );
-          
-          // Tentar extrair links de documentação do XML e associar às questões
-          // Isso requereria um parse mais complexo ou armazenar os links temporariamente
-          // Por simplicidade, vamos assumir que o link vem da própria questão no Firestore
-          // ou que o XML define a questão completa (o que não é o caso aqui, é ref)
-          
-          paginaAtual.questoes = questoes;
-        }
-        paginas.push(paginaAtual);
-      }
     }
 
+    // 2. Extrair Páginas
+    // Regex global para capturar todas as páginas
+    // flags: g (global), i (case insensitive), s (dotAll - mas no JS . não casa newline, felizmente [\s\S] resolve)
+    const pageRegex = /<pagina\s+id="([^"]*)"\s+tipo="([^"]*)"\s*>([\s\S]*?)<\/pagina>/gi;
+    let match;
+    const paginas: PaginaCurso[] = [];
+
+    while ((match = pageRegex.exec(xmlContent)) !== null) {
+        const paginaId = match[1];
+        const paginaTipo = match[2] as "conteudo" | "exercicio" | "exercicio_codigo";
+        const paginaBody = match[3];
+
+        const novaPagina: PaginaCurso = {
+            id: paginaId,
+            tipo: paginaTipo,
+            titulo: "",
+            conteudo: "",
+        };
+
+        // Extrair Título
+        const tituloMatch = paginaBody.match(/<titulo>([\s\S]*?)<\/titulo>/i);
+        if (tituloMatch) novaPagina.titulo = tituloMatch[1].trim();
+
+        // Extrair Conteúdo
+        const conteudoMatch = paginaBody.match(/<conteudo>([\s\S]*?)<\/conteudo>/i);
+        if (conteudoMatch) novaPagina.conteudo = conteudoMatch[1].trim();
+
+        // Extrair Imagem
+        const imagemMatch = paginaBody.match(/<imagem>([\s\S]*?)<\/imagem>/i);
+        if (imagemMatch) novaPagina.imagem = imagemMatch[1].trim();
+
+        // Extrair Questões (Refs) - para exercicio de múltipla escolha
+        if (paginaTipo === "exercicio") {
+            const questaoRefRegex = /<questao-ref\s+id="([^"]*)"/gi;
+            const questaoRefs: string[] = [];
+            let qMatch;
+            while ((qMatch = questaoRefRegex.exec(paginaBody)) !== null) {
+                questaoRefs.push(qMatch[1]);
+            }
+
+            if (questaoRefs.length > 0) {
+                 const questoes = await QuestaoService.obterMultiplasQuestoes(questaoRefs);
+                 novaPagina.questoes = questoes;
+            }
+        }
+
+        // Extrair Questões de Código - para exercicio_codigo
+        if (paginaTipo === "exercicio_codigo") {
+            const questoesEscrita: QuestaoEscrita[] = [];
+            const qeRegex = /<questao-escrita\s+id="([^"]*)"\s+linguagem="([^"]*)"\s*>([\s\S]*?)<\/questao-escrita>/gi;
+            let qeMatch;
+
+            while ((qeMatch = qeRegex.exec(paginaBody)) !== null) {
+                const qeId = qeMatch[1];
+                const qeLinguagem = qeMatch[2] as LinguagemCodigo;
+                const qeBody = qeMatch[3];
+
+                // Extrair campos da questão de código
+                const enunciadoMatch = qeBody.match(/<enunciado>([\s\S]*?)<\/enunciado>/i);
+                const codigoBaseMatch = qeBody.match(/<codigo-base>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/codigo-base>/i);
+                const gabaritoMatch = qeBody.match(/<gabarito>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/gabarito>/i);
+                const dicaMatch = qeBody.match(/<dica>([\s\S]*?)<\/dica>/i);
+                const explicacaoMatch = qeBody.match(/<explicacao>([\s\S]*?)<\/explicacao>/i);
+
+                // Extrair casos de teste
+                const casosTeste: CasoTeste[] = [];
+                const ctRegex = /<caso-teste\s+id="([^"]*)"(?:\s+descricao="([^"]*)")?\s*>([\s\S]*?)<\/caso-teste>/gi;
+                let ctMatch;
+                while ((ctMatch = ctRegex.exec(qeBody)) !== null) {
+                    const ctId = ctMatch[1];
+                    const ctDescricao = ctMatch[2] || "";
+                    const ctBody = ctMatch[3];
+
+                    const entradaMatch = ctBody.match(/<entrada>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/entrada>/i);
+                    const saidaMatch = ctBody.match(/<saida-esperada>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/saida-esperada>/i);
+
+                    casosTeste.push({
+                        id: ctId,
+                        entrada: entradaMatch ? entradaMatch[1].trim() : "",
+                        saidaEsperada: saidaMatch ? saidaMatch[1].trim() : "",
+                        descricao: ctDescricao ? unescapeXMLAttr(ctDescricao) : undefined,
+                    });
+                }
+
+                questoesEscrita.push({
+                    id: qeId,
+                    enunciado: enunciadoMatch ? unescapeXML(enunciadoMatch[1].trim()) : "",
+                    linguagem: qeLinguagem,
+                    codigoBase: codigoBaseMatch ? codigoBaseMatch[1] : "",
+                    gabarito: gabaritoMatch ? gabaritoMatch[1] : "",
+                    casosTeste,
+                    dica: dicaMatch ? unescapeXML(dicaMatch[1].trim()) : undefined,
+                    explicacao: explicacaoMatch ? unescapeXML(explicacaoMatch[1].trim()) : "",
+                });
+            }
+
+            novaPagina.questoesEscrita = questoesEscrita;
+        }
+
+        paginas.push(novaPagina);
+    }
+
+    console.log(`[CursoService] Parsed ${paginas.length} pages.`);
+    
     const cursoFinal = { ...curso, paginas };
     return cursoFinal;
   }
@@ -440,8 +499,8 @@ export class CursoService {
     novasBadges?: any[];
   }> {
     const totalQuestoes = curso.paginas
-      .filter((p) => p.tipo === "exercicio")
-      .reduce((total, p) => total + (p.questoes?.length || 0), 0);
+      .filter((p) => p.tipo === "exercicio" || p.tipo === "exercicio_codigo")
+      .reduce((total, p) => total + (p.questoes?.length || 0) + (p.questoesEscrita?.length || 0), 0);
 
     const percentualAcerto =
       totalQuestoes > 0
@@ -494,6 +553,17 @@ export class CursoService {
       correta,
       tags,
     });
+
+    // 2.5 Atualizar analytics IRT da questão (não bloqueia fluxo principal)
+    QuestionAnalyticsService.atualizarAnalytics(
+      usuarioCurso.cursoId,
+      questaoId,
+      usuarioCurso.usuarioId,
+      correta,
+      usuarioCurso.coeficiente
+    ).catch((err) =>
+      console.warn("[IRT] Falha ao atualizar analytics:", err)
+    );
 
     // 3. Atualizar listas de questões
     let questoesRespondidas = [...usuarioCurso.questoesRespondidas];
@@ -599,10 +669,41 @@ export class CursoService {
 
       let questoesCorretasTotal = 0;
 
-      querySnapshot.forEach((doc) => {
-        const usuarioCurso = doc.data() as UsuarioCurso;
-        questoesCorretasTotal += usuarioCurso.questoesCorretas.length;
-      });
+      // Para cada curso que o usuário fez, verificar se o curso ainda existe e se é APROVADO
+      // Isso evita que cursos excluídos ou em rascunho contem pontos
+      for (const docSnapshot of querySnapshot.docs) {
+        const usuarioCurso = docSnapshot.data() as UsuarioCurso;
+        const cursoId = usuarioCurso.cursoId;
+
+        // Se o curso for um dos hardcoded (XML), assumimos que é válido e aprovado por padrão
+        // (A menos que queiramos verificar se ele foi desativado, mas XMLs base são fixos)
+        const isHardcoded = ["javascript-basico", "python-basico", "react-basico"].includes(cursoId);
+        
+        if (isHardcoded) {
+             questoesCorretasTotal += usuarioCurso.questoesCorretas.length;
+        } else {
+             // Verificar status no Firestore
+             try {
+                const cursoRef = doc(firestore, "cursos", cursoId);
+                const cursoSnap = await getDoc(cursoRef);
+
+                if (cursoSnap.exists()) {
+                    const cursoData = cursoSnap.data();
+                    // Apenas somar se Status for Aprovado (ou undefined/null que seria legado, mas ideal ser estrito)
+                    // Assumindo que cursos legados sem status contam, mas novos rascunhos não.
+                    // Para segurança: Status tem que ser explicitamente 'Aprovado' ou não ter status (legado)
+                    if (cursoData.status === "Aprovado" || !cursoData.status) {
+                        questoesCorretasTotal += usuarioCurso.questoesCorretas.length;
+                    } 
+                } else {
+                    // Curso não existe mais (excluído), não contar pontos.
+                    // Opcional: Poderíamos deletar esse usuarioCurso órfão aqui para limpar o banco
+                }
+             } catch (err) {
+                 console.warn(`Erro ao verificar status do curso ${cursoId}`, err);
+             }
+        }
+      }
 
       // Calcular coeficiente baseado no total de questões do sistema
       const coeficienteGeral =
