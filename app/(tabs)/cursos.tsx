@@ -4,23 +4,31 @@ import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
 import { ImageService } from "@/services/image/ImageService";
+import { PerformanceModal } from "@/components/PerformanceModal";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
-import { Button, Card, Text, useTheme, Searchbar } from "react-native-paper";
+import { Button, Card, Chip, Icon, Modal, Portal, Text, useTheme, Searchbar } from "react-native-paper";
 
 export default function Cursos() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
-  const [cursosStatus, setCursosStatus] = useState<{ [key: string]: boolean }>(
-    {}
-  );
+  const [cursosStatus, setCursosStatus] = useState<{ [key: string]: boolean }>({});
+  const [cursosPratica, setCursosPratica] = useState<{ [key: string]: boolean }>({});
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [cursosFiltrados, setCursosFiltrados] = useState<Curso[]>([]);
+
+  // Modal de ações do curso
+  const [cursoSelecionado, setCursoSelecionado] = useState<Curso | null>(null);
+  const [modalAcoesVisivel, setModalAcoesVisivel] = useState(false);
+
+  // Modal de desempenho
+  const [perfModalVisivel, setPerfModalVisivel] = useState(false);
+  const [cursoPerfSelecionado, setCursoPerfSelecionado] = useState<{ id: string; titulo: string } | null>(null);
 
   useEffect(() => {
     // Configurar listener em tempo real para mudanças na coleção de cursos
@@ -71,13 +79,16 @@ export default function Cursos() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const novoStatus: { [key: string]: boolean } = {};
+      const novaPratica: { [key: string]: boolean } = {};
 
       snapshot.docs.forEach((doc) => {
         const data = doc.data();
         novoStatus[data.cursoId] = data.concluido || false;
+        novaPratica[data.cursoId] = data.praticaCompleta || false;
       });
 
       setCursosStatus(novoStatus);
+      setCursosPratica(novaPratica);
     });
 
     return () => unsubscribe();
@@ -111,11 +122,30 @@ export default function Cursos() {
     });
   };
 
-  const revisarCurso = (curso: Curso) => {
-    router.push({
-      pathname: "/curso/[id]",
-      params: { id: curso.id, modo: "revisao" },
-    });
+  const abrirModalCurso = (curso: Curso) => {
+    setCursoSelecionado(curso);
+    setModalAcoesVisivel(true);
+  };
+
+  const fecharModal = () => {
+    setModalAcoesVisivel(false);
+    setCursoSelecionado(null);
+  };
+
+  const irParaPratica = (curso: Curso) => {
+    fecharModal();
+    router.push({ pathname: "/curso/[id]", params: { id: curso.id, modo: "treino" } });
+  };
+
+  const irParaAvaliacao = (curso: Curso) => {
+    fecharModal();
+    router.push({ pathname: "/curso/[id]", params: { id: curso.id } });
+  };
+
+  const abrirDesempenho = (curso: Curso) => {
+    fecharModal();
+    setCursoPerfSelecionado({ id: curso.id, titulo: curso.titulo });
+    setPerfModalVisivel(true);
   };
 
   return (
@@ -142,6 +172,7 @@ export default function Cursos() {
               themeStyles.card,
               { backgroundColor: theme.colors.surface },
             ]}
+            onPress={() => abrirModalCurso(item)}
           >
             {item.imageUrl && (
               <View style={styles.imageContainer}>
@@ -162,6 +193,13 @@ export default function Cursos() {
               }${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
               titleStyle={{ color: theme.colors.onSurface }}
               subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
+              right={() =>
+                cursosStatus[item.id] ? (
+                  <View style={{ paddingRight: 12 }}>
+                    <Icon source="check-circle" size={24} color="#22c55e" />
+                  </View>
+                ) : null
+              }
             />
             <Card.Content>
               <Text
@@ -171,43 +209,6 @@ export default function Cursos() {
                 {item.descricao}
               </Text>
             </Card.Content>
-            <Card.Actions>
-              {cursosStatus[item.id] ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#22c55e",
-                      fontWeight: "bold",
-                      fontSize: 16,
-                    }}
-                  >
-                    ✅ Curso concluído
-                  </Text>
-                  <Button
-                    mode="outlined"
-                    onPress={() => revisarCurso(item)}
-                    icon="refresh"
-                  >
-                    Revisar
-                  </Button>
-                </View>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={() => iniciarCurso(item)}
-                  style={{ backgroundColor: "#22c55e" }}
-                >
-                  Iniciar Curso
-                </Button>
-              )}
-            </Card.Actions>
           </Card>
         )}
         ItemSeparatorComponent={() => (
@@ -226,6 +227,75 @@ export default function Cursos() {
           paddingBottom: 100,
         }}
       />
+
+      {/* Modal de ações do curso */}
+      <Portal>
+        <Modal
+          visible={modalAcoesVisivel}
+          onDismiss={fecharModal}
+          contentContainerStyle={[
+            styles.modal,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          {cursoSelecionado && (
+            <>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: "bold", marginBottom: 4 }}>
+                {cursoSelecionado.titulo}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 20 }}>
+                {cursosStatus[cursoSelecionado.id] ? "Curso concluído" : "Em andamento"}
+              </Text>
+
+              <Button
+                mode="contained"
+                icon="school-outline"
+                onPress={() => irParaPratica(cursoSelecionado)}
+                style={{ marginBottom: 10 }}
+                buttonColor={theme.colors.tertiary}
+              >
+                Praticar
+              </Button>
+
+              <Button
+                mode="contained"
+                icon="clipboard-check-outline"
+                onPress={() => irParaAvaliacao(cursoSelecionado)}
+                style={{ marginBottom: 10 }}
+                disabled={!cursosStatus[cursoSelecionado.id] && !cursosPratica[cursoSelecionado.id]}
+              >
+                {!cursosStatus[cursoSelecionado.id] && !cursosPratica[cursoSelecionado.id]
+                  ? "Avaliação (complete Praticar primeiro)"
+                  : "Avaliação"}
+              </Button>
+
+              <Button
+                mode="outlined"
+                icon="chart-bar"
+                onPress={() => abrirDesempenho(cursoSelecionado)}
+                style={{ marginBottom: 16 }}
+              >
+                Ver Desempenho
+              </Button>
+
+              <Button mode="text" onPress={fecharModal}>
+                Fechar
+              </Button>
+            </>
+          )}
+        </Modal>
+      </Portal>
+
+      {/* Modal de desempenho */}
+      {cursoPerfSelecionado && user && (
+        <PerformanceModal
+          visible={perfModalVisivel}
+          onDismiss={() => setPerfModalVisivel(false)}
+          usuarioId={user.uid}
+          cursoId={cursoPerfSelecionado.id}
+          cursoTitulo={cursoPerfSelecionado.titulo}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -245,5 +315,10 @@ const styles = StyleSheet.create({
   courseImage: {
     width: "100%",
     height: "100%",
+  },
+  modal: {
+    margin: 24,
+    borderRadius: 16,
+    padding: 24,
   },
 });

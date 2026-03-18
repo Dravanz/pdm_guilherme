@@ -187,7 +187,7 @@ export default function CursoDetalhes() {
 
       return {
         sucesso: correta,
-        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Treino' : 'Modo Revisão'} - Dados não salvos)`,
+        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Prática' : 'Modo Revisão'} - Dados não salvos)`,
         novoCoeficiente: 0,
       };
     }
@@ -233,7 +233,7 @@ export default function CursoDetalhes() {
       setRespostasRevisao((prev) => [...prev, questaoId]);
       return {
         sucesso: correta,
-        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Treino' : 'Modo Revisão'} - Dados não salvos)`,
+        explicacao: `${explicacao}\n\n(${modoTreino ? 'Modo Prática' : 'Modo Revisão'} - Dados não salvos)`,
         novoCoeficiente: 0,
       };
     }
@@ -285,6 +285,18 @@ export default function CursoDetalhes() {
         Alert.alert(
           "Revisão Concluída!",
           "Você terminou de revisar o curso. Esperamos que tenha refrescado sua memória!",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+        return;
+      }
+
+      if (modoTreino) {
+        if (user?.uid && id) {
+          CursoService.marcarPraticaCompleta(user.uid, id);
+        }
+        Alert.alert(
+          "Prática Concluída!",
+          "Parabéns! Você completou a prática. O modo Avaliação agora está desbloqueado para este curso.",
           [{ text: "OK", onPress: () => router.back() }]
         );
         return;
@@ -482,7 +494,7 @@ export default function CursoDetalhes() {
             style={{ backgroundColor: 'transparent' }}
             textStyle={{ color: (modo === 'treino') ? theme.colors.tertiary : theme.colors.secondary, fontWeight: 'bold' }}
           >
-            {(modo === 'treino') ? 'Modo Treino — sem pontuação' : 'Modo Revisão — dados não salvos'}
+            {(modo === 'treino') ? 'Modo Prática — sem pontuação' : 'Modo Revisão — dados não salvos'}
           </Chip>
         </View>
       )}

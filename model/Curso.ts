@@ -99,4 +99,5 @@ export interface UsuarioCurso {
   dataUltimaAtualizacao: any;
   concluido: boolean;
   tentativasPorQuestao?: { [questaoId: string]: number };
+  praticaCompleta?: boolean;
 }

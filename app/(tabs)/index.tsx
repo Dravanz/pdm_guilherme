@@ -318,7 +318,7 @@ export default function Dashboard() {
               <View style={{ gap: 8 }}>
                 <Button 
                   mode="contained" 
-                  onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'cursos' } })}
+                  onPress={() => router.push("/(tabs)/colaboracao")}
                   style={{ width: '100%' }}
                   icon="school"
                   
@@ -327,7 +327,7 @@ export default function Dashboard() {
                 </Button>
                 <Button 
                   mode="contained" 
-                  onPress={() => router.push({ pathname: "/(tabs)/colaboracao", params: { aba: 'documentacao' } })}
+                  onPress={() => router.push("/(tabs)/colaboracao")}
                   style={{ width: '100%' }}
                   icon="file-document"
                   

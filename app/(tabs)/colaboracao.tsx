@@ -13,7 +13,6 @@ import { JobeService } from "@/services/codigo/JobeService";
 import { QuestionAnalyticsPanel } from "@/components/QuestionAnalyticsPanel";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams } from "expo-router";
 import { collection, onSnapshot } from "firebase/firestore";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
@@ -32,6 +31,7 @@ import {
     Chip,
     Dialog,
     Divider,
+    Icon,
     IconButton,
     Menu,
     Modal,
@@ -46,7 +46,6 @@ export default function Colaboracao() {
   const theme = useTheme();
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase } = useContext<any>(UserContext);
-  const params = useLocalSearchParams();
 
   // Estados principais
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -145,7 +144,6 @@ export default function Colaboracao() {
   ]);
 
   // DOCUMENTAÇÃO STATE
-  const [abaAtiva, setAbaAtiva] = useState<"cursos" | "documentacao">("cursos");
   const [documentacoes, setDocumentacoes] = useState<Documentacao[]>([]);
   const [dialogDocVisivel, setDialogDocVisivel] = useState(false);
   const [docEditando, setDocEditando] = useState<Documentacao | null>(null);
@@ -182,13 +180,6 @@ export default function Colaboracao() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userFirebase?.uid])
   );
-
-  // Handle params for deep linking
-  useEffect(() => {
-    if (params.aba) {
-      setAbaAtiva(params.aba as "cursos" | "documentacao");
-    }
-  }, [params]);
 
   // Listener em tempo real para mudanças nos cursos
   useEffect(() => {
@@ -1108,10 +1099,10 @@ export default function Colaboracao() {
   }
 
   useEffect(() => {
-    if (abaAtiva === "documentacao") {
+    if (userFirebase) {
       carregarDocumentacoes();
     }
-  }, [abaAtiva, userFirebase]);
+  }, [userFirebase]);
 
   function abrirCriacaoDocumentacao() {
     setDocEditando(null);
@@ -1268,29 +1259,28 @@ export default function Colaboracao() {
                   Crie e gerencie cursos para a plataforma
                 </Text>
               </View>
-              <Button
-                mode="contained"
-                icon="plus"
-                onPress={abaAtiva === "cursos" ? abrirCriacaoCurso : abrirCriacaoDocumentacao}
-                style={{ backgroundColor: theme.colors.primary }}
-              >
-                {abaAtiva === "cursos" ? "Novo Curso" : "Nova Doc"}
-              </Button>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Button
+                  mode="contained"
+                  icon="plus"
+                  onPress={abrirCriacaoCurso}
+                  style={{ flex: 1 }}
+                >
+                  Novo Curso
+                </Button>
+                <Button
+                  mode="outlined"
+                  icon="plus"
+                  onPress={abrirCriacaoDocumentacao}
+                  style={{ flex: 1 }}
+                >
+                  Nova Doc
+                </Button>
+              </View>
             </View>
-            
-            <SegmentedButtons
-              value={abaAtiva}
-              onValueChange={(value) => setAbaAtiva(value as any)}
-              buttons={[
-                { value: "cursos", label: "Cursos", icon: "school" },
-                { value: "documentacao", label: "Documentação", icon: "file-document" },
-              ]}
-              style={{ marginTop: 16 }}
-            />
           </View>
 
-          {abaAtiva === "cursos" && (
-            cursos.length === 0 && !carregando ? (
+          {cursos.length === 0 && !carregando ? (
             <Card
               style={[
                 themeStyles.card,
@@ -1417,7 +1407,7 @@ export default function Colaboracao() {
                         Editar
                       </Button>
                     )}
-                    {item.status === "Aprovado" && (
+                    {item.status === "Aprovado" && (item.criadoPor === userFirebase?.uid || userFirebase?.perfil === Perfil.Moderador) && (
                       <Button
                         icon="chart-bar"
                         onPress={() => {
@@ -1444,10 +1434,17 @@ export default function Colaboracao() {
                 </Card>
               )}
             />
-          ))}
+          )}
 
-          {abaAtiva === "documentacao" && (
-            documentacoes.length === 0 && !carregando ? (
+          <Divider style={{ marginVertical: 24 }} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Icon source="file-document" size={22} color={theme.colors.primary} />
+            <Text variant="titleLarge" style={{ color: theme.colors.onBackground, fontWeight: "600" }}>
+              Documentação
+            </Text>
+          </View>
+
+          {documentacoes.length === 0 && !carregando ? (
               <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
                 <Card.Content style={{ alignItems: "center", padding: 32 }}>
                   <Text style={{ textAlign: "center", color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>
@@ -1503,7 +1500,6 @@ export default function Colaboracao() {
                   </Card>
                 )}
               />
-            )
           )}
         </ScrollView>
 

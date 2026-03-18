@@ -686,6 +686,20 @@ export class CursoService {
     }
   }
 
+  static async marcarPraticaCompleta(usuarioId: string, cursoId: string): Promise<void> {
+    try {
+      const docId = `${usuarioId}_${cursoId}`;
+      const ref = doc(firestore, "usuariosCursos", docId);
+      await updateDoc(ref, {
+        praticaCompleta: true,
+        dataUltimaAtualizacao: serverTimestamp(),
+      });
+    } catch (error) {
+      // Não bloqueia o fluxo principal se falhar
+      console.warn("[CursoService] Erro ao marcar prática completa:", error);
+    }
+  }
+
   static reiniciarQuestoes(
     usuarioCurso: UsuarioCurso,
     questoesErradas: string[]
