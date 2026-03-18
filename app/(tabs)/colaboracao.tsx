@@ -1,7 +1,7 @@
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
-import { Alternativa, CasoTeste, Curso, LinguagemCodigo, PaginaCurso, Questao, QuestaoEscrita } from "@/model/Curso";
+import { Alternativa, BlocoCodigoCodigo, CasoTeste, Curso, LinguagemCodigo, PaginaCurso, Questao, QuestaoBlocos, QuestaoEscrita } from "@/model/Curso";
 import { Documentacao, TipoDocumentacao } from "@/model/Documentacao";
 import { Perfil } from "@/model/Perfil";
 import { ColaboradorCursoService } from "@/services/curso/ColaboradorCursoService";
@@ -88,7 +88,7 @@ export default function Colaboracao() {
     null
   );
   const [paginaTitulo, setPaginaTitulo] = useState("");
-  const [paginaTipo, setPaginaTipo] = useState<"conteudo" | "exercicio" | "exercicio_codigo">(
+  const [paginaTipo, setPaginaTipo] = useState<"conteudo" | "exercicio" | "exercicio_codigo" | "exercicio_blocos">(
     "conteudo"
   );
   const [paginaConteudo, setPaginaConteudo] = useState("");
@@ -125,6 +125,24 @@ export default function Colaboracao() {
   ]);
   const [testandoGabarito, setTestandoGabarito] = useState(false);
   const [resultadoTesteGabarito, setResultadoTesteGabarito] = useState<string | null>(null);
+
+  // MODO ENCAPSULADO (wrapper) — exercicio_codigo
+  const [escritaModoEncapsulado, setEscritaModoEncapsulado] = useState(false);
+  const [escritaWrapperAntes, setEscritaWrapperAntes] = useState("");
+  const [escritaWrapperDepois, setEscritaWrapperDepois] = useState("");
+
+  // EXERCÍCIO DE BLOCOS STATE
+  const [dialogQuestaoBlocosVisivel, setDialogQuestaoBlocosVisivel] = useState(false);
+  const [questoesBlocosPagina, setQuestoesBlocosPagina] = useState<QuestaoBlocos[]>([]);
+  const [questaoBlocosEditando, setQuestaoBlocosEditando] = useState<QuestaoBlocos | null>(null);
+  const [blocosEnunciado, setBlocosEnunciado] = useState("");
+  const [blocosLinguagem, setBlocosLinguagem] = useState<LinguagemCodigo>("python3");
+  const [blocosSaidaEsperada, setBlocosSaidaEsperada] = useState("");
+  const [blocosDica, setBlocosDica] = useState("");
+  const [blocosExplicacao, setBlocosExplicacao] = useState("");
+  const [blocosLista, setBlocosLista] = useState<BlocoCodigoCodigo[]>([
+    { id: "b1", codigo: "", ordem: 1, distrator: false },
+  ]);
 
   // DOCUMENTAÇÃO STATE
   const [abaAtiva, setAbaAtiva] = useState<"cursos" | "documentacao">("cursos");
@@ -397,6 +415,7 @@ export default function Colaboracao() {
       setPaginaImagemUrl(pagina.imagem || "");
       setQuestoesPagina(pagina.questoes || []);
       setQuestoesEscritaPagina(pagina.questoesEscrita || []);
+      setQuestoesBlocosPagina(pagina.questoesBlocos || []);
     } else {
       setPaginaEditando(null);
       setPaginaTitulo("");
@@ -405,6 +424,7 @@ export default function Colaboracao() {
       setPaginaImagemUrl("");
       setQuestoesPagina([]);
       setQuestoesEscritaPagina([]);
+      setQuestoesBlocosPagina([]);
     }
     setDialogPaginaVisivel(true);
   }
@@ -484,6 +504,11 @@ export default function Colaboracao() {
       return;
     }
 
+    if (paginaTipo === "exercicio_blocos" && questoesBlocosPagina.length === 0) {
+      mostrarMensagem("erro", "Adicione pelo menos um exercício de blocos");
+      return;
+    }
+
     const novaPagina: PaginaCurso = {
       id: paginaEditando?.id || `${paginas.length + 1}`,
       titulo: paginaTitulo,
@@ -492,6 +517,7 @@ export default function Colaboracao() {
       imagem: paginaImagemUrl,
       questoes: paginaTipo === "exercicio" ? questoesPagina : undefined,
       questoesEscrita: paginaTipo === "exercicio_codigo" ? questoesEscritaPagina : undefined,
+      questoesBlocos: paginaTipo === "exercicio_blocos" ? questoesBlocosPagina : undefined,
     };
 
     if (paginaEditando) {
@@ -623,6 +649,9 @@ export default function Colaboracao() {
       setEscritaCasosTeste(questao.casosTeste.length > 0 ? questao.casosTeste : [
         { id: "ct_1", entrada: "", saidaEsperada: "", descricao: "Teste 1" },
       ]);
+      setEscritaModoEncapsulado(questao.modoEncapsulado || false);
+      setEscritaWrapperAntes(questao.wrapperAntes || "");
+      setEscritaWrapperDepois(questao.wrapperDepois || "");
     } else {
       setQuestaoEscritaEditando(null);
       setEscritaEnunciado("");
@@ -634,6 +663,9 @@ export default function Colaboracao() {
       setEscritaCasosTeste([
         { id: "ct_1", entrada: "", saidaEsperada: "", descricao: "Teste 1" },
       ]);
+      setEscritaModoEncapsulado(false);
+      setEscritaWrapperAntes("");
+      setEscritaWrapperDepois("");
     }
     setResultadoTesteGabarito(null);
     setDialogQuestaoEscritaVisivel(true);
@@ -756,6 +788,11 @@ export default function Colaboracao() {
       casosTeste: escritaCasosTeste,
       dica: escritaDica || undefined,
       explicacao: escritaExplicacao,
+      ...(escritaModoEncapsulado && {
+        modoEncapsulado: true,
+        wrapperAntes: escritaWrapperAntes || undefined,
+        wrapperDepois: escritaWrapperDepois || undefined,
+      }),
     };
 
     if (questaoEscritaEditando) {
@@ -773,6 +810,89 @@ export default function Colaboracao() {
 
   function removerQuestaoEscrita(questaoId: string) {
     setQuestoesEscritaPagina(questoesEscritaPagina.filter((q) => q.id !== questaoId));
+  }
+
+  // ==================== BLOCOS ====================
+
+  function abrirDialogQuestaoBlocos(questao?: QuestaoBlocos) {
+    if (questao) {
+      setQuestaoBlocosEditando(questao);
+      setBlocosEnunciado(questao.enunciado);
+      setBlocosLinguagem(questao.linguagem);
+      setBlocosSaidaEsperada(questao.saidaEsperada);
+      setBlocosDica(questao.dica || "");
+      setBlocosExplicacao(questao.explicacao);
+      setBlocosLista(questao.blocos.length > 0 ? questao.blocos : [{ id: "b1", codigo: "", ordem: 1, distrator: false }]);
+    } else {
+      setQuestaoBlocosEditando(null);
+      setBlocosEnunciado("");
+      setBlocosLinguagem("python3");
+      setBlocosSaidaEsperada("");
+      setBlocosDica("");
+      setBlocosExplicacao("");
+      setBlocosLista([{ id: "b1", codigo: "", ordem: 1, distrator: false }]);
+    }
+    setDialogQuestaoBlocosVisivel(true);
+  }
+
+  function adicionarBloco() {
+    const newId = `b${blocosLista.length + 1}`;
+    setBlocosLista([...blocosLista, { id: newId, codigo: "", ordem: blocosLista.length + 1, distrator: false }]);
+  }
+
+  function removerBloco(blocoId: string) {
+    if (blocosLista.length <= 1) {
+      mostrarMensagem("erro", "É necessário pelo menos um bloco");
+      return;
+    }
+    const restantes = blocosLista.filter((b) => b.id !== blocoId);
+    // Reordenar os não-distradores
+    let ordemCount = 1;
+    const reordenados = restantes.map((b) =>
+      b.distrator ? b : { ...b, ordem: ordemCount++ }
+    );
+    setBlocosLista(reordenados);
+  }
+
+  function atualizarBloco(blocoId: string, campo: keyof BlocoCodigoCodigo, valor: any) {
+    setBlocosLista(blocosLista.map((b) => (b.id === blocoId ? { ...b, [campo]: valor } : b)));
+  }
+
+  function salvarQuestaoBlocos() {
+    if (!blocosEnunciado.trim()) {
+      mostrarMensagem("erro", "Informe o enunciado do exercício de blocos");
+      return;
+    }
+    if (!blocosSaidaEsperada.trim()) {
+      mostrarMensagem("erro", "Informe a saída esperada");
+      return;
+    }
+    if (blocosLista.some((b) => !b.codigo.trim())) {
+      mostrarMensagem("erro", "Preencha o código de todos os blocos");
+      return;
+    }
+    if (!blocosExplicacao.trim()) {
+      mostrarMensagem("erro", "Informe a explicação do exercício");
+      return;
+    }
+
+    const numero = String(questoesBlocosPagina.length + 1).padStart(3, "0");
+    const novaQuestao: QuestaoBlocos = {
+      id: questaoBlocosEditando?.id || `blocos_${numero}_${Date.now()}`,
+      enunciado: blocosEnunciado,
+      linguagem: blocosLinguagem,
+      blocos: blocosLista,
+      saidaEsperada: blocosSaidaEsperada,
+      dica: blocosDica || undefined,
+      explicacao: blocosExplicacao,
+    };
+
+    if (questaoBlocosEditando) {
+      setQuestoesBlocosPagina(questoesBlocosPagina.map((q) => (q.id === questaoBlocosEditando.id ? novaQuestao : q)));
+    } else {
+      setQuestoesBlocosPagina([...questoesBlocosPagina, novaQuestao]);
+    }
+    setDialogQuestaoBlocosVisivel(false);
   }
 
   // SALVAR CURSO
@@ -887,10 +1007,17 @@ export default function Colaboracao() {
 
       if (pagina.tipo === "exercicio_codigo" && pagina.questoesEscrita) {
         for (const qe of pagina.questoesEscrita) {
-          xml += `    <questao-escrita id="${qe.id}" linguagem="${qe.linguagem}">\n`;
+          const modoAttr = qe.modoEncapsulado ? ` modo="encapsulado"` : "";
+          xml += `    <questao-escrita id="${qe.id}" linguagem="${qe.linguagem}"${modoAttr}>\n`;
           xml += `      <enunciado>${escapeXML(qe.enunciado)}</enunciado>\n`;
           xml += `      <codigo-base><![CDATA[${qe.codigoBase}]]></codigo-base>\n`;
           xml += `      <gabarito><![CDATA[${qe.gabarito}]]></gabarito>\n`;
+          if (qe.modoEncapsulado && qe.wrapperAntes) {
+            xml += `      <wrapper-antes><![CDATA[${qe.wrapperAntes}]]></wrapper-antes>\n`;
+          }
+          if (qe.modoEncapsulado && qe.wrapperDepois) {
+            xml += `      <wrapper-depois><![CDATA[${qe.wrapperDepois}]]></wrapper-depois>\n`;
+          }
           if (qe.dica) xml += `      <dica>${escapeXML(qe.dica)}</dica>\n`;
           xml += `      <explicacao>${escapeXML(qe.explicacao)}</explicacao>\n`;
           for (const ct of qe.casosTeste) {
@@ -902,6 +1029,21 @@ export default function Colaboracao() {
             xml += `      </caso-teste>\n`;
           }
           xml += `    </questao-escrita>\n`;
+        }
+      }
+
+      if (pagina.tipo === "exercicio_blocos" && pagina.questoesBlocos) {
+        for (const qb of pagina.questoesBlocos) {
+          xml += `    <questao-blocos id="${qb.id}" linguagem="${qb.linguagem}">\n`;
+          xml += `      <enunciado>${escapeXML(qb.enunciado)}</enunciado>\n`;
+          xml += `      <saida-esperada><![CDATA[${qb.saidaEsperada}]]></saida-esperada>\n`;
+          if (qb.dica) xml += `      <dica>${escapeXML(qb.dica)}</dica>\n`;
+          xml += `      <explicacao>${escapeXML(qb.explicacao)}</explicacao>\n`;
+          for (const bloco of qb.blocos) {
+            const distratorAttr = bloco.distrator ? ` distrator="true"` : "";
+            xml += `      <bloco id="${bloco.id}" ordem="${bloco.ordem}"${distratorAttr}>${escapeXML(bloco.codigo)}</bloco>\n`;
+          }
+          xml += `    </questao-blocos>\n`;
         }
       }
 
@@ -1765,6 +1907,11 @@ export default function Colaboracao() {
                       label: "Código",
                       icon: "code-braces",
                     },
+                    {
+                      value: "exercicio_blocos",
+                      label: "Blocos",
+                      icon: "drag",
+                    },
                   ]}
                   style={{ marginBottom: 16 }}
                 />
@@ -1889,6 +2036,53 @@ export default function Colaboracao() {
                                 icon="delete"
                                 size={18}
                                 onPress={() => removerQuestaoEscrita(questao.id)}
+                              />
+                            </View>
+                          </View>
+                        </Card.Content>
+                      </Card>
+                    ))}
+                  </View>
+                )}
+
+                {/* EXERCÍCIOS DE BLOCOS */}
+                {paginaTipo === "exercicio_blocos" && (
+                  <View style={{ marginTop: 16 }}>
+                    <Button
+                      mode="contained"
+                      icon="plus"
+                      onPress={() => abrirDialogQuestaoBlocos()}
+                      style={{ marginBottom: 12 }}
+                      accessibilityLabel="Adicionar exercício de blocos de código"
+                    >
+                      Adicionar Exercício de Blocos
+                    </Button>
+
+                    {questoesBlocosPagina.map((questao, index) => (
+                      <Card
+                        key={questao.id}
+                        style={{ marginBottom: 8, backgroundColor: theme.colors.surfaceVariant }}
+                      >
+                        <Card.Content>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <View style={{ flex: 1 }}>
+                              <Text variant="bodyMedium" numberOfLines={2}>
+                                {index + 1}. {questao.enunciado}
+                              </Text>
+                              <Chip compact style={{ marginTop: 4, alignSelf: "flex-start" }}>
+                                {questao.linguagem === "python3" ? "Python" : questao.linguagem === "nodejs" ? "JavaScript" : "C"} • {questao.blocos.length} bloco(s)
+                              </Chip>
+                            </View>
+                            <View style={{ flexDirection: "row" }}>
+                              <IconButton
+                                icon="pencil"
+                                size={18}
+                                onPress={() => abrirDialogQuestaoBlocos(questao)}
+                              />
+                              <IconButton
+                                icon="delete"
+                                size={18}
+                                onPress={() => setQuestoesBlocosPagina(questoesBlocosPagina.filter((q) => q.id !== questao.id))}
                               />
                             </View>
                           </View>
@@ -2261,6 +2455,53 @@ export default function Colaboracao() {
                   placeholder="Explicação da solução correta"
                 />
 
+                {/* Modo Encapsulado */}
+                <Divider style={{ marginVertical: 12 }} />
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                    Modo Encapsulado (Wrapper)
+                  </Text>
+                  <Button
+                    mode={escritaModoEncapsulado ? "contained" : "outlined"}
+                    compact
+                    onPress={() => setEscritaModoEncapsulado(!escritaModoEncapsulado)}
+                    accessibilityLabel={escritaModoEncapsulado ? "Desativar modo encapsulado" : "Ativar modo encapsulado"}
+                  >
+                    {escritaModoEncapsulado ? "Ativo" : "Inativo"}
+                  </Button>
+                </View>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                  No modo encapsulado, o aluno digita apenas a parte central. O wrapper é adicionado automaticamente ao executar.
+                </Text>
+                {escritaModoEncapsulado && (
+                  <>
+                    <TextInput
+                      label="Código antes (wrapper superior)"
+                      value={escritaWrapperAntes}
+                      onChangeText={setEscritaWrapperAntes}
+                      mode="outlined"
+                      multiline
+                      numberOfLines={4}
+                      style={[styles.input, { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }]}
+                      contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                      placeholder="Ex: def calcular(n):"
+                      accessibilityLabel="Código exibido acima do campo do aluno (read-only)"
+                    />
+                    <TextInput
+                      label="Código depois (wrapper inferior)"
+                      value={escritaWrapperDepois}
+                      onChangeText={setEscritaWrapperDepois}
+                      mode="outlined"
+                      multiline
+                      numberOfLines={4}
+                      style={[styles.input, { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }]}
+                      contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                      placeholder="Ex: print(calcular(5))"
+                      accessibilityLabel="Código exibido abaixo do campo do aluno (read-only)"
+                    />
+                  </>
+                )}
+
                 {/* Teste do Gabarito */}
                 <Divider style={{ marginVertical: 12 }} />
                 <Button
@@ -2304,6 +2545,157 @@ export default function Colaboracao() {
                 <Button onPress={salvarQuestaoEscrita} mode="contained">
                   Salvar Exercício
                 </Button>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+        </Portal>
+
+        {/* Dialog Exercício de Blocos */}
+        <Portal>
+          <Modal
+            visible={dialogQuestaoBlocosVisivel}
+            onDismiss={() => setDialogQuestaoBlocosVisivel(false)}
+            contentContainerStyle={{ margin: 16, height: "92%" }}
+          >
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 20}
+              style={{ flex: 1, padding: 20, backgroundColor: theme.colors.surface, borderRadius: 12, overflow: "hidden" }}
+            >
+              <Text variant="headlineSmall" style={{ marginBottom: 16, fontWeight: "bold", color: theme.colors.onSurface }}>
+                {questaoBlocosEditando ? "Editar Exercício de Blocos" : "Novo Exercício de Blocos"}
+              </Text>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+                {/* Linguagem */}
+                <Text variant="labelLarge" style={{ marginBottom: 8, color: theme.colors.onSurface }}>Linguagem *</Text>
+                <SegmentedButtons
+                  value={blocosLinguagem}
+                  onValueChange={(value) => setBlocosLinguagem(value as LinguagemCodigo)}
+                  buttons={[
+                    { value: "python3", label: "Python", icon: "language-python" },
+                    { value: "nodejs", label: "JavaScript", icon: "language-javascript" },
+                    { value: "c", label: "C", icon: "language-c" },
+                  ]}
+                  style={{ marginBottom: 16 }}
+                />
+
+                {/* Enunciado */}
+                <TextInput
+                  label="Enunciado *"
+                  value={blocosEnunciado}
+                  onChangeText={setBlocosEnunciado}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                  placeholder="O que o aluno deve fazer com os blocos?"
+                  accessibilityLabel="Enunciado do exercício de blocos"
+                />
+
+                {/* Saída esperada */}
+                <TextInput
+                  label="Saída Esperada (stdout) *"
+                  value={blocosSaidaEsperada}
+                  onChangeText={setBlocosSaidaEsperada}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.input, { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }]}
+                  contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                  placeholder="Saída que o programa deve produzir na ordem correta"
+                  accessibilityLabel="Saída esperada quando os blocos estão na ordem correta"
+                />
+
+                {/* Blocos */}
+                <Text variant="labelLarge" style={{ marginTop: 8, marginBottom: 4, color: theme.colors.onSurface }}>
+                  Blocos de Código *
+                </Text>
+                <Text variant="bodySmall" style={{ marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
+                  Defina cada bloco (uma linha ou instrução). O campo {'"'}Ordem{'"'} indica a posição correta. Marque {'"'}Distrator{'"'} para blocos que não fazem parte da solução.
+                </Text>
+
+                {blocosLista.map((bloco, index) => (
+                  <Card key={bloco.id} style={{ marginBottom: 10, backgroundColor: theme.colors.surfaceVariant, borderRadius: 10 }}>
+                    <Card.Content>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                          Bloco {index + 1} {bloco.distrator ? "(Distrator)" : `(Ordem: ${bloco.ordem})`}
+                        </Text>
+                        {blocosLista.length > 1 && (
+                          <IconButton icon="delete" size={18} onPress={() => removerBloco(bloco.id)} accessibilityLabel={`Remover bloco ${index + 1}`} />
+                        )}
+                      </View>
+                      <TextInput
+                        label="Código do bloco *"
+                        value={bloco.codigo}
+                        onChangeText={(text) => atualizarBloco(bloco.id, "codigo", text)}
+                        mode="outlined"
+                        dense
+                        style={{ marginBottom: 8, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                        contentStyle={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 }}
+                        placeholder='Ex: print("Olá")'
+                        accessibilityLabel={`Código do bloco ${index + 1}`}
+                      />
+                      <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                        {!bloco.distrator && (
+                          <TextInput
+                            label="Ordem"
+                            value={String(bloco.ordem)}
+                            onChangeText={(text) => atualizarBloco(bloco.id, "ordem", parseInt(text) || 1)}
+                            mode="outlined"
+                            dense
+                            keyboardType="numeric"
+                            style={{ width: 80 }}
+                            accessibilityLabel={`Posição correta do bloco ${index + 1}`}
+                          />
+                        )}
+                        <Button
+                          mode={bloco.distrator ? "contained" : "outlined"}
+                          compact
+                          onPress={() => atualizarBloco(bloco.id, "distrator", !bloco.distrator)}
+                          accessibilityLabel={bloco.distrator ? "Remover marcação de distrator" : "Marcar como distrator"}
+                        >
+                          {bloco.distrator ? "Distrator ✓" : "Distrator?"}
+                        </Button>
+                      </View>
+                    </Card.Content>
+                  </Card>
+                ))}
+
+                <Button mode="outlined" icon="plus" onPress={adicionarBloco} style={{ marginBottom: 16 }} accessibilityLabel="Adicionar novo bloco">
+                  Adicionar Bloco
+                </Button>
+
+                {/* Dica */}
+                <TextInput
+                  label="Dica (opcional)"
+                  value={blocosDica}
+                  onChangeText={setBlocosDica}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={2}
+                  style={styles.input}
+                  placeholder="Dica opcional para o aluno"
+                  accessibilityLabel="Dica do exercício de blocos"
+                />
+
+                {/* Explicação */}
+                <TextInput
+                  label="Explicação (exibida após responder)"
+                  value={blocosExplicacao}
+                  onChangeText={setBlocosExplicacao}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                  placeholder="Explicação da solução correta"
+                  accessibilityLabel="Explicação pós-resposta do exercício de blocos"
+                />
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }}>
+                <Button onPress={() => setDialogQuestaoBlocosVisivel(false)}>Cancelar</Button>
+                <Button onPress={salvarQuestaoBlocos} mode="contained">Salvar Exercício</Button>
               </View>
             </KeyboardAvoidingView>
           </Modal>

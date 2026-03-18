@@ -13,7 +13,7 @@ import {
 import { getDownloadURL, ref } from "firebase/storage";
 import { CourseConfig } from "../../config/CourseConfig";
 import { firestore, storage } from "../../firebase/FirebaseInit";
-import { CasoTeste, Curso, LinguagemCodigo, PaginaCurso, QuestaoEscrita, UsuarioCurso } from "../../model/Curso";
+import { BlocoCodigoCodigo, CasoTeste, Curso, LinguagemCodigo, PaginaCurso, QuestaoBlocos, QuestaoEscrita, UsuarioCurso } from "../../model/Curso";
 import { BadgeService } from "../badge/BadgeService";
 import { ImageUploadService } from "../image/ImageUploadService";
 import { QuestaoService } from "../questao/QuestaoService";
@@ -309,7 +309,7 @@ export class CursoService {
 
     while ((match = pageRegex.exec(xmlContent)) !== null) {
         const paginaId = match[1];
-        const paginaTipo = match[2] as "conteudo" | "exercicio" | "exercicio_codigo";
+        const paginaTipo = match[2] as "conteudo" | "exercicio" | "exercicio_codigo" | "exercicio_blocos";
         const paginaBody = match[3];
 
         const novaPagina: PaginaCurso = {
@@ -349,13 +349,14 @@ export class CursoService {
         // Extrair Questões de Código - para exercicio_codigo
         if (paginaTipo === "exercicio_codigo") {
             const questoesEscrita: QuestaoEscrita[] = [];
-            const qeRegex = /<questao-escrita\s+id="([^"]*)"\s+linguagem="([^"]*)"\s*>([\s\S]*?)<\/questao-escrita>/gi;
+            const qeRegex = /<questao-escrita\s+id="([^"]*)"\s+linguagem="([^"]*)"(?:\s+modo="([^"]*)")?\s*>([\s\S]*?)<\/questao-escrita>/gi;
             let qeMatch;
 
             while ((qeMatch = qeRegex.exec(paginaBody)) !== null) {
                 const qeId = qeMatch[1];
                 const qeLinguagem = qeMatch[2] as LinguagemCodigo;
-                const qeBody = qeMatch[3];
+                const qeModo = qeMatch[3] || "";
+                const qeBody = qeMatch[4];
 
                 // Extrair campos da questão de código
                 const enunciadoMatch = qeBody.match(/<enunciado>([\s\S]*?)<\/enunciado>/i);
@@ -363,6 +364,10 @@ export class CursoService {
                 const gabaritoMatch = qeBody.match(/<gabarito>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/gabarito>/i);
                 const dicaMatch = qeBody.match(/<dica>([\s\S]*?)<\/dica>/i);
                 const explicacaoMatch = qeBody.match(/<explicacao>([\s\S]*?)<\/explicacao>/i);
+
+                // Modo encapsulado: extrair wrapper-antes e wrapper-depois
+                const wrapperAntesMatch = qeBody.match(/<wrapper-antes>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/wrapper-antes>/i);
+                const wrapperDepoisMatch = qeBody.match(/<wrapper-depois>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/wrapper-depois>/i);
 
                 // Extrair casos de teste
                 const casosTeste: CasoTeste[] = [];
@@ -384,7 +389,7 @@ export class CursoService {
                     });
                 }
 
-                questoesEscrita.push({
+                const questaoEscrita: QuestaoEscrita = {
                     id: qeId,
                     enunciado: enunciadoMatch ? unescapeXML(enunciadoMatch[1].trim()) : "",
                     linguagem: qeLinguagem,
@@ -393,10 +398,61 @@ export class CursoService {
                     casosTeste,
                     dica: dicaMatch ? unescapeXML(dicaMatch[1].trim()) : undefined,
                     explicacao: explicacaoMatch ? unescapeXML(explicacaoMatch[1].trim()) : "",
-                });
+                };
+
+                // Aplicar campos do modo encapsulado
+                if (qeModo === "encapsulado") {
+                    questaoEscrita.modoEncapsulado = true;
+                    if (wrapperAntesMatch) questaoEscrita.wrapperAntes = wrapperAntesMatch[1];
+                    if (wrapperDepoisMatch) questaoEscrita.wrapperDepois = wrapperDepoisMatch[1];
+                }
+
+                questoesEscrita.push(questaoEscrita);
             }
 
             novaPagina.questoesEscrita = questoesEscrita;
+        }
+
+        // Extrair blocos de código - para exercicio_blocos
+        if (paginaTipo === "exercicio_blocos") {
+            const questoesBlocos: QuestaoBlocos[] = [];
+            const qbRegex = /<questao-blocos\s+id="([^"]*)"\s+linguagem="([^"]*)"\s*>([\s\S]*?)<\/questao-blocos>/gi;
+            let qbMatch;
+
+            while ((qbMatch = qbRegex.exec(paginaBody)) !== null) {
+                const qbId = qbMatch[1];
+                const qbLinguagem = qbMatch[2] as LinguagemCodigo;
+                const qbBody = qbMatch[3];
+
+                const qbEnunciadoMatch = qbBody.match(/<enunciado>([\s\S]*?)<\/enunciado>/i);
+                const qbSaidaMatch = qbBody.match(/<saida-esperada>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/saida-esperada>/i);
+                const qbDicaMatch = qbBody.match(/<dica>([\s\S]*?)<\/dica>/i);
+                const qbExplicacaoMatch = qbBody.match(/<explicacao>([\s\S]*?)<\/explicacao>/i);
+
+                const blocos: BlocoCodigoCodigo[] = [];
+                const blocoRegex = /<bloco\s+id="([^"]*)"\s+ordem="([^"]*)"(?:\s+distrator="([^"]*)")?\s*>([\s\S]*?)<\/bloco>/gi;
+                let blocoMatch;
+                while ((blocoMatch = blocoRegex.exec(qbBody)) !== null) {
+                    blocos.push({
+                        id: blocoMatch[1],
+                        ordem: parseInt(blocoMatch[2] || "0"),
+                        distrator: blocoMatch[3] === "true",
+                        codigo: blocoMatch[4].trim(),
+                    });
+                }
+
+                questoesBlocos.push({
+                    id: qbId,
+                    enunciado: qbEnunciadoMatch ? unescapeXML(qbEnunciadoMatch[1].trim()) : "",
+                    linguagem: qbLinguagem,
+                    blocos,
+                    saidaEsperada: qbSaidaMatch ? qbSaidaMatch[1].trim() : "",
+                    dica: qbDicaMatch ? unescapeXML(qbDicaMatch[1].trim()) : undefined,
+                    explicacao: qbExplicacaoMatch ? unescapeXML(qbExplicacaoMatch[1].trim()) : "",
+                });
+            }
+
+            novaPagina.questoesBlocos = questoesBlocos;
         }
 
         paginas.push(novaPagina);

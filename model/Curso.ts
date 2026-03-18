@@ -33,16 +33,40 @@ export interface QuestaoEscrita {
   casosTeste: CasoTeste[];     // casos de teste para validação
   dica?: string;               // dica opcional
   explicacao: string;          // explicação pós-resposta
+  // Modo encapsulado: o aluno digita apenas o núcleo, wrapper é adicionado automaticamente
+  modoEncapsulado?: boolean;
+  wrapperAntes?: string;       // código read-only exibido acima do input do aluno
+  wrapperDepois?: string;      // código read-only exibido abaixo do input do aluno
+}
+
+// Bloco de código para exercício de ordenação
+export interface BlocoCodigoCodigo {
+  id: string;
+  codigo: string;    // conteúdo do bloco (uma linha ou instrução)
+  ordem: number;     // ordem correta definida pelo colaborador (gabarito)
+  distrator?: boolean; // se true, é um bloco falso que não deve ser incluído
+}
+
+// Exercício de ordenação de blocos de código
+export interface QuestaoBlocos {
+  id: string;
+  enunciado: string;
+  linguagem: LinguagemCodigo;
+  blocos: BlocoCodigoCodigo[];  // todos os blocos (inclusive distradores)
+  saidaEsperada: string;        // stdout esperado quando executado na ordem correta
+  explicacao: string;
+  dica?: string;
 }
 
 export interface PaginaCurso {
   id: string;
   titulo: string;
-  tipo: "conteudo" | "exercicio" | "exercicio_codigo";
+  tipo: "conteudo" | "exercicio" | "exercicio_codigo" | "exercicio_blocos";
   conteudo?: string;
   imagem?: string;
   questoes?: Questao[];
   questoesEscrita?: QuestaoEscrita[];
+  questoesBlocos?: QuestaoBlocos[];
 }
 
 export interface Curso {

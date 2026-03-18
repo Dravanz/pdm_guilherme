@@ -185,10 +185,13 @@ export class JobeService {
       throw new Error(`Linguagem não suportada: ${linguagem}`);
     }
 
+    // Normalizar aspas tipográficas do teclado mobile antes de enviar ao Jobe
+    const codigoNormalizado = normalizarCodigo(codigoFonte);
+
     const request: JobeRequest = {
       run_spec: {
         language_id: langConfig.jobeId,
-        sourcecode: codigoFonte,
+        sourcecode: codigoNormalizado,
         sourcefilename: `programa.${langConfig.extensao}`,
         input: stdin,
         parameters: LIMITES_LINGUAGEM[linguagem],
@@ -373,6 +376,24 @@ function calcularLevenshtein(a: string, b: string): number {
 }
 
 /**
+ * Normaliza aspas tipográficas e caracteres especiais do teclado mobile para
+ * seus equivalentes ASCII, evitando erros de sintaxe no Jobe.
+ */
+function normalizarCodigo(codigo: string): string {
+  return codigo
+    // Aspas duplas tipográficas ("curly quotes")
+    .replace(/\u201C|\u201D|\u201E|\u201F|\u275D|\u275E/g, '"')
+    // Aspas simples tipográficas e apóstrofos
+    .replace(/\u2018|\u2019|\u201A|\u201B|\u275B|\u275C|\u0060/g, "'")
+    // Travessão e meia-risca → hífen
+    .replace(/\u2013|\u2014/g, "-")
+    // Reticências → três pontos
+    .replace(/\u2026/g, "...")
+    // Espaço não-quebrável → espaço normal
+    .replace(/\u00A0/g, " ");
+}
+
+/**
  * Normaliza saída para comparação: trim, colapsar espaços múltiplos, normalizar line endings
  */
 function normalizarSaida(texto: string): string {
@@ -416,8 +437,9 @@ function compararSaidas(
   const maxLen = Math.max(obtidaNorm.length, esperadaNorm.length);
   const similaridade = maxLen > 0 ? Math.round(((maxLen - distancia) / maxLen) * 100) : 0;
 
-  // Limiar: até 2 caracteres ou 10% do tamanho esperado (o que for maior)
-  const limiar = Math.max(2, Math.ceil(esperadaNorm.length * 0.1));
+  // Limiar: até 3 caracteres ou 15% do tamanho esperado (o que for maior)
+  // Cobre diferenças comuns: espaço extra, acento esquecido, capitalização parcial
+  const limiar = Math.max(3, Math.ceil(esperadaNorm.length * 0.15));
 
   if (distancia <= limiar) {
     return {

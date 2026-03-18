@@ -7,6 +7,7 @@ import { Button, Card, Icon, RadioButton, Text, useTheme } from "react-native-pa
 import { PaginaCurso, Questao, QuestaoEscrita } from "../model/Curso";
 import { ResponsiveImage } from "./ResponsiveImage";
 import { CodeEditor } from "./CodeEditor";
+import { CodeBlocksEditor } from "./CodeBlocksEditor";
 
 interface CursoViewerProps {
   pagina: PaginaCurso;
@@ -249,6 +250,60 @@ export function CursoViewer({
                 {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
               </Button>
             </View>
+          </Card.Actions>
+        </Card>
+      </ScrollView>
+    );
+  }
+
+  // ============ EXERCÍCIO DE BLOCOS ============
+  if (pagina.tipo === "exercicio_blocos" && pagina.questoesBlocos) {
+    return (
+      <ScrollView style={styles.container} accessible={false} keyboardShouldPersistTaps="handled">
+        <Card style={[styles.card, { borderTopWidth: 3, borderTopColor: theme.colors.secondary }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
+            <Icon source="drag" size={24} color={theme.colors.secondary} />
+            <Text variant="labelMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Exercício de Blocos</Text>
+          </View>
+          <Card.Title
+            title={pagina.titulo}
+            titleVariant="titleLarge"
+            titleStyle={{ fontWeight: "bold" }}
+          />
+          <Card.Content>
+            {pagina.questoesBlocos.map((questao) => {
+              const jaRespondida = questoesRespondidas.includes(questao.id);
+              return (
+                <View key={questao.id} style={{ marginBottom: 24 }}>
+                  <CodeBlocksEditor
+                    questao={questao}
+                    onResultado={async (resultado, correta) => {
+                      if (onResponderQuestaoEscrita) {
+                        try {
+                          await onResponderQuestaoEscrita(questao.id, correta, questao.explicacao);
+                        } catch (err) {
+                          console.error("Erro ao registrar resposta de blocos:", err);
+                        }
+                      }
+                    }}
+                    desabilitado={modo === "preview"}
+                    jaRespondida={jaRespondida}
+                  />
+                </View>
+              );
+            })}
+          </Card.Content>
+          <Card.Actions style={{ justifyContent: 'flex-end', paddingHorizontal: 12, paddingBottom: 12 }}>
+            <Button
+              mode="outlined"
+              onPress={onProximaPagina}
+              style={{ borderRadius: 10, minHeight: 44 }}
+              contentStyle={{ minHeight: 44 }}
+              accessibilityLabel={isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir curso") : "Ir para próxima página"}
+              accessibilityRole="button"
+            >
+              {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
+            </Button>
           </Card.Actions>
         </Card>
       </ScrollView>
