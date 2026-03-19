@@ -35,11 +35,13 @@ export default function Colaboracao() {
         </Text>
 
         <Card
-          style={[themeStyles.card, styles.navCard, { backgroundColor: theme.colors.surface }]}
+          style={[themeStyles.card, styles.navCard, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
           onPress={() => router.push("/gerenciar-cursos" as any)}
         >
           <Card.Content style={styles.cardContent}>
-            <Icon source="school" size={32} color={theme.colors.primary} />
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+              <Icon source="school" size={28} color={theme.colors.onPrimaryContainer} />
+            </View>
             <View style={styles.cardText}>
               <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
                 Gerenciar Cursos
@@ -53,11 +55,13 @@ export default function Colaboracao() {
         </Card>
 
         <Card
-          style={[themeStyles.card, styles.navCard, { backgroundColor: theme.colors.surface }]}
+          style={[themeStyles.card, styles.navCard, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary ?? theme.colors.primary }]}
           onPress={() => router.push("/gerenciar-documentacao" as any)}
         >
           <Card.Content style={styles.cardContent}>
-            <Icon source="file-document" size={32} color={theme.colors.primary} />
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.tertiaryContainer }]}>
+              <Icon source="file-document" size={28} color={theme.colors.onTertiaryContainer} />
+            </View>
             <View style={styles.cardText}>
               <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
                 Gerenciar Documentação
@@ -91,6 +95,14 @@ const styles = StyleSheet.create({
   },
   navCard: {
     marginBottom: 12,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: undefined, // set inline
   },
   cardContent: {
     flexDirection: "row",

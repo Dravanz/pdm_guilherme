@@ -2,12 +2,15 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import { Alternativa, BlocoCodigoCodigo, CasoTeste, Curso, LinguagemCodigo, PaginaCurso, Questao, QuestaoBlocos, QuestaoEscrita } from "@/model/Curso";
+import { Documentacao } from "@/model/Documentacao";
 import { Perfil } from "@/model/Perfil";
 import { ColaboradorCursoService } from "@/services/curso/ColaboradorCursoService";
 import { ImageUploadService } from "@/services/image/ImageUploadService";
 import { BancoQuestoesService } from "@/services/questao/BancoQuestoesService";
+import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { JobeService } from "@/services/codigo/JobeService";
 import { QuestionAnalyticsPanel } from "@/components/QuestionAnalyticsPanel";
+import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -1079,6 +1082,12 @@ export default function GerenciarCursos() {
           { backgroundColor: theme.colors.background, flex: 1 },
         ]}
       >
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          style={{ alignSelf: 'flex-start', marginTop: 4, marginBottom: -4 }}
+          onPress={() => router.back()}
+        />
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}

@@ -4,7 +4,7 @@ import { Documentacao, TipoDocumentacao } from "@/model/Documentacao";
 import { Perfil } from "@/model/Perfil";
 import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import { SolicitacaoService } from "@/services/shared/SolicitacaoService";
-import { Stack } from "expo-router";
+import { router } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
 import {
   FlatList,
@@ -20,6 +20,7 @@ import {
   Card,
   Chip,
   Dialog,
+  IconButton,
   Modal,
   Portal,
   Text,
@@ -167,11 +168,15 @@ export default function GerenciarDocumentacao() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: "Gerenciar Documentação", headerShown: true }} />
       <SafeAreaView
         style={[themeStyles.container, { backgroundColor: theme.colors.background, flex: 1 }]}
-        edges={["bottom"]}
       >
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          style={{ alignSelf: 'flex-start', marginTop: 4, marginBottom: -4 }}
+          onPress={() => router.back()}
+        />
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}

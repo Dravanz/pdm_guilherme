@@ -22,6 +22,7 @@ import {
 import {
     Button,
     Card,
+    Chip,
     Dialog,
     Icon,
     Text,
@@ -227,14 +228,21 @@ export default function Perfil() {
       >
         {userFirebase && (
           <>
-            <View style={styles.profileHeader}>
+            {/* Faixa de cor do topo */}
+            <View style={{
+              height: 110,
+              backgroundColor: theme.colors.primary,
+              marginHorizontal: -24,
+              marginTop: -24,
+            }} />
+            <View style={[styles.profileHeader, { marginTop: -80 }]}>
               <TouchableOpacity
                 onPress={() => setDialogFotoVisivel(true)}
                 disabled={alterandoFoto}
               >
                 {urlFoto && urlFoto !== "" && urlFoto.startsWith("https://") ? (
                   <CachedImage
-                    style={[styles.image, { borderColor: theme.colors.primary }]}
+                  style={[styles.image, { borderColor: '#fff' }]}
                     userId={userFirebase.uid}
                     firebaseUrl={urlFoto}
                     placeholder={
@@ -246,7 +254,7 @@ export default function Perfil() {
                   />
                 ) : (
                   <Image
-                    style={[styles.image, { borderColor: theme.colors.primary }]}
+                    style={[styles.image, { borderColor: '#fff' }]}
                     source={require("../../assets/images/person.png")}
                   />
                 )}
@@ -314,6 +322,15 @@ export default function Perfil() {
                   >
                     {userAuth?.user?.email || userFirebase.email}
                   </Text>
+                  <View style={{ alignItems: 'center', marginTop: 10 }}>
+                    <Chip
+                      icon="account-badge"
+                      style={{ backgroundColor: theme.colors.primaryContainer }}
+                      textStyle={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
+                    >
+                      {userFirebase.perfil}
+                    </Chip>
+                  </View>
                 </View>
 
                 <View style={styles.section}>

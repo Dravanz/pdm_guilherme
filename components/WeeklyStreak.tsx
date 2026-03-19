@@ -49,17 +49,17 @@ export function WeeklyStreak({ loginDays }: WeeklyStreakProps) {
               <View style={[
                 styles.dayCircle,
                 {
-                  backgroundColor: day.isToday 
-                    ? theme.colors.primary + '20'
-                    : theme.colors.surfaceVariant,
-                  borderColor: day.isToday ? theme.colors.primary : 'transparent',
-                  borderWidth: day.isToday ? 2 : 0,
+                  backgroundColor: hasLogin
+                    ? theme.colors.primary
+                    : (day.isToday ? theme.colors.primary + '25' : theme.colors.surfaceVariant),
+                  borderColor: day.isToday && !hasLogin ? theme.colors.primary : 'transparent',
+                  borderWidth: day.isToday && !hasLogin ? 2 : 0,
                 }
               ]}>
                 <Icon
-                  source={hasLogin ? 'fire' : 'close'}
+                  source={hasLogin ? 'fire' : 'minus'}
                   size={20}
-                  color={hasLogin ? theme.colors.streak : theme.colors.onSurfaceVariant}
+                  color={hasLogin ? '#fff' : (day.isToday ? theme.colors.primary : theme.colors.onSurfaceVariant + '70')}
                 />
               </View>
             </View>

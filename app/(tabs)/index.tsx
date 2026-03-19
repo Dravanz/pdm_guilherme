@@ -176,26 +176,25 @@ export default function Dashboard() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Card style={[styles.header, { backgroundColor: theme.colors.primary }]} mode="contained">
+          <Card.Content>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text
+                variant="headlineMedium"
+                style={[styles.welcomeText, { color: '#fff' }]}
+              >
+                Olá, {userFirebase?.nome || "Usuário"}!
+              </Text>
+              <Icon source="hand-wave" size={24} color="rgba(255,255,255,0.9)" />
+            </View>
             <Text
-              variant="headlineMedium"
-              style={[styles.welcomeText, { color: theme.colors.onBackground }]}
+              variant="bodyLarge"
+              style={[styles.subtitleText, { color: 'rgba(255,255,255,0.8)' }]}
             >
-              Olá, {userFirebase?.nome || "Usuário"}!
+              Continue sua jornada de aprendizado
             </Text>
-            <Icon source="hand-wave" size={24} color={theme.colors.primary} />
-          </View>
-          <Text
-            variant="bodyLarge"
-            style={[
-              styles.subtitleText,
-              { color: theme.colors.onSurfaceVariant },
-            ]}
-          >
-            Continue sua jornada de aprendizado
-          </Text>
-        </View>
+          </Card.Content>
+        </Card>
 
         {/* Sequência Semanal */}
         <View style={[styles.section, { marginBottom: spacing.md }]}>
@@ -306,16 +305,16 @@ export default function Dashboard() {
               <Card
                 style={[
                   styles.statCard,
-                  { backgroundColor: theme.colors.surface },
+                  { backgroundColor: theme.colors.primaryContainer },
                 ]}
               >
                 <Card.Content style={styles.statContent}>
                   <View style={styles.statIconContainer}>
-                    <Icon source="book-check" size={32} color={theme.colors.primary} />
+                    <Icon source="book-check" size={32} color={theme.colors.onPrimaryContainer} />
                   </View>
                   <Text
                     variant="titleMedium"
-                    style={[styles.statValue, { color: theme.colors.onSurface }]}
+                    style={[styles.statValue, { color: theme.colors.onPrimaryContainer }]}
                   >
                     {userStats?.cursosCompletos ?? 0}
                   </Text>
@@ -323,7 +322,7 @@ export default function Dashboard() {
                     variant="bodySmall"
                     style={[
                       styles.statLabel,
-                      { color: theme.colors.onSurfaceVariant },
+                      { color: theme.colors.onPrimaryContainer },
                     ]}
                   >
                     Concluídos
@@ -339,16 +338,16 @@ export default function Dashboard() {
               <Card
                 style={[
                   styles.statCard,
-                  { backgroundColor: theme.colors.surface },
+                  { backgroundColor: theme.colors.tertiaryContainer },
                 ]}
               >
                 <Card.Content style={styles.statContent}>
                   <View style={styles.statIconContainer}>
-                    <Icon source="target" size={32} color={theme.colors.primary} />
+                    <Icon source="target" size={32} color={theme.colors.onTertiaryContainer} />
                   </View>
                   <Text
                     variant="titleMedium"
-                    style={[styles.statValue, { color: theme.colors.onSurface }]}
+                    style={[styles.statValue, { color: theme.colors.onTertiaryContainer }]}
                   >
                     {userStats?.cursosAtivos ?? 0}
                   </Text>
@@ -356,7 +355,7 @@ export default function Dashboard() {
                     variant="bodySmall"
                     style={[
                       styles.statLabel,
-                      { color: theme.colors.onSurfaceVariant },
+                      { color: theme.colors.onTertiaryContainer },
                     ]}
                   >
                     Em Progresso
@@ -376,7 +375,7 @@ export default function Dashboard() {
           <Card
             style={[
               styles.performanceCard,
-              { backgroundColor: theme.colors.surface },
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
             ]}
           >
             <Card.Content>

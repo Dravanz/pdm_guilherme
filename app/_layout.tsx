@@ -51,8 +51,8 @@ export default function RootLayout() {
             <Stack.Screen name="signIn" />
             <Stack.Screen name="signUp" />
             <Stack.Screen name="recuperarSenha" />
-            <Stack.Screen name="gerenciar-cursos" options={{ headerShown: true, title: "Gerenciar Cursos" }} />
-            <Stack.Screen name="gerenciar-documentacao" options={{ headerShown: true, title: "Gerenciar Documentação" }} />
+            <Stack.Screen name="gerenciar-cursos" options={{ headerShown: false }} />
+            <Stack.Screen name="gerenciar-documentacao" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </UserProvider>
