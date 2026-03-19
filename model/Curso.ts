@@ -4,6 +4,8 @@ export interface Questao {
   alternativas: Alternativa[];
   explicacao: string;
   linkDocumentacao?: string;
+  criadoPor?: string;
+  criadoPorNome?: string;
 }
 
 export interface Alternativa {
@@ -37,6 +39,8 @@ export interface QuestaoEscrita {
   modoEncapsulado?: boolean;
   wrapperAntes?: string;       // código read-only exibido acima do input do aluno
   wrapperDepois?: string;      // código read-only exibido abaixo do input do aluno
+  criadoPor?: string;
+  criadoPorNome?: string;
 }
 
 // Bloco de código para exercício de ordenação

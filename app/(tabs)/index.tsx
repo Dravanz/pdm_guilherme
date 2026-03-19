@@ -11,14 +11,9 @@ import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
 import { Perfil } from "@/model/Perfil";
 import { StatusSolicitacao } from "@/model/Solicitacao";
-import {
-    DashboardData,
-    DashboardService,
-} from "@/services/shared/DashboardService";
-import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
     Dimensions,
     ScrollView,
@@ -43,16 +38,10 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const theme = useTheme();
-  const { userFirebase } = useContext<any>(UserContext);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    null
-  );
-  const [carregando, setCarregando] = useState(true);
-  const dadosCarregados = useRef(false);
+  const { userFirebase, userStats } = useContext<any>(UserContext);
+  const [carregando, setCarregando] = useState(false);
   const [solicitacoesPendentes, setSolicitacoesPendentes] = useState(0);
   const [badgeManagerVisible, setBadgeManagerVisible] = useState(false); // State for Badge Manager
-  const [loginDays, setLoginDays] = useState<string[]>([]);
-
   useEffect(() => {
     if (userFirebase?.perfil === Perfil.Moderador) {
       fetchSolicitacoesPendentes();
@@ -81,46 +70,6 @@ export default function Dashboard() {
   // Performance Modal State
   const [perfModalVisible, setPerfModalVisible] = useState(false);
   const [selectedPerfCourse, setSelectedPerfCourse] = useState<{id: string, titulo: string} | null>(null);
-
-  const carregarDados = async (forcar = false) => {
-    if (!userFirebase) return;
-    if (dadosCarregados.current && !forcar) return;
-
-    try {
-      setCarregando(true);
-      const dados = await DashboardService.obterDadosDashboard(
-        userFirebase.uid
-      );
-      setDashboardData(dados);
-      if (userFirebase?.perfil === Perfil.Moderador) {
-        await fetchSolicitacoesPendentes();
-      }
-      // Gerar dias de login dos últimos 7 dias (baseado em dados existentes)
-      const today = new Date();
-      const days: string[] = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        // Simula login nos dias com atividade (cursos ativos ou completos > 0 indica atividade)
-        if (dados.estatisticas.cursosAtivos > 0 || dados.estatisticas.cursosCompletos > 0 || i === 0) {
-          days.push(d.toISOString().split('T')[0]);
-        }
-      }
-      setLoginDays(days);
-      dadosCarregados.current = true;
-    } catch (error) {
-      console.error("Erro ao carregar dashboard:", error);
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      // Forçar recarregamento sempre que a tela ganhar foco
-      carregarDados(true);
-    }, [userFirebase])
-  );
 
   const openCourseList = async (type: "completed" | "in_progress") => {
     if (!userFirebase) return;
@@ -197,35 +146,20 @@ export default function Dashboard() {
     barPercentage: 0.5,
   };
 
-  if (carregando) {
-    return (
-      <SafeAreaView
-        style={[{ flex: 1, backgroundColor: theme.colors.background }]}
-      >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-          <Text style={{ color: theme.colors.onBackground, marginTop: 16 }}>
-            Carregando dashboard...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const pieData =
-    dashboardData?.estatisticas?.totalQuestoes &&
-    dashboardData.estatisticas.totalQuestoes > 0
+    userStats?.totalQuestoes && userStats.totalQuestoes > 0
       ? [
           {
             name: "Corretas",
-            population: dashboardData?.estatisticas?.questoesCorretas || 0,
+            population: userStats.questoesCorretas,
             color: theme.colors.primary,
             legendFontColor: theme.colors.onBackground,
             legendFontSize: 12,
           },
           {
             name: "Incorretas",
-            population: dashboardData?.estatisticas?.questoesErradas || 0,
+            population: userStats.questoesErradas,
             color: theme.colors.error,
             legendFontColor: theme.colors.onBackground,
             legendFontSize: 12,
@@ -267,7 +201,7 @@ export default function Dashboard() {
         <View style={[styles.section, { marginBottom: spacing.md }]}>
           <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
-              <WeeklyStreak loginDays={loginDays} />
+              <WeeklyStreak loginDays={userFirebase?.diasLogin ?? []} />
             </Card.Content>
           </Card>
         </View>
@@ -318,7 +252,7 @@ export default function Dashboard() {
               <View style={{ gap: 8 }}>
                 <Button 
                   mode="contained" 
-                  onPress={() => router.push("/(tabs)/colaboracao")}
+                  onPress={() => router.push("/gerenciar-cursos" as any)}
                   style={{ width: '100%' }}
                   icon="school"
                   
@@ -327,7 +261,7 @@ export default function Dashboard() {
                 </Button>
                 <Button 
                   mode="contained" 
-                  onPress={() => router.push("/(tabs)/colaboracao")}
+                  onPress={() => router.push("/gerenciar-documentacao" as any)}
                   style={{ width: '100%' }}
                   icon="file-document"
                   
@@ -354,6 +288,16 @@ export default function Dashboard() {
 
         {/* Estatísticas Rápidas */}
         <View style={styles.section}>
+          {!userStats ? (
+            <View style={styles.statsGrid}>
+              {[0, 1].map((i) => (
+                <View
+                  key={i}
+                  style={[styles.statCard, { flex: 1, height: 110, backgroundColor: theme.colors.surfaceVariant, borderRadius: 16, opacity: 0.5 }]}
+                />
+              ))}
+            </View>
+          ) : (
           <View style={styles.statsGrid}>
             <TouchableOpacity 
               style={{ flex: 1 }}
@@ -373,7 +317,7 @@ export default function Dashboard() {
                     variant="titleMedium"
                     style={[styles.statValue, { color: theme.colors.onSurface }]}
                   >
-                    {dashboardData?.estatisticas.cursosCompletos || 0}
+                    {userStats?.cursosCompletos ?? 0}
                   </Text>
                   <Text
                     variant="bodySmall"
@@ -406,7 +350,7 @@ export default function Dashboard() {
                     variant="titleMedium"
                     style={[styles.statValue, { color: theme.colors.onSurface }]}
                   >
-                    {dashboardData?.estatisticas.cursosAtivos || 0}
+                    {userStats?.cursosAtivos ?? 0}
                   </Text>
                   <Text
                     variant="bodySmall"
@@ -421,10 +365,14 @@ export default function Dashboard() {
               </Card>
             </TouchableOpacity>
           </View>
+          )}
         </View>
 
         {/* Coeficiente Geral */}
         <View style={styles.section}>
+          {!userStats ? (
+            <View style={{ height: 140, backgroundColor: theme.colors.surfaceVariant, borderRadius: 16, opacity: 0.5 }} />
+          ) : (
           <Card
             style={[
               styles.performanceCard,
@@ -446,12 +394,10 @@ export default function Dashboard() {
                     { color: theme.colors.primary },
                   ]}
                 >
-                  {dashboardData?.estatisticas.coeficienteGeral || 0}%
+                  {userStats.coeficienteGeral}%
                 </Text>
                 <ProgressBar
-                  progress={
-                    (dashboardData?.estatisticas.coeficienteGeral || 0) / 100
-                  }
+                  progress={userStats.coeficienteGeral / 100}
                   color={theme.colors.primary}
                   style={styles.progressBar}
                 />
@@ -462,13 +408,13 @@ export default function Dashboard() {
                     { color: theme.colors.onSurfaceVariant },
                   ]}
                 >
-                  {dashboardData?.estatisticas.questoesCorretas || 0} de{" "}
-                  {dashboardData?.estatisticas.totalQuestoes || 0} questões
-                  corretas
+                  {userStats.questoesCorretas} de{" "}
+                  {userStats.totalQuestoes} questões corretas
                 </Text>
               </View>
             </Card.Content>
           </Card>
+          )}
         </View>
 
         {/* Gráfico de Acertos/Erros */}

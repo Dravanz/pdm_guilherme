@@ -11,6 +11,15 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "./AuthProvider";
 
+export interface UserStats {
+  cursosAtivos: number;
+  cursosCompletos: number;
+  totalQuestoes: number;
+  questoesCorretas: number;
+  questoesErradas: number;
+  coeficienteGeral: number;
+}
+
 export const UserContext = createContext({});
 
 export const UserProvider = ({ children }: any) => {
@@ -18,6 +27,7 @@ export const UserProvider = ({ children }: any) => {
     AuthContext
   ) as any;
   const [userFirebase, setUserFirebase] = useState<Usuario | null>(null);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
     if (userAuth) {
@@ -77,6 +87,63 @@ export const UserProvider = ({ children }: any) => {
       // Quando não há userAuth, limpa o estado
       setUserFirebase(null);
     }
+  }, [userAuth]);
+
+  // Listener em tempo real para estatísticas de cursos do usuário (cache para dashboard)
+  useEffect(() => {
+    if (!userAuth) {
+      setUserStats(null);
+      return;
+    }
+
+    const q = query(
+      collection(firestore, "usuariosCursos"),
+      where("usuarioId", "==", userAuth.user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        let cursosAtivos = 0;
+        let cursosCompletos = 0;
+        let totalQuestoes = 0;
+        let questoesCorretas = 0;
+        let questoesErradas = 0;
+
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.concluido) {
+            cursosCompletos++;
+          } else {
+            cursosAtivos++;
+          }
+          totalQuestoes += data.questoesRespondidas?.length ?? 0;
+          questoesCorretas += data.questoesCorretas?.length ?? 0;
+          questoesErradas += data.questoesErradas?.length ?? 0;
+        });
+
+        const coeficienteGeral =
+          totalQuestoes > 0
+            ? Math.round((questoesCorretas / totalQuestoes) * 100)
+            : 0;
+
+        setUserStats({
+          cursosAtivos,
+          cursosCompletos,
+          totalQuestoes,
+          questoesCorretas,
+          questoesErradas,
+          coeficienteGeral,
+        });
+      },
+      (error) => {
+        if (error.code !== "permission-denied") {
+          console.error("Erro no listener de usuariosCursos:", error);
+        }
+      }
+    );
+
+    return () => unsubscribe();
   }, [userAuth]);
 
   // Calcula streak e coeficiente baseado no Firebase Auth
@@ -403,7 +470,7 @@ export const UserProvider = ({ children }: any) => {
 
   return (
     <UserContext.Provider
-      value={{ userFirebase, update, del, sendImageToStorage, refreshUser }}
+      value={{ userFirebase, userStats, update, del, sendImageToStorage, refreshUser }}
     >
       {children}
     </UserContext.Provider>

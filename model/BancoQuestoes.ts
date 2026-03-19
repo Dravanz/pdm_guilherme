@@ -6,6 +6,8 @@ export interface QuestaoFirestore {
   categoria: string;
   nivel: 'iniciante' | 'intermediario' | 'avancado';
   tags: string[];
+  criadoPor?: string;
+  criadoPorNome?: string;
   createdAt: any;
   updatedAt: any;
 }
@@ -35,6 +37,8 @@ export interface QuestaoEscritaFirestore {
   categoria: string;
   nivel: 'iniciante' | 'intermediario' | 'avancado';
   tags: string[];
+  criadoPor?: string;
+  criadoPorNome?: string;
   createdAt: any;
   updatedAt: any;
 }

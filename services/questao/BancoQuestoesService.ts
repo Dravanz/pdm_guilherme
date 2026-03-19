@@ -54,6 +54,8 @@ export class BancoQuestoesService {
         categoria: "geral",
         nivel: "iniciante",
         tags: [],
+        ...(questao.criadoPor ? { criadoPor: questao.criadoPor } : {}),
+        ...(questao.criadoPorNome ? { criadoPorNome: questao.criadoPorNome } : {}),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -88,6 +90,8 @@ export class BancoQuestoesService {
         categoria: "geral",
         nivel: "iniciante",
         tags: [],
+        ...(questao.criadoPor ? { criadoPor: questao.criadoPor } : {}),
+        ...(questao.criadoPorNome ? { criadoPorNome: questao.criadoPorNome } : {}),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
