@@ -540,13 +540,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "flex-end",
-    gap: 10,
+    gap: 8,
   },
   podioItem: {
     alignItems: "center",
-    padding: 12,
+    padding: 10,
     borderRadius: 12,
-    minWidth: 100,
+    flex: 1,
+    maxWidth: 140,
   },
   primeiroLugar: {
     marginBottom: 0,
@@ -567,6 +568,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     marginBottom: 4,
+    width: "100%",
   },
   podioScore: {
     fontWeight: "700",

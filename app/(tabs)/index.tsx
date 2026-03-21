@@ -176,30 +176,37 @@ export default function Dashboard() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <Card style={[styles.header, { backgroundColor: theme.colors.primary }]} mode="contained">
-          <Card.Content>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text
-                variant="headlineMedium"
-                style={[styles.welcomeText, { color: '#fff' }]}
-              >
-                Olá, {userFirebase?.nome || "Usuário"}!
-              </Text>
-              <Icon source="hand-wave" size={24} color="rgba(255,255,255,0.9)" />
-            </View>
+        <View style={[styles.header, { backgroundColor: theme.colors.primary, borderRadius: 16, padding: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text
-              variant="bodyLarge"
-              style={[styles.subtitleText, { color: 'rgba(255,255,255,0.8)' }]}
+              variant="headlineMedium"
+              style={[styles.welcomeText, { color: '#fff' }]}
             >
-              Continue sua jornada de aprendizado
+              Olá, {userFirebase?.nome || "Usuário"}!
             </Text>
-          </Card.Content>
-        </Card>
+            <Icon source="hand-wave" size={24} color="rgba(255,255,255,0.9)" />
+          </View>
+          <Text
+            variant="bodyLarge"
+            style={[styles.subtitleText, { color: 'rgba(255,255,255,0.85)' }]}
+          >
+            Continue sua jornada de aprendizado
+          </Text>
+        </View>
 
         {/* Sequência Semanal */}
         <View style={[styles.section, { marginBottom: spacing.md }]}>
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]}>
             <Card.Content>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon source="fire" size={18} color={theme.colors.streak} />
+                  <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>Sequência</Text>
+                </View>
+                <Text variant="titleMedium" style={{ color: theme.colors.primary, fontWeight: '700' }}>
+                  {userFirebase?.diasAtivos ?? 0} dias
+                </Text>
+              </View>
               <WeeklyStreak loginDays={userFirebase?.diasLogin ?? []} />
             </Card.Content>
           </Card>
@@ -208,7 +215,7 @@ export default function Dashboard() {
         {/* Card de Moderação */}
         {/* Card de Moderação */}
         {userFirebase?.perfil === Perfil.Moderador && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.outlineVariant }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: theme.colors.error }]}>
             <Card.Content>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <Icon source="shield-account" size={32} color={theme.colors.primary} />
@@ -235,10 +242,10 @@ export default function Dashboard() {
         {/* Card de Colaboração */}
         {/* Card de Colaboração */}
         {(userFirebase?.perfil === Perfil.Colaborador || userFirebase?.perfil === Perfil.Moderador) && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.outlineVariant }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary }]}>
             <Card.Content>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <Icon source="handshake" size={32} color={theme.colors.primary} />
+                <Icon source="handshake" size={32} color={theme.colors.tertiary} />
                 <View style={{ flex: 1 }}>
                   <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
                     Área do Colaborador
@@ -422,7 +429,7 @@ export default function Dashboard() {
             <Card
               style={[
                 styles.chartCard,
-                { backgroundColor: theme.colors.surface },
+                { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.error },
               ]}
             >
               <Card.Content>

@@ -11,7 +11,7 @@ const themeLight = {
     // Primary: Green (mantido)
     primary: "#16a34a",
     onPrimary: "#ffffff",
-    primaryContainer: "#dcfce7",
+    primaryContainer: "#d1fae5",
     onPrimaryContainer: "#14532d",
     // Secondary: Slate (neutro, suporte discreto)
     secondary: "#64748b",
@@ -24,9 +24,9 @@ const themeLight = {
     tertiaryContainer: "#ccfbf1",
     onTertiaryContainer: "#134e4a",
     // Superfícies
-    background: "#ffffff",
+    background: "#f4f6f8",
     onBackground: "#1f2937",
-    surface: "#f9fafb",
+    surface: "#ffffff",
     onSurface: "#1f2937",
     surfaceVariant: "#f3f4f6",
     onSurfaceVariant: "#4b5563", // Corrigido: era #6b7280 (~4.2:1), agora #4b5563 (~7:1)
