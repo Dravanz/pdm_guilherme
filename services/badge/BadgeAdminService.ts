@@ -112,7 +112,7 @@ export class BadgeAdminService {
   }
 
   /**
-   * Atualizar badge existente
+   * Atualizar badge existente e propagar alterações para perfis de usuários
    */
   static async atualizarBadge(
     badgeId: string,
@@ -130,6 +130,23 @@ export class BadgeAdminService {
         ...dadosAtualizados,
         updatedAt: serverTimestamp(),
       });
+
+      // Propagar alterações para todos os usuários que possuem esta badge
+      const usuariosBadgesRef = collection(firestore, "usuariosBadges");
+      const snapshot = await getDocs(query(usuariosBadgesRef));
+      const docsUsuario = snapshot.docs.filter((d) => d.id.endsWith(`_${badgeId}`));
+
+      const camposPropagaveis: Partial<Record<string, any>> = {};
+      if (dadosAtualizados.nome !== undefined) camposPropagaveis.nome = dadosAtualizados.nome;
+      if (dadosAtualizados.icone !== undefined) camposPropagaveis.icone = dadosAtualizados.icone;
+      if (dadosAtualizados.descricao !== undefined) camposPropagaveis.descricao = dadosAtualizados.descricao;
+      if (dadosAtualizados.tipo !== undefined) camposPropagaveis.tipo = dadosAtualizados.tipo;
+
+      if (Object.keys(camposPropagaveis).length > 0) {
+        await Promise.all(
+          docsUsuario.map((d) => updateDoc(d.ref, camposPropagaveis))
+        );
+      }
     } catch (error) {
       console.error("Erro ao atualizar badge:", error);
       throw error;
@@ -137,7 +154,7 @@ export class BadgeAdminService {
   }
 
   /**
-   * Excluir badge
+   * Excluir badge e remover dos perfis de todos os usuários que a possuem
    */
   static async excluirBadge(badgeId: string): Promise<void> {
     try {
@@ -148,20 +165,12 @@ export class BadgeAdminService {
         throw new Error("Badge não encontrada");
       }
 
-      // Verificar se há usuários com esta badge
+      // Remover badge de todos os usuários que a possuem
       const usuariosBadgesRef = collection(firestore, "usuariosBadges");
-      const q = query(usuariosBadgesRef);
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(query(usuariosBadgesRef));
+      const docsUsuario = snapshot.docs.filter((d) => d.id.endsWith(`_${badgeId}`));
 
-      const usuariosComBadge = snapshot.docs.filter((doc) =>
-        doc.id.endsWith(`_${badgeId}`)
-      );
-
-      if (usuariosComBadge.length > 0) {
-        throw new Error(
-          `Não é possível excluir esta badge pois ${usuariosComBadge.length} usuário(s) já a possui(em)`
-        );
-      }
+      await Promise.all(docsUsuario.map((d) => deleteDoc(d.ref)));
 
       await deleteDoc(badgeRef);
     } catch (error) {

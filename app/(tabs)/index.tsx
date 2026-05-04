@@ -312,7 +312,7 @@ export default function Dashboard() {
               <Card
                 style={[
                   styles.statCard,
-                  { backgroundColor: theme.colors.primaryContainer },
+                  { backgroundColor: theme.colors.primaryContainer, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
                 ]}
               >
                 <Card.Content style={styles.statContent}>
@@ -345,7 +345,7 @@ export default function Dashboard() {
               <Card
                 style={[
                   styles.statCard,
-                  { backgroundColor: theme.colors.tertiaryContainer },
+                  { backgroundColor: theme.colors.tertiaryContainer, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary },
                 ]}
               >
                 <Card.Content style={styles.statContent}>
@@ -400,7 +400,7 @@ export default function Dashboard() {
                     { color: theme.colors.primary },
                   ]}
                 >
-                  {userStats.coeficienteGeral}%
+                  {Number((userStats.coeficienteGeral || 0).toFixed(1))}%
                 </Text>
                 <ProgressBar
                   progress={userStats.coeficienteGeral / 100}

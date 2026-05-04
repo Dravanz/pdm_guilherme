@@ -74,7 +74,7 @@ export function CourseListModal({
               <Card
                 style={[
                   themeStyles.card,
-                  { backgroundColor: theme.colors.surface, marginBottom: 16 },
+                  { backgroundColor: theme.colors.surface, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
                 ]}
               >
                 <View style={{ flexDirection: "row" }}>

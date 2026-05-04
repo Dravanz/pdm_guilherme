@@ -27,7 +27,7 @@ export function ProgressBar({ percentage }: ProgressBarProps) {
   const statusText = getStatusText(clampedPercentage);
 
   return (
-    <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+    <Card style={[styles.container, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: color }]}>
       <Card.Content style={styles.content}>
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -56,7 +56,7 @@ export function ProgressBar({ percentage }: ProgressBarProps) {
             />
           </View>
           <Text variant="headlineSmall" style={[styles.percentage, { color: color }]}>
-            {clampedPercentage}%
+            {Math.round(clampedPercentage)}%
           </Text>
         </View>
         

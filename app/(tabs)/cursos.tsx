@@ -170,7 +170,7 @@ export default function Cursos() {
           <Card
             style={[
               themeStyles.card,
-              { backgroundColor: theme.colors.surface },
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
             ]}
             onPress={() => abrirModalCurso(item)}
           >
@@ -299,7 +299,7 @@ export default function Cursos() {
     </SafeAreaView>
   );
 }
-
+ //TODO: 
 const styles = StyleSheet.create({
   searchContainer: {
     padding: 16,

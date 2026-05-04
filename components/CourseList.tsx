@@ -123,7 +123,7 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity activeOpacity={0.7} onPress={() => abrirDetalhes(item)}>
-            <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}>
               <View style={styles.imageContainer}>
                 {item.imageUrl ? (
                   <Image

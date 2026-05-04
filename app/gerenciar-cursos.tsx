@@ -1089,6 +1089,7 @@ export default function GerenciarCursos() {
           onPress={() => router.back()}
         />
         <ScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -1135,7 +1136,7 @@ export default function GerenciarCursos() {
             <Card
               style={[
                 themeStyles.card,
-                { backgroundColor: theme.colors.surface },
+                { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.outline },
               ]}
             >
               <Card.Content style={{ alignItems: "center", padding: 32 }}>
@@ -1168,10 +1169,11 @@ export default function GerenciarCursos() {
                     themeStyles.card,
                     { 
                       backgroundColor: theme.colors.surface,
-                      // Destaque para cursos pendentes
                       opacity: item.status === "Pendente" ? 0.8 : 1,
                       borderColor: item.status === "Pendente" ? theme.colors.warning || "orange" : "transparent",
                       borderWidth: item.status === "Pendente" ? 2 : 0,
+                      borderLeftWidth: 4,
+                      borderLeftColor: item.status === "Pendente" ? theme.colors.warning || "orange" : theme.colors.primary,
                     },
                   ]}
                 >

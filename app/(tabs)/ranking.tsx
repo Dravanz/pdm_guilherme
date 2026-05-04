@@ -203,7 +203,7 @@ export default function Ranking() {
                 { color: theme.colors.rankSilver },
               ]}
             >
-              {segundo.coeficienteConhecimento || 0}%
+              {Number((segundo.coeficienteConhecimento || 0).toFixed(1))}%
             </Text>
           </TouchableOpacity>
 
@@ -256,7 +256,7 @@ export default function Ranking() {
                 { color: theme.colors.rankGold },
               ]}
             >
-              {primeiro.coeficienteConhecimento || 0}%
+              {Number((primeiro.coeficienteConhecimento || 0).toFixed(1))}%
             </Text>
           </TouchableOpacity>
 
@@ -309,7 +309,7 @@ export default function Ranking() {
                 { color: theme.colors.rankBronze },
               ]}
             >
-              {terceiro.coeficienteConhecimento || 0}%
+              {Number((terceiro.coeficienteConhecimento || 0).toFixed(1))}%
             </Text>
           </TouchableOpacity>
         </View>
@@ -331,6 +331,8 @@ export default function Ranking() {
             backgroundColor: isPodio ? corCard : theme.colors.surface,
             borderWidth: isCurrentUser ? 2 : 0,
             borderColor: isCurrentUser ? theme.colors.primary : "transparent",
+            borderLeftWidth: 4,
+            borderLeftColor: isPodio ? obterCorTexto(usuario.posicao) : theme.colors.primary,
           },
         ]}
         onPress={() => handleUserPress(usuario)}
@@ -409,7 +411,7 @@ export default function Ranking() {
                 },
               ]}
             >
-              {usuario.coeficienteConhecimento || 0}% de coeficiente geral
+              {Number((usuario.coeficienteConhecimento || 0).toFixed(1))}% de coeficiente geral
             </Text>
           </View>
 

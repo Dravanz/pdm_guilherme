@@ -9,6 +9,7 @@ import {
     Avatar,
     Button,
     Chip,
+    Icon,
     Modal,
     Portal,
     Text,
@@ -95,7 +96,7 @@ export function PublicProfileModal({
                 style={styles.scoreChip}
                 textStyle={{ fontWeight: "bold" }}
               >
-                Coeficiente: {user.coeficienteConhecimento}%
+                Coeficiente: {Number((user.coeficienteConhecimento || 0).toFixed(1))}%
               </Chip>
             </View>
 
@@ -110,12 +111,10 @@ export function PublicProfileModal({
                 <View style={styles.badgesGrid}>
                   {badges.map((badge, index) => (
                     <View key={`${badge.id}-${index}`} style={styles.badgeItem}>
-                      <Text style={{ fontSize: 32, marginBottom: 4 }}>
-                        {badge.icone}
-                      </Text>
+                      <Icon source={badge.icone || "star"} size={32} color={theme.colors.primary} />
                       <Text 
                         variant="bodySmall" 
-                        style={{ textAlign: "center" }}
+                        style={{ textAlign: "center", marginTop: 4 }}
                         numberOfLines={2}
                       >
                         {badge.nome}

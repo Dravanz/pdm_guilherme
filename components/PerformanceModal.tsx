@@ -194,14 +194,21 @@ export function PerformanceModal({
                   </Text>
                   
                   {cursoDetalhes.paginas
-                    .flatMap(p => p.questoes || [])
+                    .flatMap(p => [
+                      ...(p.questoes || []),
+                      ...(p.questoesEscrita || []).map((q: any) => ({
+                        id: q.id,
+                        pergunta: q.enunciado || "(Questão de código)",
+                        explicacao: q.explicacao || "",
+                      })),
+                    ])
                     .map((questao, index) => {
                       const stat = stats.porQuestao[questao.id];
                       
                       if (!stat) return null; // Mostrar apenas questões respondidas? Ou todas?
 
                       return (
-                        <Card key={questao.id} style={styles.questionCard}>
+                        <Card key={questao.id} style={[styles.questionCard, { borderLeftWidth: 4, borderLeftColor: stat.ultimaCorreta ? theme.colors.primary : theme.colors.error }]}>
                           <Card.Content>
                             <View style={styles.questionHeader}>
                               <Text variant="titleSmall" style={{flex: 1}}>

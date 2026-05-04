@@ -50,7 +50,7 @@ export function CodeEditor({
   jaRespondida = false,
 }: CodeEditorProps) {
   const theme = useTheme();
-  const [codigoUsuario, setCodigoUsuario] = useState(questao.modoEncapsulado ? "" : questao.codigoBase);
+  const [codigoUsuario, setCodigoUsuario] = useState(questao.codigoBase);
   const [executando, setExecutando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoExecucao | null>(null);
   const [mostrarDica, setMostrarDica] = useState(false);
@@ -64,16 +64,9 @@ export function CodeEditor({
     setResultado(null);
 
     try {
-      // No modo encapsulado, o código completo é: wrapperAntes + entrada do aluno + wrapperDepois
-      const codigoCompleto = questao.modoEncapsulado
-        ? [(questao.wrapperAntes ?? ""), codigoUsuario, (questao.wrapperDepois ?? "")]
-            .filter(Boolean)
-            .join("\n")
-        : codigoUsuario;
-
       const res = await JobeService.executarComTestes(
         questao.linguagem,
-        codigoCompleto,
+        codigoUsuario,
         questao.casosTeste
       );
 
@@ -96,15 +89,15 @@ export function CodeEditor({
   }, [codigoUsuario, questao, executando, desabilitado, onResultado]);
 
   const resetarCodigo = useCallback(() => {
-    setCodigoUsuario(questao.modoEncapsulado ? "" : questao.codigoBase);
+    setCodigoUsuario(questao.codigoBase);
     setResultado(null);
-  }, [questao.codigoBase, questao.modoEncapsulado]);
+  }, [questao.codigoBase]);
 
   return (
     <View style={styles.container}>
       {/* Enunciado */}
       <Card 
-        style={[styles.enunciadoCard, { backgroundColor: theme.colors.surfaceVariant }]}
+        style={[styles.enunciadoCard, { backgroundColor: theme.colors.surfaceVariant, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
         accessible
         accessibilityRole="text"
         accessibilityLabel={`Enunciado do exercício: ${questao.enunciado}`}
@@ -153,7 +146,7 @@ export function CodeEditor({
         </Button>
       )}
       {mostrarDica && questao.dica && (
-        <Card style={[styles.dicaCard, { backgroundColor: theme.colors.tertiaryContainer || theme.colors.surfaceVariant }]}>
+        <Card style={[styles.dicaCard, { backgroundColor: theme.colors.tertiaryContainer || theme.colors.surfaceVariant, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary }]}>
           <Card.Content>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon source="lightbulb-on" size={18} color={theme.colors.onTertiaryContainer || theme.colors.onSurface} />
@@ -167,13 +160,13 @@ export function CodeEditor({
 
       {/* Editor de Código */}
       <Card 
-        style={[styles.editorCard, { backgroundColor: theme.colors.surface }]}
+        style={[styles.editorCard, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]}
         accessibilityLabel="Editor de código"
       >
         <Card.Content style={styles.editorContent}>
           <View style={styles.editorHeader}>
             <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
-              {questao.modoEncapsulado ? "Seu código" : "Código"}
+              Código
             </Text>
             {!desabilitado && !jaRespondida && (
               <Button
@@ -189,19 +182,6 @@ export function CodeEditor({
               </Button>
             )}
           </View>
-
-          {/* Wrapper antes (modo encapsulado) — código de contexto read-only */}
-          {questao.modoEncapsulado && questao.wrapperAntes && (
-            <View
-              style={[styles.wrapperBlock, { backgroundColor: theme.dark ? "#12121c" : "#f0f0f0", borderColor: theme.colors.outlineVariant ?? theme.colors.outline }]}
-              accessible
-              accessibilityLabel="Contexto do código — leitura apenas"
-            >
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 12 }}>
-                {questao.wrapperAntes}
-              </Text>
-            </View>
-          )}
           
           <TextInput
             value={codigoUsuario}
@@ -210,6 +190,11 @@ export function CodeEditor({
             multiline
             numberOfLines={Math.max(8, codigoUsuario.split("\n").length + 2)}
             disabled={desabilitado || jaRespondida}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            spellCheck={false}
+            keyboardType="ascii-capable"
             style={[
               styles.codeInput,
               { 
@@ -233,19 +218,6 @@ export function CodeEditor({
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
             {codigoUsuario.split("\n").length} linhas
           </Text>
-
-          {/* Wrapper depois (modo encapsulado) — código de contexto read-only */}
-          {questao.modoEncapsulado && questao.wrapperDepois && (
-            <View
-              style={[styles.wrapperBlock, { backgroundColor: theme.dark ? "#12121c" : "#f0f0f0", borderColor: theme.colors.outlineVariant ?? theme.colors.outline }]}
-              accessible
-              accessibilityLabel="Contexto final do código — leitura apenas"
-            >
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 12 }}>
-                {questao.wrapperDepois}
-              </Text>
-            </View>
-          )}
         </Card.Content>
       </Card>
 

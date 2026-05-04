@@ -309,13 +309,38 @@ export class BadgeService {
       const q = query(badgesRef, where("usuarioId", "==", usuarioId));
       const snapshot = await getDocs(q);
 
-      return snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          dataObtencao: data.dataObtencao?.toDate() || new Date(),
-        } as Badge;
-      });
+      // Buscar dados atuais da coleção badges para garantir ícones e nomes atualizados
+      const results = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const userBadgeData = docSnap.data();
+          const badgeId = userBadgeData.badgeId;
+          const dataObtencao = userBadgeData.dataObtencao?.toDate() || new Date();
+
+          try {
+            const badgeMasterRef = doc(firestore, "badges", badgeId);
+            const badgeMasterSnap = await getDoc(badgeMasterRef);
+
+            if (badgeMasterSnap.exists()) {
+              // Usa dados atuais da badge mestre (ícone, nome, etc atualizado)
+              return {
+                ...badgeMasterSnap.data(),
+                id: badgeMasterSnap.id,
+                usuarioId,
+                dataObtencao,
+              } as Badge;
+            }
+          } catch (e) {
+            // fallback: usa dados do usuariosBadges se a busca falhar
+          }
+
+          return {
+            ...userBadgeData,
+            dataObtencao,
+          } as Badge;
+        })
+      );
+
+      return results;
     } catch (error) {
       console.error("Erro ao obter badges:", error);
       return [];

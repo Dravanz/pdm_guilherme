@@ -260,7 +260,7 @@ export default function Solicitacoes() {
           <Card
             style={[
               themeStyles.card,
-              { backgroundColor: theme.colors.surface },
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.outline },
             ]}
           >
             <Card.Content>
@@ -280,7 +280,7 @@ export default function Solicitacoes() {
               key={solicitacao.id}
               style={[
                 themeStyles.card,
-                { backgroundColor: theme.colors.surface },
+                { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
               ]}
             >
               <Card.Content>

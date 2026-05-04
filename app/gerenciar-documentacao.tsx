@@ -198,7 +198,7 @@ export default function GerenciarDocumentacao() {
           </View>
 
           {documentacoes.length === 0 && !carregando ? (
-            <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.outline }]}>
               <Card.Content style={{ alignItems: "center", padding: 32 }}>
                 <Text style={{ textAlign: "center", color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>
                   Nenhuma documentação encontrada.
@@ -214,7 +214,7 @@ export default function GerenciarDocumentacao() {
               scrollEnabled={false}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}>
+                <Card style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}>
                   <Card.Content>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <View style={{ flex: 1 }}>

@@ -114,8 +114,9 @@ export function CodeBlocksEditor({
     setExecutando(true);
     setResultado(null);
 
-    // Monta o código concatenando os blocos na ordem escolhida
-    const codigoMontado = blocosMontados.map((b) => b.codigo).join("\n");
+    // Monta o código concatenando os blocos SEM quebras de linha
+    // Exemplo: bloco1="print" bloco2="(\"Hello\")" -> "print(\"Hello\")"
+    const codigoMontado = blocosMontados.map((b) => b.codigo).join("");
 
     // Cria um caso de teste sintético usando a saída esperada da questão
     const casosSinteticos = [
@@ -150,13 +151,13 @@ export function CodeBlocksEditor({
     }
   }, [executando, desabilitado, blocosMontados, questao, onResultado]);
 
-  const codigoPreview = blocosMontados.map((b) => b.codigo).join("\n");
+  const codigoPreview = blocosMontados.map((b) => b.codigo).join("");
 
   return (
     <View style={styles.container}>
       {/* Enunciado */}
       <Card
-        style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+        style={[styles.card, { backgroundColor: theme.colors.surfaceVariant, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
         accessible
         accessibilityRole="text"
         accessibilityLabel={`Exercício de blocos: ${questao.enunciado}`}
@@ -208,7 +209,7 @@ export function CodeBlocksEditor({
         <Card
           style={[
             styles.card,
-            { backgroundColor: theme.colors.tertiaryContainer || theme.colors.surfaceVariant },
+            { backgroundColor: theme.colors.tertiaryContainer || theme.colors.surfaceVariant, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary },
           ]}
         >
           <Card.Content>
@@ -234,7 +235,7 @@ export function CodeBlocksEditor({
 
       {/* Blocos disponíveis */}
       <Card
-        style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]}
         accessibilityLabel={`Blocos disponíveis: ${blocosDisponiveis.length} restantes`}
         accessibilityLiveRegion="polite"
       >
@@ -270,7 +271,7 @@ export function CodeBlocksEditor({
 
       {/* Sequência montada */}
       <Card
-        style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
         accessible
         accessibilityLabel={
           blocosMontados.length === 0

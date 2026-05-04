@@ -99,7 +99,7 @@ export function FeaturedCourses({
             onPress={() => navegarParaCurso(course.cursoId)}
           >
             <Card
-              style={[styles.card, { backgroundColor: theme.colors.surface }]}
+              style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
             >
               {course.imageUrl && (
                 <Image

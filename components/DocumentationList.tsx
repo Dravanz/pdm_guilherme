@@ -103,7 +103,7 @@ export function DocumentationList({
       key={doc.id}
       style={[
         horizontal ? styles.horizontalCard : styles.card,
-        { backgroundColor: theme.colors.surface },
+        { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
       ]}
     >
       <Card.Content style={horizontal ? styles.horizontalContent : undefined}>

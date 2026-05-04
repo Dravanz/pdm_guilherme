@@ -351,7 +351,7 @@ export default function Perfil() {
                   <Card
                     style={[
                       styles.streakCard,
-                      { backgroundColor: theme.colors.surface },
+                      { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.streak },
                     ]}
                   >
                     <Card.Content style={styles.streakContent}>
@@ -385,7 +385,7 @@ export default function Perfil() {
                   <Card
                     style={[
                       styles.infoCard,
-                      { backgroundColor: theme.colors.surface },
+                      { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.secondary },
                     ]}
                   >
                     <Card.Content style={styles.infoContent}>
@@ -444,16 +444,15 @@ export default function Perfil() {
                           key={`${badge.id}-${index}`}
                           style={[
                             styles.badgeCard,
-                            { backgroundColor: theme.colors.surface },
+                            { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
                           ]}
                         >
                           <Card.Content style={styles.badgeContent}>
-                            <Text
-                              variant="headlineMedium"
-                              style={styles.badgeIcon}
-                            >
-                              {badge.icone}
-                            </Text>
+                            <Icon
+                              source={badge.icone || "star"}
+                              size={36}
+                              color={theme.colors.primary}
+                            />
                             <Text
                               variant="labelLarge"
                               style={[
@@ -514,7 +513,7 @@ export default function Perfil() {
                     <Card
                       style={[
                         styles.noBadgesCard,
-                        { backgroundColor: theme.colors.surface },
+                        { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.outline },
                       ]}
                     >
                       <Card.Content style={styles.noBadgesContent}>

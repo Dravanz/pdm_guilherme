@@ -9,6 +9,7 @@ import {
     Card,
     Chip,
     Dialog,
+    Icon,
     IconButton,
     Menu,
     Modal,
@@ -18,6 +19,7 @@ import {
     TextInput,
     useTheme
 } from "react-native-paper";
+import { IconPickerModal } from "./IconPickerModal";
 
 interface BadgeManagerProps {
   visible: boolean;
@@ -26,6 +28,7 @@ interface BadgeManagerProps {
 
 export function BadgeManager({ visible, onDismiss }: BadgeManagerProps) {
   const theme = useTheme();
+  const [iconPickerVisivel, setIconPickerVisivel] = useState(false);
 
   // Estados principais
   const [viewMode, setViewMode] = useState<"list" | "form">("list");
@@ -281,7 +284,7 @@ export function BadgeManager({ visible, onDismiss }: BadgeManagerProps) {
                                         <Card.Content>
                                             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
                                                  <View style={{ marginRight: 12, justifyContent: 'center', alignItems: 'center', width: 40 }}>
-                                                    <Text style={{ fontSize: 32 }}>{item.icone}</Text>
+                                                    <Icon source={item.icone || "star"} size={32} color={theme.colors.primary} />
                                                  </View>
                                                  <View style={{ flex: 1 }}>
                                                     <Text variant="titleMedium" style={{ fontWeight: "bold" }}>{item.nome}</Text>
@@ -311,7 +314,17 @@ export function BadgeManager({ visible, onDismiss }: BadgeManagerProps) {
                         <ScrollView contentContainerStyle={{ padding: 16 }}>
                             <TextInput label="ID (Opcional)" value={badgeId} onChangeText={setBadgeId} mode="outlined" disabled={!!badgeEditando} style={{ marginBottom: 12 }} placeholder="automático se vazio"/>
                             <TextInput label="Nome *" value={badgeNome} onChangeText={setBadgeNome} mode="outlined" style={{ marginBottom: 12 }} ref={badgeNomeRef} returnKeyType="next" onSubmitEditing={() => badgeIconeRef.current?.focus()}/>
-                            <TextInput label="Ícone (Emoji) *" value={badgeIcone} onChangeText={setBadgeIcone} mode="outlined" style={{ marginBottom: 12 }} ref={badgeIconeRef} maxLength={2} returnKeyType="next" onSubmitEditing={() => badgeDescricaoRef.current?.focus()}/>
+                            <View style={{ marginBottom: 12 }}>
+                                <Text variant="labelMedium" style={{ marginBottom: 4, color: theme.colors.onSurfaceVariant }}>Ícone *</Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                    <View style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: theme.colors.surfaceVariant }}>
+                                        <Icon source={badgeIcone || "star"} size={32} color={theme.colors.primary} />
+                                    </View>
+                                    <Button mode="outlined" onPress={() => setIconPickerVisivel(true)} style={{ flex: 1 }}>
+                                        {badgeIcone ? badgeIcone : "Escolher Ícone"}
+                                    </Button>
+                                </View>
+                            </View>
                             <TextInput label="Descrição *" value={badgeDescricao} onChangeText={setBadgeDescricao} mode="outlined" multiline numberOfLines={2} style={{ marginBottom: 12 }} ref={badgeDescricaoRef}/>
 
                              {/* TIPO DA BADGE */}
@@ -353,6 +366,13 @@ export function BadgeManager({ visible, onDismiss }: BadgeManagerProps) {
                 )}
             </View>
         </View>
+
+        <IconPickerModal
+          visible={iconPickerVisivel}
+          onDismiss={() => setIconPickerVisivel(false)}
+          selectedIcon={badgeIcone}
+          onSelect={(nome) => setBadgeIcone(nome)}
+        />
 
         {/* Dialog Mensagem Interno */}
         <Portal>

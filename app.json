@@ -56,7 +56,9 @@
       "router": {},
       "eas": {
         "projectId": "df7c97a8-ff5d-47c5-b76c-a470dea16c1f"
-      }
+      },
+      "jobeBaseUrl": "http://167.234.251.218/jobe/",
+      "jobeApiKey": "2AAA7A5415B4A9B394B54BF1DFFFF"
     },
     "runtimeVersion": {
       "policy": "appVersion"

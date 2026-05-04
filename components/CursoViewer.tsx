@@ -120,7 +120,7 @@ export function CursoViewer({
   if (pagina.tipo === "conteudo") {
     return (
       <ScrollView style={styles.container} accessible={false}>
-        <Card style={[styles.card, { borderTopWidth: 3, borderTopColor: theme.colors.secondary }]} accessible accessibilityRole="text">
+        <Card style={[styles.card, { borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]} accessible accessibilityRole="text">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
             <Icon source="book-open-variant" size={24} color={theme.colors.secondary} />
             <Text variant="labelMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Conteúdo</Text>
@@ -195,7 +195,7 @@ export function CursoViewer({
   if (pagina.tipo === "exercicio_codigo" && pagina.questoesEscrita) {
     return (
       <ScrollView style={styles.container} accessible={false} keyboardShouldPersistTaps="handled">
-        <Card style={[styles.card, { borderTopWidth: 3, borderTopColor: theme.colors.tertiary }]}>
+        <Card style={[styles.card, { borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
             <Icon source="code-braces" size={24} color={theme.colors.tertiary} />
             <Text variant="labelMedium" style={{ color: theme.colors.tertiary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Exercício de Código</Text>
@@ -260,7 +260,7 @@ export function CursoViewer({
   if (pagina.tipo === "exercicio_blocos" && pagina.questoesBlocos) {
     return (
       <ScrollView style={styles.container} accessible={false} keyboardShouldPersistTaps="handled">
-        <Card style={[styles.card, { borderTopWidth: 3, borderTopColor: theme.colors.secondary }]}>
+        <Card style={[styles.card, { borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
             <Icon source="drag" size={24} color={theme.colors.secondary} />
             <Text variant="labelMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Exercício de Blocos</Text>
@@ -315,7 +315,7 @@ export function CursoViewer({
   // ============ EXERCÍCIO DE MÚLTIPLA ESCOLHA ============
   return (
     <ScrollView style={styles.container} accessible={false}>
-      <Card style={[styles.card, { borderTopWidth: 3, borderTopColor: theme.colors.primary }]}>
+      <Card style={[styles.card, { borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
           <Icon source="head-question" size={24} color={theme.colors.primary} />
           <Text variant="labelMedium" style={{ color: theme.colors.primary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Exercício</Text>

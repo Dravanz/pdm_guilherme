@@ -34,6 +34,8 @@ import {
     TextInput,
     useTheme,
 } from "react-native-paper";
+import { IconPickerModal } from "@/components/IconPickerModal";
+import { JobeTestFallback } from "@/components/JobeTestFallback";
 
 export default function Configuracoes() {
   const theme = useTheme();
@@ -95,8 +97,7 @@ export default function Configuracoes() {
   const [menuTipoVisivel, setMenuTipoVisivel] = useState(false);
   const [menuRequisitoVisivel, setMenuRequisitoVisivel] = useState(false);
   const [menuCursoVisivel, setMenuCursoVisivel] = useState(false);
-  const [menuPerfilVisivel, setMenuPerfilVisivel] = useState(false);
-  const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
+  const [mostrarJobeTest, setMostrarJobeTest] = useState(false);
 
 
 
@@ -575,7 +576,7 @@ export default function Configuracoes() {
         </Text>
 
         <Card
-          style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}
+          style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary }]}
         >
           <Card.Content>
             <Text
@@ -673,7 +674,7 @@ export default function Configuracoes() {
         </Card>
 
         <Card
-          style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}
+          style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.secondary }]}
         >
           <Card.Content>
             <Text
@@ -741,7 +742,7 @@ export default function Configuracoes() {
           <Card
             style={[
               themeStyles.card,
-              { backgroundColor: theme.colors.surface },
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary },
             ]}
           >
             <Card.Content>
@@ -772,12 +773,50 @@ export default function Configuracoes() {
           </Card>
         )}
 
-        {/* CRUD de Badges - apenas para Admin */}
+        {/* Teste do Servidor Jobe - apenas para Admin */}
         {userFirebase?.perfil === Perfil.Admin && (
           <Card
             style={[
               themeStyles.card,
-              { backgroundColor: theme.colors.surface },
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.tertiary },
+            ]}
+          >
+            <Card.Content>
+              <Text
+                variant="titleMedium"
+                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+              >
+                🔧 Servidor de Execução
+              </Text>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  marginBottom: 16,
+                  color: theme.colors.onSurfaceVariant,
+                }}
+              >
+                Teste a conectividade com o servidor Jobe para execução de código
+              </Text>
+              <Button
+                mode="contained"
+                onPress={() => setMostrarJobeTest(!mostrarJobeTest)}
+                icon={mostrarJobeTest ? "chevron-up" : "server"}
+                style={styles.button}
+              >
+                {mostrarJobeTest ? "Ocultar Teste" : "Testar Servidor"}
+              </Button>
+            </Card.Content>
+          </Card>
+        )}
+
+        {mostrarJobeTest && (
+          <JobeTestFallback onClose={() => setMostrarJobeTest(false)} />
+        )}
+        {userFirebase?.perfil === Perfil.Admin && (
+          <Card
+            style={[
+              themeStyles.card,
+              { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
             ]}
           >
             <Card.Content>
@@ -860,6 +899,8 @@ export default function Configuracoes() {
                       style={{
                         marginBottom: 8,
                         backgroundColor: theme.colors.surfaceVariant,
+                        borderLeftWidth: 3,
+                        borderLeftColor: theme.colors.outline,
                       }}
                     >
                       <Card.Content>
@@ -878,12 +919,7 @@ export default function Configuracoes() {
                                 marginBottom: 4,
                               }}
                             >
-                              <Text
-                                variant="headlineMedium"
-                                style={{ marginRight: 8 }}
-                              >
-                                {item.icone}
-                              </Text>
+                              <Icon source={item.icone || "star"} size={32} color={theme.colors.primary} style={{ marginRight: 8 }} />
                               <View>
                                 <Text
                                   variant="titleMedium"
@@ -990,7 +1026,7 @@ export default function Configuracoes() {
 
 
         <Card
-          style={[themeStyles.card, { backgroundColor: theme.colors.surface }]}
+          style={[themeStyles.card, { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.error }]}
         >
           <Card.Content>
             <Text
@@ -1230,15 +1266,17 @@ export default function Configuracoes() {
                 style={styles.textInput}
               />
 
-              <TextInput
-                label="Ícone (Emoji) *"
-                value={badgeIcone}
-                onChangeText={setBadgeIcone}
-                placeholder="Ex: 🏆"
-                mode="outlined"
-                style={styles.textInput}
-                maxLength={4}
-              />
+              <View style={{ marginBottom: 12 }}>
+                <Text variant="labelMedium" style={{ marginBottom: 4, color: theme.colors.onSurfaceVariant }}>Ícone *</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: theme.colors.surfaceVariant }}>
+                    <Icon source={badgeIcone || "star"} size={32} color={theme.colors.primary} />
+                  </View>
+                  <Button mode="outlined" onPress={() => setIconPickerVisivel(true)} style={{ flex: 1 }}>
+                    {badgeIcone ? badgeIcone : "Escolher Ícone"}
+                  </Button>
+                </View>
+              </View>
 
               <TextInput
                 label="Descrição *"
@@ -1482,6 +1520,12 @@ export default function Configuracoes() {
         </Dialog.Actions>
       </Dialog>
 
+      <IconPickerModal
+        visible={iconPickerVisivel}
+        onDismiss={() => setIconPickerVisivel(false)}
+        selectedIcon={badgeIcone}
+        onSelect={(nome) => setBadgeIcone(nome)}
+      />
 
     </SafeAreaView>
   );
