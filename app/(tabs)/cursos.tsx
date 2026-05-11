@@ -3,14 +3,16 @@ import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
 import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
+import { CursoService } from "@/services/curso/CursoService";
 import { ImageService } from "@/services/image/ImageService";
 import { PerformanceModal } from "@/components/PerformanceModal";
+import { Perfil } from "@/model/Perfil";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import React, { useContext, useEffect, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
-import { Button, Card, Chip, Icon, Modal, Portal, Text, useTheme, Searchbar } from "react-native-paper";
+import { Button, Card, Chip, Dialog, Icon, Modal, Portal, Text, useTheme, Searchbar } from "react-native-paper";
 
 export default function Cursos() {
   const theme = useTheme();
@@ -29,6 +31,9 @@ export default function Cursos() {
   // Modal de desempenho
   const [perfModalVisivel, setPerfModalVisivel] = useState(false);
   const [cursoPerfSelecionado, setCursoPerfSelecionado] = useState<{ id: string; titulo: string } | null>(null);
+
+  // Confirmação de exclusão
+  const [confirmExclusaoVisivel, setConfirmExclusaoVisivel] = useState(false);
 
   useEffect(() => {
     // Configurar listener em tempo real para mudanças na coleção de cursos
@@ -148,6 +153,13 @@ export default function Cursos() {
     setPerfModalVisivel(true);
   };
 
+  const excluirCurso = async () => {
+    if (!cursoSelecionado) return;
+    await CursoService.excluirCurso(cursoSelecionado.id);
+    setConfirmExclusaoVisivel(false);
+    fecharModal();
+  };
+
   return (
     <SafeAreaView
       style={[
@@ -186,11 +198,12 @@ export default function Cursos() {
             )}
             <Card.Title
               title={item.titulo}
-              subtitle={`Nível: ${
-                item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)
-              } • ${
-                item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1)
-              }${item.versaoLinguagem ? ` • ${item.versaoLinguagem}` : ""}`}
+              subtitle={[
+                `Nível: ${item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1)}`,
+                item.categoria.charAt(0).toUpperCase() + item.categoria.slice(1),
+                item.versaoLinguagem,
+                item.criadoPorNome ? `por ${item.criadoPorNome}` : undefined,
+              ].filter(Boolean).join(' • ')}
               titleStyle={{ color: theme.colors.onSurface }}
               subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
               right={() =>
@@ -278,12 +291,40 @@ export default function Cursos() {
                 Ver Desempenho
               </Button>
 
+              {user?.perfil === Perfil.Moderador && (
+                <Button
+                  mode="outlined"
+                  icon="delete"
+                  textColor={theme.colors.error}
+                  style={{ marginBottom: 10, borderColor: theme.colors.error }}
+                  onPress={() => setConfirmExclusaoVisivel(true)}
+                >
+                  Excluir Curso
+                </Button>
+              )}
+
               <Button mode="text" onPress={fecharModal}>
                 Fechar
               </Button>
             </>
           )}
         </Modal>
+      </Portal>
+
+      <Portal>
+        <Dialog visible={confirmExclusaoVisivel} onDismiss={() => setConfirmExclusaoVisivel(false)}>
+          <Dialog.Icon icon="alert-circle-outline" size={48} />
+          <Dialog.Title style={{ textAlign: 'center' }}>Excluir Curso</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium" style={{ textAlign: 'center' }}>
+              {`Tem certeza que deseja excluir "${cursoSelecionado?.titulo}"? Esta ação não pode ser desfeita.`}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setConfirmExclusaoVisivel(false)}>Cancelar</Button>
+            <Button textColor={theme.colors.error} onPress={excluirCurso}>Excluir</Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
 
       {/* Modal de desempenho */}
