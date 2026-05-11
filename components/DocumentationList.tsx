@@ -1,7 +1,7 @@
 import { Documentacao, TipoDocumentacao } from "@/model/Documentacao";
 import { DocumentacaoService } from "@/services/shared/DocumentacaoService";
 import React, { useEffect, useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, Linking, ScrollView, StyleSheet, View } from "react-native";
 import {
     ActivityIndicator,
     Button,
@@ -106,69 +106,64 @@ export function DocumentationList({
         { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
       ]}
     >
-      <Card.Content style={horizontal ? styles.horizontalContent : undefined}>
-        <View style={styles.cardHeader}>
-          <Chip
-            icon={getTipoIcon(doc.tipo)}
-            style={[
-              styles.chip,
-              { backgroundColor: theme.colors.primaryContainer, flexShrink: 1, marginRight: 8 },
-            ]}
-            textStyle={{ fontSize: 12 }}
-            compact
-          >
-            {getTipoLabel(doc.tipo)}
-          </Chip>
-          <Text
-            variant="bodySmall"
-            style={{ color: theme.colors.onSurfaceVariant, flexShrink: 0 }}
-          >
-            {doc.dataPublicacao
-              ? new Date(doc.dataPublicacao).toLocaleDateString("pt-BR")
-              : "Data N/A"}
-          </Text>
-        </View>
-
-        <Text
-          variant="titleMedium"
-          style={[styles.titulo, { color: theme.colors.onSurface }]}
-        >
-          {doc.titulo}
-        </Text>
-
-        <Text
-          variant="bodyMedium"
-          style={[styles.resumo, { color: theme.colors.onSurface }]}
-          numberOfLines={3}
-        >
-          {doc.conteudo}
-        </Text>
-
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-            <Text
-            variant="bodySmall"
-            style={{ color: theme.colors.onSurfaceVariant }}
+      <Card.Content style={[styles.cardContent, horizontal && styles.horizontalContent]}>
+        <View>
+          <View style={styles.cardHeader}>
+            <Chip
+              icon={getTipoIcon(doc.tipo)}
+              style={[styles.chip, { backgroundColor: theme.colors.primaryContainer }]}
+              textStyle={{ fontSize: 12 }}
+              compact
             >
-            Por: {doc.autorNome}
+              {getTipoLabel(doc.tipo)}
+            </Chip>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, flexShrink: 0 }}>
+              {doc.dataPublicacao
+                ? new Date(doc.dataPublicacao).toLocaleDateString("pt-BR")
+                : "Data N/A"}
+            </Text>
+          </View>
+
+          <Text
+            variant="titleMedium"
+            style={[styles.titulo, { color: theme.colors.onSurface }]}
+            numberOfLines={2}
+          >
+            {doc.titulo}
+          </Text>
+
+          <Text
+            variant="bodyMedium"
+            style={[styles.resumo, { color: theme.colors.onSurface }]}
+            numberOfLines={horizontal ? 2 : 3}
+          >
+            {doc.conteudo}
+          </Text>
+
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              Por: {doc.autorNome}
             </Text>
             {doc.versao && (
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    v{doc.versao}
-                </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                v{doc.versao}
+              </Text>
             )}
+          </View>
         </View>
-      </Card.Content>
-      <Card.Actions>
+
         {doc.link && (
-            <Button
+          <Button
             mode="contained"
             onPress={() => Linking.openURL(doc.link)}
             icon="open-in-new"
-            >
+            style={{ marginTop: 8 }}
+            compact
+          >
             Acessar
-            </Button>
+          </Button>
         )}
-      </Card.Actions>
+      </Card.Content>
     </Card>
   );
 
@@ -209,6 +204,10 @@ export function DocumentationList({
   );
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const HORIZONTAL_CARD_WIDTH = Math.min(280, SCREEN_WIDTH - 80);
+const HORIZONTAL_CARD_HEIGHT = Math.max(200, Math.min(230, Math.round(SCREEN_WIDTH * 0.58)));
+
 const styles = StyleSheet.create({
   loadingContainer: {
     padding: 20,
@@ -229,13 +228,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   horizontalCard: {
-    width: 300,
+    width: HORIZONTAL_CARD_WIDTH,
+    height: HORIZONTAL_CARD_HEIGHT,
     marginRight: 12,
     marginBottom: 8,
   },
   horizontalContainer: {
     paddingHorizontal: 4,
   },
+  cardContent: {},
   horizontalContent: {
     padding: 12,
   },
