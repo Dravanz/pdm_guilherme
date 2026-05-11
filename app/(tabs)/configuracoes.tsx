@@ -97,7 +97,10 @@ export default function Configuracoes() {
   const [menuTipoVisivel, setMenuTipoVisivel] = useState(false);
   const [menuRequisitoVisivel, setMenuRequisitoVisivel] = useState(false);
   const [menuCursoVisivel, setMenuCursoVisivel] = useState(false);
+  const [menuPerfilVisivel, setMenuPerfilVisivel] = useState(false);
   const [mostrarJobeTest, setMostrarJobeTest] = useState(false);
+  const [iconPickerVisivel, setIconPickerVisivel] = useState(false);
+  const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
 
 
 
@@ -560,13 +563,14 @@ export default function Configuracoes() {
     <SafeAreaView
       style={[
         themeStyles.container,
-        { backgroundColor: theme.colors.background },
+        { backgroundColor: theme.colors.background, paddingHorizontal: 0, paddingVertical: 0 },
       ]}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        style={styles.scrollView}
       >
         <Text
           variant="headlineMedium"
@@ -1532,7 +1536,12 @@ export default function Configuracoes() {
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 40,
   },
   pageTitle: {
