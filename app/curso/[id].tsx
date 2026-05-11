@@ -130,10 +130,12 @@ export default function CursoDetalhes() {
 
       let progresso = await CursoService.obterProgressoCurso(user.uid, id);
 
-      if (!progresso && !isRevisao && !isTreino) {
+      if (!progresso && !isRevisao) {
+        // Treino ou avaliação sem progresso: criar documento no Firestore.
+        // Treino precisa do documento para marcarPraticaCompleta funcionar.
         progresso = await CursoService.iniciarCurso(user.uid, id);
-      } else if ((isRevisao || isTreino) && !progresso) {
-        // Criar progresso temporário para revisão/treino
+      } else if (!progresso && isRevisao) {
+        // Revisão: progresso temporário em memória (não salva dados)
         progresso = {
           id: `${user.uid}_${id}_revisao`,
           usuarioId: user.uid,
@@ -292,7 +294,7 @@ export default function CursoDetalhes() {
 
       if (modoTreino) {
         if (user?.uid && id) {
-          CursoService.marcarPraticaCompleta(user.uid, id);
+          await CursoService.marcarPraticaCompleta(user.uid, id);
         }
         Alert.alert(
           "Prática Concluída!",

@@ -1,11 +1,13 @@
 import { CourseConfig } from "@/config/CourseConfig";
 import { ThemeContext } from "@/context/ThemeProvider";
 import { UserContext } from "@/context/UserProvider";
+import { firestore } from "@/firebase/FirebaseInit";
 import { Curso } from "@/model/Curso";
 import { CursoService } from "@/services/curso/CursoService";
 import { ImageService } from "@/services/image/ImageService";
 import { CourseDetailModal } from "@/components/CourseDetailModal";
 import { PerformanceModal } from "@/components/PerformanceModal";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { Image } from "expo-image";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -21,6 +23,9 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
   const { styles: themeStyles } = useContext<any>(ThemeContext);
   const { userFirebase: user } = useContext<any>(UserContext);
   const [cursosStatus, setCursosStatus] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [praticaCompleta, setPraticaCompleta] = useState<{ [key: string]: boolean }>(
     {}
   );
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
@@ -80,31 +85,30 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
     }
   }, [limit]);
 
-  const verificarStatusCursos = useCallback(async () => {
-    if (!user?.uid) return;
-
-    const status: { [key: string]: boolean } = {};
-
-    for (const curso of cursosDisponiveis) {
-      const concluido = await CursoService.verificarCursoConcluido(
-        user.uid,
-        curso.id
-      );
-      status[curso.id] = concluido;
-    }
-
-    setCursosStatus(status);
-  }, [user, cursosDisponiveis]);
-
   useEffect(() => {
     carregarCursos();
   }, [carregarCursos]);
 
   useEffect(() => {
-    if (user && cursosDisponiveis.length > 0) {
-      verificarStatusCursos();
-    }
-  }, [user, cursosDisponiveis, verificarStatusCursos]);
+    if (!user?.uid) return;
+
+    const usuariosCursosRef = collection(firestore, "usuariosCursos");
+    const q = query(usuariosCursosRef, where("usuarioId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const novoStatus: { [key: string]: boolean } = {};
+      const novaPratica: { [key: string]: boolean } = {};
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        novoStatus[data.cursoId] = data.concluido || false;
+        novaPratica[data.cursoId] = data.praticaCompleta || false;
+      });
+      setCursosStatus(novoStatus);
+      setPraticaCompleta(novaPratica);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const abrirDetalhes = (curso: Curso) => {
     setSelectedCurso(curso);
@@ -184,6 +188,7 @@ export function CourseList({ showHeader = true, limit }: CourseListProps) {
         onDismiss={() => { setModalVisible(false); setSelectedCurso(null); }}
         curso={selectedCurso}
         isCompleted={selectedCurso ? !!cursosStatus[selectedCurso.id] : false}
+        praticaCompleta={selectedCurso ? !!praticaCompleta[selectedCurso.id] : false}
         onOpenPerformance={abrirDesempenho}
       />
 

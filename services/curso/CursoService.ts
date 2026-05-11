@@ -1,6 +1,7 @@
 import { Asset } from "expo-asset";
 import {
     collection,
+    deleteDoc,
     doc,
     getDoc,
     getDocs,
@@ -690,12 +691,13 @@ export class CursoService {
     try {
       const docId = `${usuarioId}_${cursoId}`;
       const ref = doc(firestore, "usuariosCursos", docId);
-      await updateDoc(ref, {
+      await setDoc(ref, {
         praticaCompleta: true,
+        usuarioId,
+        cursoId,
         dataUltimaAtualizacao: serverTimestamp(),
-      });
+      }, { merge: true });
     } catch (error) {
-      // Não bloqueia o fluxo principal se falhar
       console.warn("[CursoService] Erro ao marcar prática completa:", error);
     }
   }
@@ -788,5 +790,9 @@ export class CursoService {
     } catch (error) {
       console.error("Erro ao atualizar coeficiente total:", error);
     }
+  }
+
+  static async excluirCurso(cursoId: string): Promise<void> {
+    await deleteDoc(doc(firestore, "cursos", cursoId));
   }
 }

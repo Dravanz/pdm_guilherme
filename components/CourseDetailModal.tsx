@@ -11,6 +11,7 @@ interface CourseDetailModalProps {
   onDismiss: () => void;
   curso: Curso | null;
   isCompleted: boolean;
+  praticaCompleta: boolean;
   onOpenPerformance?: (courseId: string, title: string) => void;
 }
 
@@ -19,6 +20,7 @@ export function CourseDetailModal({
   onDismiss,
   curso,
   isCompleted,
+  praticaCompleta,
   onOpenPerformance,
 }: CourseDetailModalProps) {
   const theme = useTheme();
@@ -170,9 +172,16 @@ export function CourseDetailModal({
                 icon="clipboard-check-outline"
                 style={[styles.actionButton, { borderRadius: 24 }]}
                 contentStyle={styles.buttonContent}
+                disabled={!praticaCompleta}
               >
                 Realizar Avaliação
               </Button>
+
+              {!praticaCompleta && (
+                <Text variant="bodySmall" style={{ color: theme.colors.error, textAlign: 'center', marginTop: -4 }}>
+                  Complete a prática primeiro para desbloquear
+                </Text>
+              )}
 
               {isCompleted && onOpenPerformance && (
                 <Button
