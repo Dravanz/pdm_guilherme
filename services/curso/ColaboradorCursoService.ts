@@ -52,6 +52,7 @@ export class ColaboradorCursoService {
         coeficienteMaximo: curso.coeficienteMaximo || 100,
         numeroPaginas: numeroPaginas,
         criadoPor: colaboradorId,
+        criadoPorNome: colaboradorNome,
         status: "Pendente",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
