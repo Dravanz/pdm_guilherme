@@ -13,12 +13,17 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
+    Dimensions,
     Image,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
     View,
 } from "react-native";
+
+const SCREEN_W = Dimensions.get('window').width;
+// 2 colunas: padding horizontal do container (~32px) + gap entre cards (10px)
+const BADGE_CARD_HEIGHT = Math.min(210, Math.max(170, Math.round((SCREEN_W - 42) / 2 * 1.05)));
 import {
     Button,
     Card,
@@ -440,14 +445,18 @@ export default function Perfil() {
                   {badges.length > 0 ? (
                     <View style={styles.badgesContainer}>
                       {badges.map((badge, index) => (
-                        <Card
+                        <View
                           key={`${badge.id}-${index}`}
                           style={[
                             styles.badgeCard,
-                            { backgroundColor: theme.colors.surface, borderLeftWidth: 4, borderLeftColor: theme.colors.primary },
+                            {
+                              backgroundColor: theme.colors.surface,
+                              borderLeftWidth: 4,
+                              borderLeftColor: theme.colors.primary,
+                            },
                           ]}
                         >
-                          <Card.Content style={styles.badgeContent}>
+                          <View style={styles.badgeContent}>
                             <Icon
                               source={badge.icone || "star"}
                               size={36}
@@ -469,7 +478,9 @@ export default function Perfil() {
                                 styles.badgeDescription,
                                 { color: theme.colors.onSurfaceVariant },
                               ]}
-                              numberOfLines={3}
+                              numberOfLines={2}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.75}
                             >
                               {badge.descricao}
                             </Text>
@@ -505,8 +516,8 @@ export default function Perfil() {
                                 {badge.tipo}
                               </Text>
                             </View>
-                          </Card.Content>
-                        </Card>
+                          </View>
+                        </View>
                       ))}
                     </View>
                   ) : (
@@ -770,13 +781,19 @@ const styles = StyleSheet.create({
   },
   badgeCard: {
     width: '47%',
-    flexGrow: 1,
+    height: BADGE_CARD_HEIGHT,
     borderRadius: 16,
     elevation: 3,
     marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   badgeContent: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 8,
   },

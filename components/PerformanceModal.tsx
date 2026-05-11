@@ -3,7 +3,7 @@ import { Curso } from "@/model/Curso";
 import { CursoService } from "@/services/curso/CursoService";
 import { TentativaService } from "@/services/shared/TentativaService";
 import React, { useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import {
   ActivityIndicator,
@@ -36,7 +36,7 @@ export function PerformanceModal({
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [cursoDetalhes, setCursoDetalhes] = useState<Curso | null>(null);
-  const screenWidth = Dimensions.get("window").width;
+  const [chartWidth, setChartWidth] = useState(0);
 
   useEffect(() => {
     if (visible) {
@@ -117,7 +117,7 @@ export function PerformanceModal({
                   <Text variant="bodySmall">Erros</Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text variant="displaySmall" style={{ color: theme.colors.info }}>
+                  <Text variant="displaySmall" style={{ color: theme.colors.tertiary }}>
                     {stats.taxaAcerto}%
                   </Text>
                   <Text variant="bodySmall">Precisão</Text>
@@ -128,31 +128,35 @@ export function PerformanceModal({
               <Text variant="titleMedium" style={styles.chartTitle}>
                 Distribuição de Respostas
               </Text>
-              <PieChart
-                data={[
-                  {
-                    name: "Acertos",
-                    population: stats.acertos,
-                    color: theme.colors.primary,
-                    legendFontColor: theme.colors.onSurface,
-                    legendFontSize: 12,
-                  },
-                  {
-                    name: "Erros",
-                    population: stats.erros,
-                    color: theme.colors.error,
-                    legendFontColor: theme.colors.onSurface,
-                    legendFontSize: 12,
-                  },
-                ]}
-                width={screenWidth - 60}
-                height={200}
-                chartConfig={chartConfig}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
+              <View onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}>
+                {chartWidth > 0 && (
+                  <PieChart
+                    data={[
+                      {
+                        name: `${stats.acertos} Corretas`,
+                        population: stats.acertos,
+                        color: theme.colors.primary,
+                        legendFontColor: theme.colors.onSurface,
+                        legendFontSize: 12,
+                      },
+                      {
+                        name: `${stats.erros} Incorretas`,
+                        population: stats.erros,
+                        color: theme.colors.error,
+                        legendFontColor: theme.colors.onSurface,
+                        legendFontSize: 12,
+                      },
+                    ]}
+                    width={chartWidth}
+                    height={200}
+                    chartConfig={chartConfig}
+                    accessor="population"
+                    backgroundColor="transparent"
+                    paddingLeft="15"
+                    absolute
+                  />
+                )}
+              </View>
 
               {/* Gráfico de Linha - Evolução */}
               {stats.evolucao.length > 1 && (
@@ -160,29 +164,31 @@ export function PerformanceModal({
                   <Text variant="titleMedium" style={styles.chartTitle}>
                     Evolução (Últimas 10)
                   </Text>
-                  <LineChart
-                    data={{
-                      labels: stats.evolucao.map((e: any) => e.index.toString()),
-                      datasets: [
-                        {
-                          data: stats.evolucao.map((e: any) => e.taxaAcerto),
-                          color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                          strokeWidth: 2
-                        },
-                      ],
-                      legend: ["Precisão Acumulada (%)"]
-                    }}
-                    width={screenWidth - 60}
-                    height={220}
-                    yAxisLabel=""
-                    yAxisSuffix="%"
-                    chartConfig={{
-                      ...chartConfig,
-                      formatYLabel: (y) => y,
-                    }}
-                    bezier
-                    style={styles.chart}
-                  />
+                  {chartWidth > 0 && (
+                    <LineChart
+                      data={{
+                        labels: stats.evolucao.map((e: any) => e.index.toString()),
+                        datasets: [
+                          {
+                            data: stats.evolucao.map((e: any) => e.taxaAcerto),
+                            color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                            strokeWidth: 2
+                          },
+                        ],
+                        legend: ["Precisão Acumulada (%)"]
+                      }}
+                      width={chartWidth}
+                      height={220}
+                      yAxisLabel=""
+                      yAxisSuffix="%"
+                      chartConfig={{
+                        ...chartConfig,
+                        formatYLabel: (y) => y,
+                      }}
+                      bezier
+                      style={styles.chart}
+                    />
+                  )}
                 </>
               )}
 
