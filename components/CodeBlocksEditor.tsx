@@ -29,6 +29,7 @@ const LINGUAGEM_LABELS: Record<string, { nome: string; icone: string }> = {
   python3: { nome: "Python 3", icone: "language-python" },
   nodejs: { nome: "JavaScript", icone: "language-javascript" },
   c: { nome: "C", icone: "language-c" },
+  sqlite3: { nome: "SQL (SQLite)", icone: "database" },
 };
 
 interface CodeBlocksEditorProps {

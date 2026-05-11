@@ -32,6 +32,7 @@ const LINGUAGEM_LABELS: Record<string, { nome: string; icone: string }> = {
   python3: { nome: "Python 3", icone: "language-python" },
   nodejs: { nome: "JavaScript", icone: "language-javascript" },
   c: { nome: "C", icone: "language-c" },
+  sqlite3: { nome: "SQL (SQLite)", icone: "database" },
 };
 
 interface CodeEditorProps {
@@ -297,11 +298,21 @@ function ResultadoPanel({
             <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer, fontWeight: "bold" }}>
               {resultado.outcomeTexto}
             </Text>
+            {resultado.outcome === 13 && (
+              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer, marginTop: 4 }}>
+                Dica: Verifique se há loops infinitos (while True, for sem limite) ou operações muito demoradas no seu código. O limite é 5 segundos.
+              </Text>
+            )}
+            {resultado.outcome === 17 && (
+              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer, marginTop: 4 }}>
+                Dica: Seu código está consumindo muita memória. Verifique listas ou estruturas de dados muito grandes.
+              </Text>
+            )}
             {resultado.cmpinfo ? (
-              <Text 
-                variant="bodySmall" 
-                style={{ 
-                  color: theme.colors.onErrorContainer, 
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: theme.colors.onErrorContainer,
                   fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
                   marginTop: 4,
                   fontSize: 11,
@@ -311,10 +322,10 @@ function ResultadoPanel({
               </Text>
             ) : null}
             {resultado.stderr ? (
-              <Text 
-                variant="bodySmall" 
-                style={{ 
-                  color: theme.colors.onErrorContainer, 
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: theme.colors.onErrorContainer,
                   fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
                   marginTop: 4,
                   fontSize: 11,

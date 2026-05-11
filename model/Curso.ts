@@ -15,7 +15,7 @@ export interface Alternativa {
 }
 
 // Linguagens suportadas pelo Jobe API
-export type LinguagemCodigo = "python3" | "nodejs" | "c";
+export type LinguagemCodigo = "python3" | "nodejs" | "c" | "sqlite3";
 
 // Caso de teste para exercícios de código
 export interface CasoTeste {
@@ -86,6 +86,7 @@ export interface Curso {
   coeficienteMaximo: number;
   status?: "Pendente" | "Aprovado" | "Rejeitado";
   criadoPor?: string;
+  criadoPorNome?: string;
   createdAt: any;
   updatedAt: any;
 }

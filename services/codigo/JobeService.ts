@@ -110,15 +110,17 @@ const LINGUAGEM_MAP: Record<
   python3: { jobeId: "python3", extensao: "py" },
   nodejs: { jobeId: "nodejs", extensao: "js" },
   c: { jobeId: "c", extensao: "c" },
+  sqlite3: { jobeId: "sqlite3", extensao: "sql" },
 };
 
 /**
  * Limites de recursos por linguagem
  */
 const LIMITES_LINGUAGEM: Record<LinguagemCodigo, JobeRunSpec["parameters"]> = {
-  python3: { cputime: 10, memorylimit: 400, disklimit: 20, numprocs: 20 },
-  nodejs: { cputime: 10, memorylimit: 300, disklimit: 20, numprocs: 20 },
+  python3: { cputime: 5, memorylimit: 400, disklimit: 20, numprocs: 20 },
+  nodejs: { cputime: 5, memorylimit: 300, disklimit: 20, numprocs: 20 },
   c: { cputime: 5, memorylimit: 200, disklimit: 20, numprocs: 10 },
+  sqlite3: { cputime: 5, memorylimit: 200, disklimit: 20, numprocs: 10 },
 };
 
 // ============ SERVICE ============

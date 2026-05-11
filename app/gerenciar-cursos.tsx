@@ -176,21 +176,22 @@ export default function GerenciarCursos() {
     const unsubscribe = onSnapshot(
       cursosRef,
       (snapshot) => {
-        const cursosAtualizados = snapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as Curso[];
+        const isModerador = userFirebase.perfil === Perfil.Moderador || userFirebase.perfil === "Moderador";
+
+        const cursosAtualizados = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          const isCriador = !!data.criadoPor && data.criadoPor === userFirebase.uid;
+          return {
+            ...data,
+            id: doc.id,
+            editavel: isModerador || isCriador,
+          };
+        }) as unknown as Curso[];
 
         const cursosFiltrados = cursosAtualizados.filter((curso) => {
-          // 1. Moderador vê tudo (check string literal to be safe)
-          if (userFirebase.perfil === "Moderador" || userFirebase.perfil === Perfil.Moderador) return true;
-          
-          // 2. Criador vê seu curso (check if IDs exist)
-          if (curso.criadoPor && userFirebase.uid && curso.criadoPor === userFirebase.uid) return true;
-          
-          // 3. Aprovados: Visível para todos
+          if (isModerador) return true;
+          if (curso.criadoPor && curso.criadoPor === userFirebase.uid) return true;
           if (curso.status === "Aprovado") return true;
-          
           return false;
         });
 
@@ -660,6 +661,8 @@ export default function GerenciarCursos() {
         return '// Complete o código abaixo\n// __EDITAR__ marca onde você deve escrever\n\nfunction solucao() {\n    // __EDITAR__\n}\n\nsolucao();';
       case "c":
         return '#include <stdio.h>\n\n// Complete o código abaixo\n// __EDITAR__ marca onde você deve escrever\n\nint main() {\n    // __EDITAR__\n    return 0;\n}';
+      case "sqlite3":
+        return '-- Complete a consulta SQL abaixo\n-- __EDITAR__ marca onde você deve escrever\n\n-- __EDITAR__';
       default:
         return "// __EDITAR__";
     }
@@ -1271,7 +1274,7 @@ export default function GerenciarCursos() {
                           />
                         }
                       >
-                        {(item.criadoPor === userFirebase?.uid || userFirebase?.perfil === Perfil.Moderador) && (
+                        {((item as any).editavel) && (
                           <Menu.Item
                             leadingIcon="chart-bar"
                             onPress={() => {
@@ -2069,6 +2072,7 @@ export default function GerenciarCursos() {
                     { value: "python3", label: "Python", icon: "language-python" },
                     { value: "nodejs", label: "JavaScript", icon: "language-javascript" },
                     { value: "c", label: "C", icon: "language-c" },
+                    { value: "sqlite3", label: "SQL", icon: "database" },
                   ]}
                   style={{ marginBottom: 16 }}
                 />
@@ -2370,6 +2374,7 @@ export default function GerenciarCursos() {
                     { value: "python3", label: "Python", icon: "language-python" },
                     { value: "nodejs", label: "JavaScript", icon: "language-javascript" },
                     { value: "c", label: "C", icon: "language-c" },
+                    { value: "sqlite3", label: "SQL", icon: "database" },
                   ]}
                   style={{ marginBottom: 16 }}
                 />
