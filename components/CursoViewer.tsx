@@ -47,6 +47,7 @@ export function CursoViewer({
   const [feedbackQuestao, setFeedbackQuestao] = useState<{
     [key: string]: { sucesso: boolean; explicacao: string; coeficiente: number };
   }>({});
+  const [codigosAttempted, setCodigosAttempted] = useState<string[]>([]);
   const theme = useTheme();
 
   const handleResposta = (questaoId: string, alternativaId: string) => {
@@ -108,6 +109,7 @@ export function CursoViewer({
     resultado: ResultadoExecucao,
     correta: boolean
   ) => {
+    setCodigosAttempted((prev) => prev.includes(questao.id) ? prev : [...prev, questao.id]);
     if (onResponderQuestaoEscrita) {
       try {
         await onResponderQuestaoEscrita(questao.id, correta, questao.explicacao);
@@ -239,16 +241,27 @@ export function CursoViewer({
               </Button>
             )}
             <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              <Button 
-                mode="outlined" 
-                onPress={onProximaPagina}
-                style={{ borderRadius: 10, minHeight: 44 }}
-                contentStyle={{ minHeight: 44 }}
-                accessibilityLabel={isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir curso") : "Ir para próxima página"}
-                accessibilityRole="button"
-              >
-                {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
-              </Button>
+              {(() => {
+                const todosCodigos = pagina.questoesEscrita || [];
+                const todosSubmetidos = todosCodigos.every(
+                  (q) => questoesRespondidas.includes(q.id) || codigosAttempted.includes(q.id)
+                );
+                return (
+                  <Button
+                    mode="outlined"
+                    onPress={onProximaPagina}
+                    disabled={!todosSubmetidos}
+                    style={{ borderRadius: 10, minHeight: 44 }}
+                    contentStyle={{ minHeight: 44 }}
+                    accessibilityLabel={isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir curso") : "Ir para próxima página"}
+                    accessibilityRole="button"
+                  >
+                    {!todosSubmetidos
+                      ? "Execute o código primeiro"
+                      : isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
+                  </Button>
+                );
+              })()}
             </View>
           </Card.Actions>
         </Card>
@@ -278,6 +291,7 @@ export function CursoViewer({
                   <CodeBlocksEditor
                     questao={questao}
                     onResultado={async (resultado, correta) => {
+                      setCodigosAttempted((prev) => prev.includes(questao.id) ? prev : [...prev, questao.id]);
                       if (onResponderQuestaoEscrita) {
                         try {
                           await onResponderQuestaoEscrita(questao.id, correta, questao.explicacao);
@@ -294,16 +308,27 @@ export function CursoViewer({
             })}
           </Card.Content>
           <Card.Actions style={{ justifyContent: 'flex-end', paddingHorizontal: 12, paddingBottom: 12 }}>
-            <Button
-              mode="outlined"
-              onPress={onProximaPagina}
-              style={{ borderRadius: 10, minHeight: 44 }}
-              contentStyle={{ minHeight: 44 }}
-              accessibilityLabel={isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir curso") : "Ir para próxima página"}
-              accessibilityRole="button"
-            >
-              {isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
-            </Button>
+            {(() => {
+              const todosBlocos = pagina.questoesBlocos || [];
+              const todosSubmetidos = todosBlocos.every(
+                (q) => questoesRespondidas.includes(q.id) || codigosAttempted.includes(q.id)
+              );
+              return (
+                <Button
+                  mode="outlined"
+                  onPress={onProximaPagina}
+                  disabled={!todosSubmetidos}
+                  style={{ borderRadius: 10, minHeight: 44 }}
+                  contentStyle={{ minHeight: 44 }}
+                  accessibilityLabel={isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir curso") : "Ir para próxima página"}
+                  accessibilityRole="button"
+                >
+                  {!todosSubmetidos
+                    ? "Resolva os blocos primeiro"
+                    : isLastPage ? (modo === 'preview' ? "Voltar aos Cursos" : "Concluir") : "Próxima Página"}
+                </Button>
+              );
+            })()}
           </Card.Actions>
         </Card>
       </ScrollView>
