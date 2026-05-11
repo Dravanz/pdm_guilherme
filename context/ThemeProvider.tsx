@@ -29,8 +29,8 @@ const themeLight = {
     surface: "#ffffff",
     onSurface: "#1f2937",
     surfaceVariant: "#f3f4f6",
-    onSurfaceVariant: "#4b5563", // Corrigido: era #6b7280 (~4.2:1), agora #4b5563 (~7:1)
-    outline: "#9ca3af",          // Corrigido: era #d1d5db (~1.8:1), agora #9ca3af (~3:1 AA para non-text)
+    onSurfaceVariant: "#4b5563",
+    outline: "#9ca3af",
     outlineVariant: "#d1d5db",
     // Semânticas
     error: "#dc2626",
@@ -77,8 +77,8 @@ const themeDark = {
     surface: "#1e293b",
     onSurface: "#f1f5f9",
     surfaceVariant: "#334155",
-    onSurfaceVariant: "#cbd5e1", // Corrigido: era #94a3b8 (~4.6:1), agora #cbd5e1 (~8.5:1)
-    outline: "#64748b",          // Corrigido: era #475569 (~2.6:1), agora #64748b (~3.5:1)
+    onSurfaceVariant: "#cbd5e1",
+    outline: "#64748b",
     outlineVariant: "#475569",
     // Semânticas
     error: "#ef4444",
