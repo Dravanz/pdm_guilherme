@@ -1,11 +1,12 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import { AuthProvider } from "@/context/AuthProvider";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { UserProvider } from "@/context/UserProvider";
+import { AnalyticsService } from "@/services/shared/AnalyticsService";
 import { DashboardService } from "@/services/shared/DashboardService";
 import * as Notifications from 'expo-notifications';
 import React from "react";
@@ -19,6 +20,14 @@ Notifications.setNotificationHandler({
   }),
 });
 
+function ScreenTracker() {
+  const pathname = usePathname();
+  React.useEffect(() => {
+    AnalyticsService.trackScreen(pathname);
+  }, [pathname]);
+  return null;
+}
+
 export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
@@ -27,7 +36,6 @@ export default function RootLayout() {
   React.useState(colorScheme === "dark");
 
   React.useEffect(() => {
-    // Inicializar atualização automática do ranking
     DashboardService.iniciarAtualizacaoRanking();
   }, []);
 
@@ -40,6 +48,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <AuthProvider>
         <UserProvider>
+          <ScreenTracker />
           <Stack
             initialRouteName="index"
             screenOptions={{
